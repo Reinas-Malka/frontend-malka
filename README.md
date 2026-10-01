@@ -59,9 +59,10 @@ Backend e infraestructura: [Reinas-Malka/backend-malka](https://github.com/Reina
 
 ## Variables de entorno
 
-| Variable            | Descripción                            | Ejemplo                                                |
-| ------------------- | -------------------------------------- | ------------------------------------------------------ |
-| `VITE_API_BASE_URL` | URL base de la API, sin barra al final | `https://xxxxxxxx.execute-api.us-east-1.amazonaws.com` |
+| Variable                   | Descripción                                                                                          | Ejemplo                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `VITE_API_BASE_URL`        | URL base de la API, sin barra al final                                                               | `https://xxxxxxxx.execute-api.us-east-1.amazonaws.com` |
+| `VITE_URL_SUBIDA_FICTICIA` | Solo desarrollo: URL prefirmada de S3 generada a mano, para probar la subida sin backend (issue #15) | `https://malka-suite-dev-documentos-…?…Signature=…`    |
 
 La URL se obtiene del output `api_base_url` de Terraform en el repositorio del backend.
 
@@ -81,6 +82,7 @@ La URL se obtiene del output `api_base_url` de Terraform en el repositorio del b
 | `npm run preview` | Sirve localmente el contenido de `dist/` para probar el build             |
 | `npm run lint`    | Analiza el código con ESLint                                              |
 | `npm run format`  | Formatea todo el código con Prettier                                      |
+| `npm run test`    | Corre los tests unitarios con Vitest                                      |
 
 El `build` falla si hay errores de tipos, así que conviene ejecutarlo junto con
 `lint` antes de abrir un pull request.
@@ -91,11 +93,23 @@ El `build` falla si hay errores de tipos, así que conviene ejecutarlo junto con
 src/
 ├── api/          # Cliente HTTP y funciones que llaman a cada endpoint
 ├── components/   # Componentes visuales reutilizables, sin lógica de datos
+├── documentos/   # Lógica de dominio de documentos (validación, subida a S3)
 ├── pages/        # Pantallas completas: piden los datos y los pasan a los componentes
 ├── types/        # Tipos e interfaces que reflejan las respuestas del backend
 ├── App.tsx       # Componente raíz
 └── main.tsx      # Punto de entrada de la aplicación
 ```
+
+## Subida de documentos (#15)
+
+El archivo nunca pasa por la API: se pide una URL prefirmada de S3 y el
+navegador sube directo al bucket, con progreso y un reintento si el enlace
+venció. El contrato del endpoint (`POST /api/v1/documentos/subidas`) está
+propuesto en `src/types/documentos.ts` y se ajusta cuando el backend
+publique el definitivo (#38).
+
+Mientras tanto, la pantalla se puede probar con una prefirmada generada a
+mano (ver `VITE_URL_SUBIDA_FICTICIA` arriba).
 
 Todas las llamadas a la API pasan por `src/api/client.ts`, que arma la URL a partir
 de `VITE_API_BASE_URL` y centraliza el manejo de errores. Ningún otro archivo usa
