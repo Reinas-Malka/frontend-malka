@@ -109,3 +109,38 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Navegación mínima entre secciones; la reemplaza el layout del #4. */
+.pestanas {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+
+  button {
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+
+    &[aria-current='page'] {
+      color: var(--text-h);
+      background: var(--accent-bg);
+      border-color: var(--accent-border);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+progress {
+  vertical-align: middle;
+  width: 180px;
+}
