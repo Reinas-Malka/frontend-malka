@@ -1,0 +1,66 @@
+/* ============================================================
+   TOKENS DE DISEÑO DE MALKA SUITE — la única fuente de verdad.
+   Nadie usa un color, espaciado, radio o tipografía suelta:
+   todo sale de acá (bg-fondo, text-acento, rounded-tarjeta, ...).
+   Identidad: criadero de abejas reinas. Miel y ámbar sobre
+   neutros oscuros cálidos. Sin azul genérico de template.
+   ============================================================ */
+@import 'tailwindcss';
+
+@theme {
+  /* --- paleta miel (acento primario) --- */
+  --color-miel-50: #fdf9ec;
+  --color-miel-100: #f9efcd;
+  --color-miel-200: #f3dd9b;
+  --color-miel-300: #ecc663;
+  --color-miel-400: #e6ae37;
+  --color-miel-500: #de9522; /* acento */
+  --color-miel-600: #c1721b;
+  --color-miel-700: #9e541a;
+  --color-miel-800: #7f421c;
+  --color-miel-900: #68361b;
+
+  /* --- ámbar (acento fuerte / hover) --- */
+  --color-ambar-400: #f5a524;
+  --color-ambar-500: #e8890c;
+  --color-ambar-600: #c26a06;
+
+  /* --- neutros oscuros cálidos (base de la app) --- */
+  --color-carbon-50: #f7f5f2;
+  --color-carbon-200: #ddd8d1;
+  --color-carbon-400: #a39d93;
+  --color-carbon-600: #5c564d;
+  --color-carbon-700: #423d36; /* paneles */
+  --color-carbon-800: #2e2a25; /* fondo */
+  --color-carbon-900: #1f1c18; /* barras/header */
+
+  /* --- semánticos --- */
+  --color-fondo: var(--color-carbon-800);
+  --color-panel: var(--color-carbon-700);
+  --color-panel-alto: var(--color-carbon-900);
+  --color-borde: #4f493f;
+  --color-texto: var(--color-carbon-50);
+  --color-texto-suave: var(--color-carbon-400);
+  --color-acento: var(--color-miel-500);
+  --color-acento-hover: var(--color-miel-400);
+  --color-ok: #7cb342;
+  --color-aviso: var(--color-ambar-400);
+  --color-peligro: #e05d44;
+
+  /* --- estados del ciclo (dominio C.3) --- */
+  --color-estado-cria: var(--color-miel-300);
+  --color-estado-fecundada: var(--color-ok);
+  --color-estado-extraviada: var(--color-peligro);
+  --color-estado-descartada: var(--color-texto-suave);
+
+  /* --- tipografía --- */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', monospace;
+  --text-xs: 0.75rem;
+  --text-tarjeta-titulo: 1.05rem;
+
+  /* --- radios y espaciados --- */
+  --radius-control: 0.5rem;
+  --radius-tarjeta: 0.9rem;
+  --spacing-seccion: 2rem;
+}
