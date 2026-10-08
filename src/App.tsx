@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BannerDatosSimulados } from '@/datos/BannerDatosSimulados'
 import { GuiaDeEstiloPage } from '@/pages/GuiaDeEstiloPage'
 import StatusPage from '@/pages/StatusPage'
 import SubidaDocumentoPage from '@/pages/SubidaDocumentoPage'
@@ -11,6 +12,7 @@ function App() {
 
   return (
     <>
+      <BannerDatosSimulados />
       <nav className="pestanas" aria-label="Secciones">
         <button
           aria-current={seccion === 'estado' ? 'page' : undefined}
