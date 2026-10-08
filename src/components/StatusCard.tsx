@@ -1,4 +1,4 @@
-import type { Health } from '../types/health'
+import type { Health } from '@/types/health'
 
 interface StatusCardProps {
   health: Health
