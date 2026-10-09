@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { pedirSubida } from '../api/documentos'
+import { pedirSubida } from '@/api/documentos'
 import {
   esUrlVencida,
   subirPorUrlPrefermada,
-} from '../documentos/subirPorUrlPrefermada'
-import { validarArchivo } from '../documentos/validarArchivo'
+} from '@/documentos/subirPorUrlPrefermada'
+import { validarArchivo } from '@/documentos/validarArchivo'
 
 type EstadoSubida =
   | { status: 'inactivo' }

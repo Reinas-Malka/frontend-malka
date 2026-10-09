@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { getHealth } from '../api/health'
-import StatusCard from '../components/StatusCard'
-import type { Health } from '../types/health'
+import { getHealth } from '@/api/health'
+import StatusCard from '@/components/StatusCard'
+import type { Health } from '@/types/health'
 
 type State =
   | { status: 'loading' }
