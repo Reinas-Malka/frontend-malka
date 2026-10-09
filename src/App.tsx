@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import StatusPage from './pages/StatusPage'
-import SubidaDocumentoPage from './pages/SubidaDocumentoPage'
+import { GuiaDeEstiloPage } from '@/pages/GuiaDeEstiloPage'
+import StatusPage from '@/pages/StatusPage'
+import SubidaDocumentoPage from '@/pages/SubidaDocumentoPage'
 
 // Navegación mínima mientras llega el layout con rutas del issue #4.
-type Seccion = 'estado' | 'subida'
+type Seccion = 'estado' | 'subida' | 'guia'
 
 function App() {
   const [seccion, setSeccion] = useState<Seccion>('estado')
@@ -23,8 +24,14 @@ function App() {
         >
           Subir documento
         </button>
+        <button
+          aria-current={seccion === 'guia' ? 'page' : undefined}
+          onClick={() => setSeccion('guia')}
+        >
+          Guía de estilo
+        </button>
       </nav>
-      {seccion === 'estado' ? <StatusPage /> : <SubidaDocumentoPage />}
+      {seccion === 'estado' ? <StatusPage /> : seccion === 'subida' ? <SubidaDocumentoPage /> : <GuiaDeEstiloPage />}
     </>
   )
 }
