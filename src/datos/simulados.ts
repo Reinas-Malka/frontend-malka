@@ -95,8 +95,8 @@ export const movimientos: MovimientoMaterial[] = [
 ]
 
 export const clientes: Cliente[] = [
-  { id: id(61), tenant_id: T, nombre: 'Apícola Don Emilio', pais: 'Argentina', tipo: 'nacional', condicion_iva: 'responsable_inscripto', cuit_o_tax_id: '20-12345678-4' },
-  { id: id(62), tenant_id: T, nombre: 'Bee Kingdom NZ Ltd', pais: 'Nueva Zelanda', tipo: 'exportacion', condicion_iva: 'exterior', cuit_o_tax_id: 'NZ-9429038' },
+  { id: id(61), nombre: 'Apícola Don Emilio', pais: 'AR', tipo: 'nacional', condicion_iva: 'responsable_inscripto', cuit_o_tax_id: '20305211894', activo: true },
+  { id: id(62), nombre: 'Bee Kingdom NZ Ltd', pais: 'NZ', tipo: 'exportacion', condicion_iva: 'exterior', cuit_o_tax_id: 'NZ-9429038', activo: true },
 ]
 
 export const comprobantes: Comprobante[] = [

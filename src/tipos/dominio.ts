@@ -76,14 +76,35 @@ export type MovimientoMaterial = {
 export type TipoComprobante = 'A' | 'B' | 'E'
 export type Moneda = 'ARS' | 'USD' | 'EUR'
 
+/** Alineados a app/schemas/clientes.py del backend (respuesta real de la API). */
 export type Cliente = {
   id: string
-  tenant_id: string
   nombre: string
   pais: string
   tipo: 'nacional' | 'exportacion'
   condicion_iva: 'responsable_inscripto' | 'monotributo' | 'exento' | 'consumidor_final' | 'exterior'
   cuit_o_tax_id: string
+  activo: boolean
+  tipo_documento_por_defecto?: 'factura_a' | 'factura_b' | 'factura_e'
+}
+
+/** POST /api/v1/clientes — sin tenant_id: lo completa la sesion (ADR 0009). */
+export type ClienteCrear = {
+  nombre: string
+  pais: string
+  tipo: Cliente['tipo']
+  condicion_iva: Cliente['condicion_iva']
+  cuit_o_tax_id: string
+}
+
+/** PATCH /api/v1/clientes/{id} — todo opcional. */
+export type ClienteActualizar = {
+  nombre?: string
+  pais?: string
+  tipo?: Cliente['tipo']
+  condicion_iva?: Cliente['condicion_iva']
+  cuit_o_tax_id?: string
+  activo?: boolean
 }
 
 export type Comprobante = {
