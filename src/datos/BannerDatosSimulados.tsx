@@ -1,7 +1,9 @@
+import { usaDatosSimulados } from '@/datos/cliente'
+
 /** Banner fijo de datos de ejemplo: visible en TODA la app cuando el flag
  *  está activo. Apagado por defecto en producción. */
 export function BannerDatosSimulados() {
-  if (import.meta.env.VITE_DATOS_SIMULADOS !== 'true') return null
+  if (!usaDatosSimulados(import.meta.env.VITE_DATOS_SIMULADOS)) return null
   return (
     <div
       role="status"

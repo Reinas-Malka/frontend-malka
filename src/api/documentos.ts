@@ -1,5 +1,5 @@
 import { request } from './client'
-import type { PedidoDeSubida, SubidaPreparada } from '../types/documentos'
+import type { PedidoDeSubida, SubidaPreparada } from '@/types/documentos'
 
 // El backend no expone el endpoint todavia (issue #38): en desarrollo se
 // puede usar VITE_URL_SUBIDA_FICTICIA con una prefirmada generada a mano
