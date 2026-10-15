@@ -14,8 +14,8 @@ describe('datos simulados verosímiles', () => {
 
   it('los movimientos respetan el signo por tipo', () => {
     for (const m of DATOS_SIMULADOS.movimientos) {
-      if (m.tipo === 'compra') expect(m.cantidad).toBeGreaterThan(0)
-      if (m.tipo === 'consumo') expect(m.cantidad).toBeLessThan(0)
+      if (m.tipo === 'compra') expect(Number(m.cantidad)).toBeGreaterThan(0)
+      if (m.tipo === 'consumo') expect(Number(m.cantidad)).toBeLessThan(0)
     }
   })
 

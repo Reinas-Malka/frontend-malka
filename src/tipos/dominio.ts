@@ -13,34 +13,30 @@ export type EstadoCelda =
   | 'enjaulada'
   | 'despachada'
 
+/* Raza, Madre, Parque, Nucleo, Material y MovimientoMaterial siguen los
+ *  *Respuesta de app/schemas/produccion.py: la API no devuelve tenant_id
+ *  (lo resuelve la sesión, ADR 0009) y los Decimal viajan como texto. */
 export type Raza = {
   id: string
-  tenant_id: string
   nombre: string
-  descripcion?: string
+  descripcion: string | null
   activo: boolean
 }
 
-export type Madre = {
-  id: string
-  tenant_id: string
-  identificacion: string
-  activo: boolean
-}
+export type Madre = { id: string; identificacion: string; activo: boolean }
 
 /** Parque de fecundación: donde la celda entra a un núcleo (≠ banco, que queda fuera de fase 1). */
 export type Parque = {
   id: string
-  tenant_id: string
   nombre: string
   ubicacion: string // texto simple, pueden ser predios distintos
   capacidad_max: number // en núcleos
+  nucleos_activos: number // lo calcula el backend
   activo: boolean
 }
 
 export type Nucleo = {
   id: string
-  tenant_id: string
   parque_id: string
   fila: number
   posicion: number
@@ -73,24 +69,45 @@ export type TipoMovimiento = 'compra' | 'consumo' | 'ajuste'
 
 export type Material = {
   id: string
-  tenant_id: string
   nombre: string
-  unidad: string
-} // unidad texto corto, sin enum
+  unidad: string // texto corto, sin enum
+  stock: string // Decimal: suma de los movimientos
+  activo: boolean
+}
 
 export type MovimientoMaterial = {
   id: string
-  tenant_id: string
   material_id: string
   tipo: TipoMovimiento
-  cantidad: number // con signo: +compra, -consumo, ±ajuste
-  motivo?: string
-  ocurrido_en: string
+  cantidad: string // Decimal con signo: +compra, -consumo, ±ajuste
+  tanda_id: string | null // solo en el consumo que genera una tanda
+  motivo: string | null
+  fecha: string // ISO date (YYYY-MM-DD)
+}
+
+/** Alícuotas de IVA de app/services/documentos/importes.py (Decimal como texto). */
+export type Alicuota = '0' | '0.025' | '0.05' | '0.105' | '0.21' | '0.27'
+
+export type ItemVendible = {
+  id: string
+  nombre: string
+  alicuota: Alicuota
+  activo: boolean
 }
 
 // --- facturación y exportación (A|B|E transcripto, never calculado) ---
 export type TipoComprobante = 'A' | 'B' | 'E'
 export type Moneda = 'ARS' | 'USD' | 'EUR'
+
+/** Valores de CondicionIva en app/services/ventas/clientes.py. */
+export const CONDICIONES_IVA = [
+  'responsable_inscripto',
+  'monotributo',
+  'exento',
+  'consumidor_final',
+  'cliente_exterior',
+] as const
+export type CondicionIva = (typeof CONDICIONES_IVA)[number]
 
 /** Alineados a app/schemas/clientes.py del backend (respuesta real de la API). */
 export type Cliente = {
@@ -98,15 +115,10 @@ export type Cliente = {
   nombre: string
   pais: string
   tipo: 'nacional' | 'exportacion'
-  condicion_iva:
-    | 'responsable_inscripto'
-    | 'monotributo'
-    | 'exento'
-    | 'consumidor_final'
-    | 'exterior'
+  condicion_iva: CondicionIva
   cuit_o_tax_id: string
   activo: boolean
-  tipo_documento_por_defecto?: 'factura_a' | 'factura_b' | 'factura_e'
+  tipo_documento_por_defecto: 'factura_a' | 'factura_b' | 'factura_e' // lo calcula siempre el backend
 }
 
 /** POST /api/v1/clientes — sin tenant_id: lo completa la sesion (ADR 0009). */
@@ -154,7 +166,7 @@ export type TipoDocumentoEmbarque =
 export type Embarque = {
   id: string
   tenant_id: string
-  destino_pais: string
+  destino_pais: string // ISO 3166-1 alfa-2, como pedido.destino_pais
   fecha_vuelo: string
   awb: string
   estado: string

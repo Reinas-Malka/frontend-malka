@@ -1,7 +1,7 @@
 // Subida directa a S3 por URL prefirmada. Se usa XMLHttpRequest porque
 // fetch todavía no reporta progreso de subida.
 
-import type { SubidaPreparada } from '../types/documentos'
+import type { SubidaPreparada } from '@/types/documentos'
 
 export class ErrorDeSubida extends Error {
   readonly estado: number | null

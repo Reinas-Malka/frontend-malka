@@ -31,21 +31,18 @@ const id = (n: number) =>
 export const razas: Raza[] = [
   {
     id: id(1),
-    tenant_id: T,
     nombre: 'Carniola',
-    descripcion: 'Api mellifera carnica — dócil, alta fecundación',
+    descripcion: 'Apis mellifera carnica — dócil, alta fecundación',
     activo: true,
   },
   {
     id: id(2),
-    tenant_id: T,
     nombre: 'Buckfast',
-    descripcion: 'Híbrida productiva, behavior tranquilo',
+    descripcion: 'Híbrida productiva, comportamiento tranquilo',
     activo: true,
   },
   {
     id: id(3),
-    tenant_id: T,
     nombre: 'Italiana',
     descripcion: 'Ligustica — precoz para polinización temprana',
     activo: true,
@@ -53,33 +50,32 @@ export const razas: Raza[] = [
 ]
 
 export const madres: Madre[] = [
-  { id: id(11), tenant_id: T, identificacion: 'A-12', activo: true },
-  { id: id(12), tenant_id: T, identificacion: 'A-07', activo: true },
-  { id: id(13), tenant_id: T, identificacion: 'B-03', activo: true },
+  { id: id(11), identificacion: 'A-12', activo: true },
+  { id: id(12), identificacion: 'A-07', activo: true },
+  { id: id(13), identificacion: 'B-03', activo: true },
 ]
 
 export const parques: Parque[] = [
   {
     id: id(21),
-    tenant_id: T,
     nombre: 'Parque La Loma',
     ubicacion: 'Predio Las Violetas, km 12',
     capacidad_max: 60,
+    nucleos_activos: 15,
     activo: true,
   },
   {
     id: id(22),
-    tenant_id: T,
     nombre: 'Parque Monte Chico',
     ubicacion: 'Predio El Durazno, camino viejo a Tandil',
     capacidad_max: 40,
+    nucleos_activos: 9,
     activo: true,
   },
 ]
 
 export const nucleos: Nucleo[] = Array.from({ length: 24 }, (_, i) => ({
   id: id(100 + i),
-  tenant_id: T,
   parque_id: i < 15 ? id(21) : id(22),
   fila: Math.floor((i % 15) / 3) + 1,
   posicion: (i % 3) + 1,
@@ -119,9 +115,14 @@ const POR_TANDA: Record<string, number> = {
   [id(32)]: 405,
   [id(33)]: 135,
 }
+/** Primer id de cada tanda: bloques de 1000, más que la tanda más grande. */
+const PRIMER_ID: Record<string, number> = {
+  [id(31)]: 10_000,
+  [id(32)]: 11_000,
+  [id(33)]: 12_000,
+}
 
-/** Estados coherentes con la antigüedad de cada tanda (por muestra de 12 celdas
- *  por tanda en la demo; la base real tiene una fila por cúpula). */
+/** Estados coherentes con la antigüedad de cada tanda. */
 function celdasDe(tandaId: string, edadDias: number): Celda[] {
   // Una fila por cúpula, como la base real (decenas por tanda, dominio D).
   const total = POR_TANDA[tandaId]
@@ -144,7 +145,7 @@ function celdasDe(tandaId: string, edadDias: number): Celda[] {
         ? nucleos[(i + 3) % nucleos.length].id
         : null
     return {
-      id: id(5000 + Number(tandaId.slice(0, 4)) + i),
+      id: id(PRIMER_ID[tandaId] + i),
       tenant_id: T,
       tanda_id: tandaId,
       nucleo_id: nucleo,
@@ -167,46 +168,61 @@ export const celdas: Celda[] = [
 ]
 
 export const materiales: Material[] = [
-  { id: id(41), tenant_id: T, nombre: 'Cúpula de cera', unidad: 'cúpulas' }, // el material es la cúpula suelta
-  { id: id(42), tenant_id: T, nombre: 'Jaula de transporte', unidad: 'jaulas' },
+  {
+    id: id(41),
+    nombre: 'Cúpula de cera',
+    unidad: 'cúpulas',
+    stock: '1365',
+    activo: true,
+  }, // el material es la cúpula suelta
+  {
+    id: id(42),
+    nombre: 'Jaula de transporte',
+    unidad: 'jaulas',
+    stock: '0',
+    activo: true,
+  },
 ]
+
+/** El backend devuelve la fecha como date (YYYY-MM-DD). */
+const dia = (dias: number) => iso(dias).slice(0, 10)
 
 export const movimientos: MovimientoMaterial[] = [
   {
     id: id(51),
-    tenant_id: T,
     material_id: id(41),
     tipo: 'compra',
-    cantidad: 2000,
+    cantidad: '2000',
+    tanda_id: null,
     motivo: 'Compra a apícola San Ramón',
-    ocurrido_en: iso(60),
+    fecha: dia(60),
   },
   {
     id: id(52),
-    tenant_id: T,
     material_id: id(41),
     tipo: 'consumo',
-    cantidad: -2 * CUPULAS_POR_CUADRO,
-    motivo: 'Tanda ' + id(31).slice(0, 8),
-    ocurrido_en: iso(40),
+    cantidad: String(-2 * CUPULAS_POR_CUADRO),
+    tanda_id: id(31),
+    motivo: null,
+    fecha: dia(40),
   },
   {
     id: id(53),
-    tenant_id: T,
     material_id: id(41),
     tipo: 'consumo',
-    cantidad: -3 * CUPULAS_POR_CUADRO,
-    motivo: 'Tanda ' + id(32).slice(0, 8),
-    ocurrido_en: iso(18),
+    cantidad: String(-3 * CUPULAS_POR_CUADRO),
+    tanda_id: id(32),
+    motivo: null,
+    fecha: dia(18),
   },
   {
     id: id(54),
-    tenant_id: T,
     material_id: id(41),
     tipo: 'ajuste',
-    cantidad: 40,
+    cantidad: '40',
+    tanda_id: null,
     motivo: 'Reconteo de stock físico',
-    ocurrido_en: iso(10),
+    fecha: dia(10),
   },
 ]
 
@@ -219,15 +235,17 @@ export const clientes: Cliente[] = [
     condicion_iva: 'responsable_inscripto',
     cuit_o_tax_id: '20305211894',
     activo: true,
+    tipo_documento_por_defecto: 'factura_a',
   },
   {
     id: id(62),
     nombre: 'Bee Kingdom NZ Ltd',
     pais: 'NZ',
     tipo: 'exportacion',
-    condicion_iva: 'exterior',
+    condicion_iva: 'cliente_exterior',
     cuit_o_tax_id: 'NZ-9429038',
     activo: true,
+    tipo_documento_por_defecto: 'factura_e',
   },
 ]
 
@@ -266,7 +284,7 @@ export const embarques: Embarque[] = [
   {
     id: id(81),
     tenant_id: T,
-    destino_pais: 'Nueva Zelanda',
+    destino_pais: 'NZ',
     fecha_vuelo: iso(22),
     awb: '081-12345675',
     estado: 'en_transito',
