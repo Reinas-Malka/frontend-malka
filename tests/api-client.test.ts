@@ -145,4 +145,23 @@ describe('request', () => {
       codigo: 'sin_configuracion',
     })
   })
+
+  it('un 200 que no es JSON (URL base mal configurada) es un ApiError claro', async () => {
+    fetchMock.mockResolvedValue(
+      new Response('<!doctype html>', { status: 200 }),
+    )
+
+    await expect(request('/api/v1/razas')).rejects.toMatchObject({
+      codigo: 'respuesta_invalida',
+    })
+  })
+
+  it('si el proveedor de token falla no lo disfraza de falta de conexión', async () => {
+    fijarProveedorDeToken(() => {
+      throw new Error('sesión vencida')
+    })
+
+    await expect(request('/api/v1/razas')).rejects.toThrow('sesión vencida')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })

@@ -45,9 +45,11 @@ export function DataTable<T extends { id: string }>({
   }, [filas, orden, columnas])
 
   const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / porPagina))
+  // Si las filas cambian (búsqueda, baja) la página actual se recorta al total.
+  const paginaActual = Math.min(pagina, totalPaginas - 1)
   const paginadas = ordenadas.slice(
-    pagina * porPagina,
-    (pagina + 1) * porPagina,
+    paginaActual * porPagina,
+    (paginaActual + 1) * porPagina,
   )
 
   if (filas.length === 0) return <>{vacio}</>
@@ -75,7 +77,7 @@ export function DataTable<T extends { id: string }>({
                 >
                   {c.orden ? (
                     <button
-                      className="inline-flex items-center gap-1 hover:text-texto focus-visible:outline-2 focus-visible:outline-acento"
+                      className="inline-flex min-h-10 items-center gap-1 hover:text-texto focus-visible:outline-2 focus-visible:outline-acento"
                       aria-label={`Ordenar por ${c.titulo}`}
                       onClick={() => toggleOrden(c.clave)}
                     >
@@ -125,22 +127,22 @@ export function DataTable<T extends { id: string }>({
           className="flex items-center justify-between"
         >
           <span className="text-xs text-texto-suave">
-            Página {pagina + 1} de {totalPaginas} · {filas.length} filas
+            Página {paginaActual + 1} de {totalPaginas} · {filas.length} filas
           </span>
           <div className="flex gap-2">
             <Button
               tamano="chico"
               variante="secundario"
-              disabled={pagina === 0}
-              onClick={() => setPagina((p) => p - 1)}
+              disabled={paginaActual === 0}
+              onClick={() => setPagina(paginaActual - 1)}
             >
               <ChevronLeft aria-hidden className="size-4" /> Anterior
             </Button>
             <Button
               tamano="chico"
               variante="secundario"
-              disabled={pagina >= totalPaginas - 1}
-              onClick={() => setPagina((p) => p + 1)}
+              disabled={paginaActual >= totalPaginas - 1}
+              onClick={() => setPagina(paginaActual + 1)}
             >
               Siguiente <ChevronRight aria-hidden className="size-4" />
             </Button>

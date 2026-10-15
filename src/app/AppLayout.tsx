@@ -1,6 +1,6 @@
 import { Hexagon, Menu, X } from 'lucide-react'
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useLocation } from 'react-router'
 import { NAVEGACION } from '@/app/navegacion'
 import { BannerDatosSimulados } from '@/datos/BannerDatosSimulados'
 import { cn } from '@/lib/utils'
@@ -8,7 +8,13 @@ import { cn } from '@/lib/utils'
 /** Estructura de toda pantalla: banner de datos simulados, menú lateral
  *  (cajón en el teléfono) y el contenido de la ruta. */
 export function AppLayout() {
-  const [menuAbierto, setMenuAbierto] = useState(false)
+  const { pathname } = useLocation()
+  // El menú queda abierto solo en la ruta donde se abrió: cualquier
+  // navegación (enlace, atrás, adelante) lo cierra sin efectos.
+  const [abiertoEn, setAbiertoEn] = useState<string | null>(null)
+  const menuAbierto = abiertoEn === pathname
+  const setMenuAbierto = (abrir: boolean) =>
+    setAbiertoEn(abrir ? pathname : null)
 
   return (
     <div className="min-h-dvh bg-fondo text-texto">
@@ -27,7 +33,7 @@ export function AppLayout() {
           aria-label={menuAbierto ? 'Cerrar menú' : 'Abrir menú'}
           aria-expanded={menuAbierto}
           aria-controls="menu-principal"
-          onClick={() => setMenuAbierto((abierto) => !abierto)}
+          onClick={() => setMenuAbierto(!menuAbierto)}
           className="inline-flex size-10 items-center justify-center rounded-control text-texto hover:bg-panel-alto focus-visible:outline-2 focus-visible:outline-acento"
         >
           {menuAbierto ? (
@@ -41,6 +47,7 @@ export function AppLayout() {
       <div className="md:grid md:grid-cols-[15rem_1fr]">
         <nav
           id="menu-principal"
+          onKeyDown={(e) => e.key === 'Escape' && setMenuAbierto(false)}
           aria-label="Principal"
           className={cn(
             'border-b border-borde bg-panel px-3 py-4 md:sticky md:top-0 md:block md:h-dvh md:overflow-y-auto md:border-b-0 md:border-r',

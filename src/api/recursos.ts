@@ -24,9 +24,10 @@ function elegir<T extends { id: string }, C, A>(
   ruta: string,
   semilla: readonly T[],
   construir: (datos: C, id: string) => T,
+  derivar?: (fila: T) => T,
 ): Recurso<T, C, A> {
   return simulado
-    ? recursoSimulado<T, C, A>(semilla, construir)
+    ? recursoSimulado<T, C, A>(semilla, construir, derivar)
     : recursoHttp<T, C, A>(ruta)
 }
 
@@ -98,9 +99,18 @@ export const clientes = elegir<
   Cliente,
   Esquemas['ClienteCrear'],
   Esquemas['ClienteActualizar']
->('/api/v1/clientes', DATOS_SIMULADOS.clientes, (d, id) => ({
-  id,
-  ...d,
-  activo: true,
-  tipo_documento_por_defecto: documentoPorDefecto(d.condicion_iva),
-}))
+>(
+  '/api/v1/clientes',
+  DATOS_SIMULADOS.clientes,
+  (d, id) => ({
+    id,
+    ...d,
+    activo: true,
+    tipo_documento_por_defecto: documentoPorDefecto(d.condicion_iva),
+  }),
+  // Al editar la condición de IVA, la factura sugerida cambia como en la API.
+  (c) => ({
+    ...c,
+    tipo_documento_por_defecto: documentoPorDefecto(c.condicion_iva),
+  }),
+)

@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router'
 import { AppLayout } from '@/app/AppLayout'
+import { CargaInicial, ErrorDeRuta } from '@/app/ErrorDeRuta'
 import { NoEncontradaPage } from '@/pages/NoEncontradaPage'
 import StatusPage from '@/pages/StatusPage'
 
@@ -17,6 +18,8 @@ export const rutas: RouteObject[] = [
   {
     path: '/',
     element: <AppLayout />,
+    errorElement: <ErrorDeRuta />,
+    hydrateFallbackElement: <CargaInicial />,
     children: [
       { index: true, element: <StatusPage /> },
       { path: 'produccion/razas', lazy: catalogo('RazasPage') },

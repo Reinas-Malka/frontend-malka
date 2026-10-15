@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { describirError } from '@/api/client'
 import type { Recurso } from '@/api/recurso'
@@ -35,6 +35,8 @@ export type ConfigCatalogo<T extends Fila, C, A> = {
   valoresDeFila: (fila: T) => Valores
   aCrear: (valores: Valores) => C
   aActualizar: (valores: Valores) => A
+  /** El PATCH que vuelve a activar una fila dada de baja: { activo: true }. */
+  reactivacion: A
 }
 
 type Edicion<T> = { modo: 'alta'; clave: string } | { modo: 'edicion'; fila: T }
@@ -64,74 +66,60 @@ export function PaginaCatalogo<T extends Fila, C, A>({
         normalizar(textoDe(f)).includes(normalizar(busqueda)),
       )
     : listado.filas
+  const guardando = crear.isPending || actualizar.isPending
 
-  const estado = (activo: boolean) => {
-    const sufijo = config.femenino ? 'a' : 'o'
-    return activo ? (
-      <Badge tono="ok">{`Activ${sufijo}`}</Badge>
-    ) : (
-      <Badge>{`Inactiv${sufijo}`}</Badge>
-    )
+  const abrirBaja = (fila: T) => {
+    desactivar.reset() // que no aparezca el error de una baja anterior
+    setADarDeBaja(fila)
   }
+
+  const reactivar = (fila: T) =>
+    actualizar.mutate(
+      { id: fila.id, datos: config.reactivacion },
+      {
+        onSuccess: () => setAviso(`Se reactivó ${config.nombreDeFila(fila)}.`),
+      },
+    )
 
   const columnas: Columna<T>[] = [
     ...config.columnas,
-    { clave: 'activo', titulo: 'Estado', render: (f) => estado(f.activo) },
+    {
+      clave: 'activo',
+      titulo: 'Estado',
+      render: (f) => <Estado activo={f.activo} femenino={config.femenino} />,
+    },
     {
       clave: 'id',
       titulo: 'Acciones',
       className: 'text-right',
       render: (fila) => (
-        <div className="flex justify-end gap-1">
-          <Button
-            variante="fantasma"
-            tamano="chico"
-            aria-label={`Editar ${config.nombreDeFila(fila)}`}
-            onClick={() => setEdicion({ modo: 'edicion', fila })}
-          >
-            <Pencil aria-hidden className="size-4" />
-          </Button>
-          {fila.activo ? (
-            <Button
-              variante="fantasma"
-              tamano="chico"
-              aria-label={`Dar de baja ${config.nombreDeFila(fila)}`}
-              onClick={() => setADarDeBaja(fila)}
-            >
-              <Trash2 aria-hidden className="size-4" />
-            </Button>
-          ) : null}
-        </div>
+        <AccionesDeFila
+          nombre={config.nombreDeFila(fila)}
+          activo={fila.activo}
+          alEditar={() => setEdicion({ modo: 'edicion', fila })}
+          alDarDeBaja={() => abrirBaja(fila)}
+          alReactivar={() => reactivar(fila)}
+        />
       ),
     },
   ]
 
   async function guardar(valores: Valores) {
-    if (edicion?.modo === 'edicion') {
+    const enCurso = edicion
+    if (enCurso?.modo === 'edicion') {
       await actualizar.mutateAsync({
-        id: edicion.fila.id,
+        id: enCurso.fila.id,
         datos: config.aActualizar(valores),
       })
-    } else if (edicion?.modo === 'alta') {
+    } else if (enCurso?.modo === 'alta') {
       await crear.mutateAsync({
         datos: config.aCrear(valores),
-        claveIdempotencia: edicion.clave,
+        claveIdempotencia: enCurso.clave,
       })
     }
     setAviso('Cambios guardados.')
-    setEdicion(null)
-  }
-
-  function confirmarBaja() {
-    if (!aDarDeBaja) return
-    const nombre = config.nombreDeFila(aDarDeBaja)
-    // Si falla, el modal queda abierto y muestra el error (desactivar.isError).
-    desactivar.mutate(aDarDeBaja.id, {
-      onSuccess: () => {
-        setAviso(`Se dio de baja ${nombre}.`)
-        setADarDeBaja(null)
-      },
-    })
+    // Solo cierra el modal que inició este guardado.
+    setEdicion((actual) => (actual === enCurso ? null : actual))
   }
 
   const agregar = (
@@ -152,28 +140,39 @@ export function PaginaCatalogo<T extends Fila, C, A>({
         acciones={agregar}
       />
 
-      <Input
-        type="search"
-        aria-label={`Buscar ${config.titulo.toLowerCase()}`}
-        placeholder="Buscar…"
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        className="max-w-sm"
-      />
-
-      <p role="status" className="sr-only">
-        {aviso}
-      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <Input
+          type="search"
+          aria-label={`Buscar ${config.titulo.toLowerCase()}`}
+          placeholder="Buscar…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          className="max-w-sm"
+        />
+        <p role="status" className="text-sm text-ok">
+          {aviso}
+        </p>
+      </div>
 
       {listado.isPending ? (
         <Cargando columnas={columnas.length} />
-      ) : listado.isError ? (
+      ) : listado.isError && listado.filas.length === 0 ? (
         <ErrorDePantalla
           error={describirError(listado.error)}
           reintentar={() => void listado.refetch()}
         />
       ) : (
         <>
+          {/* Hay datos pero falló un refresco: se avisa sin esconder la tabla. */}
+          {listado.isError ? (
+            <ErrorDePantalla
+              error={describirError(listado.error)}
+              reintentar={() => void listado.refetch()}
+            />
+          ) : null}
+          {actualizar.isError && !edicion ? (
+            <ErrorDePantalla error={describirError(actualizar.error)} />
+          ) : null}
           <DataTable
             columnas={columnas}
             filas={filas}
@@ -187,25 +186,22 @@ export function PaginaCatalogo<T extends Fila, C, A>({
               >
                 {busqueda
                   ? 'Probá con otro texto.'
-                  : `Cargá la primera con "Agregar ${singular}".`}
+                  : `Cargá el primero con "Agregar ${singular}".`}
               </Vacio>
             }
           />
-          {listado.hasNextPage ? (
-            <Button
-              variante="secundario"
-              cargando={listado.isFetchingNextPage}
-              onClick={() => void listado.fetchNextPage()}
-            >
-              Cargar más
-            </Button>
-          ) : null}
+          {listado.completo ? null : (
+            <p role="status" className="text-xs text-texto-suave">
+              Cargando el resto de las filas…
+            </p>
+          )}
         </>
       )}
 
       <Modal
         open={edicion !== null}
-        onOpenChange={(abierto) => !abierto && setEdicion(null)}
+        // Mientras guarda no se cierra: el resultado tiene que verse.
+        onOpenChange={(abierto) => !abierto && !guardando && setEdicion(null)}
       >
         {edicion ? (
           <ModalContenido
@@ -224,39 +220,136 @@ export function PaginaCatalogo<T extends Fila, C, A>({
                   : config.valoresDeFila(edicion.fila)
               }
               alGuardar={guardar}
-              alCancelar={() => setEdicion(null)}
+              alCancelar={() => !guardando && setEdicion(null)}
             />
           </ModalContenido>
         ) : null}
       </Modal>
 
-      <Modal
-        open={aDarDeBaja !== null}
-        onOpenChange={(abierto) => !abierto && setADarDeBaja(null)}
-      >
-        {aDarDeBaja ? (
-          <ModalContenido
-            titulo={`¿Dar de baja ${config.nombreDeFila(aDarDeBaja)}?`}
-            descripcion="No se borra: queda inactivo y se conserva en el historial."
-          >
-            {desactivar.isError ? (
-              <ErrorDePantalla error={describirError(desactivar.error)} />
-            ) : null}
-            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button variante="secundario" onClick={() => setADarDeBaja(null)}>
-                Cancelar
-              </Button>
-              <Button
-                variante="peligro"
-                cargando={desactivar.isPending}
-                onClick={confirmarBaja}
-              >
-                Dar de baja
-              </Button>
-            </div>
-          </ModalContenido>
-        ) : null}
-      </Modal>
+      <ModalDeBaja
+        fila={aDarDeBaja}
+        nombreDeFila={config.nombreDeFila}
+        pendiente={desactivar.isPending}
+        error={desactivar.isError ? describirError(desactivar.error) : null}
+        alCerrar={() => {
+          desactivar.reset()
+          setADarDeBaja(null)
+        }}
+        alConfirmar={(fila) =>
+          desactivar.mutate(fila.id, {
+            onSuccess: () => {
+              setAviso(`Se dio de baja ${config.nombreDeFila(fila)}.`)
+              // Solo cierra si sigue abierto el modal de ESTA fila.
+              setADarDeBaja((actual) =>
+                actual?.id === fila.id ? null : actual,
+              )
+            },
+          })
+        }
+      />
     </section>
+  )
+}
+
+function Estado({ activo, femenino }: { activo: boolean; femenino?: boolean }) {
+  const sufijo = femenino ? 'a' : 'o'
+  return activo ? (
+    <Badge tono="ok">{`Activ${sufijo}`}</Badge>
+  ) : (
+    <Badge>{`Inactiv${sufijo}`}</Badge>
+  )
+}
+
+function AccionesDeFila({
+  nombre,
+  activo,
+  alEditar,
+  alDarDeBaja,
+  alReactivar,
+}: {
+  nombre: string
+  activo: boolean
+  alEditar: () => void
+  alDarDeBaja: () => void
+  alReactivar: () => void
+}) {
+  return (
+    <div className="flex justify-end gap-1">
+      <Button
+        variante="fantasma"
+        tamano="chico"
+        aria-label={`Editar ${nombre}`}
+        onClick={alEditar}
+      >
+        <Pencil aria-hidden className="size-4" />
+      </Button>
+      {activo ? (
+        <Button
+          variante="fantasma"
+          tamano="chico"
+          aria-label={`Dar de baja ${nombre}`}
+          onClick={alDarDeBaja}
+        >
+          <Trash2 aria-hidden className="size-4" />
+        </Button>
+      ) : (
+        <Button
+          variante="fantasma"
+          tamano="chico"
+          aria-label={`Reactivar ${nombre}`}
+          onClick={alReactivar}
+        >
+          <RotateCcw aria-hidden className="size-4" />
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function ModalDeBaja<T>({
+  fila,
+  nombreDeFila,
+  pendiente,
+  error,
+  alCerrar,
+  alConfirmar,
+}: {
+  fila: T | null
+  nombreDeFila: (fila: T) => string
+  pendiente: boolean
+  error: ReturnType<typeof describirError> | null
+  alCerrar: () => void
+  alConfirmar: (fila: T) => void
+}) {
+  return (
+    <Modal
+      open={fila !== null}
+      onOpenChange={(abierto) => !abierto && !pendiente && alCerrar()}
+    >
+      {fila ? (
+        <ModalContenido
+          titulo={`¿Dar de baja ${nombreDeFila(fila)}?`}
+          descripcion="No se borra: queda inactivo, se conserva en el historial y se puede reactivar."
+        >
+          {error ? <ErrorDePantalla error={error} /> : null}
+          <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variante="secundario"
+              disabled={pendiente}
+              onClick={alCerrar}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variante="peligro"
+              cargando={pendiente}
+              onClick={() => alConfirmar(fila)}
+            >
+              Dar de baja
+            </Button>
+          </div>
+        </ModalContenido>
+      ) : null}
+    </Modal>
   )
 }

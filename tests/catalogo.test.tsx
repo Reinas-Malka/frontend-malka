@@ -29,9 +29,19 @@ const semilla: Raza[] = [
   { id: 'r2', nombre: 'Italiana', descripcion: null, activo: true },
 ]
 
+type RazaActualizar = Partial<RazaCrear> & { activo?: boolean }
+type RecursoRazas = Recurso<Raza, RazaCrear, RazaActualizar>
+
+const construir = (d: RazaCrear, id: string): Raza => ({
+  id,
+  nombre: d.nombre,
+  descripcion: d.descripcion ?? null,
+  activo: true,
+})
+
 function config(
-  recurso: Recurso<Raza, RazaCrear, Partial<RazaCrear>>,
-): ConfigCatalogo<Raza, RazaCrear, Partial<RazaCrear>> {
+  recurso: RecursoRazas,
+): ConfigCatalogo<Raza, RazaCrear, RazaActualizar> {
   return {
     clave: 'razas',
     titulo: 'Razas',
@@ -56,18 +66,14 @@ function config(
       nombre: v.nombre,
       descripcion: v.descripcion || null,
     }),
+    reactivacion: { activo: true },
   }
 }
 
 function montar(
-  recurso = recursoSimulado<Raza, RazaCrear, Partial<RazaCrear>>(
+  recurso: RecursoRazas = recursoSimulado<Raza, RazaCrear, RazaActualizar>(
     semilla,
-    (d, id) => ({
-      id,
-      nombre: d.nombre,
-      descripcion: d.descripcion ?? null,
-      activo: true,
-    }),
+    construir,
   ),
 ) {
   const cliente = new QueryClient({
@@ -147,11 +153,8 @@ describe('PaginaCatalogo', () => {
   })
 
   it('muestra el error del backend con su request_id y deja reintentar', async () => {
-    const roto: Recurso<Raza, RazaCrear, Partial<RazaCrear>> = {
-      ...recursoSimulado<Raza, RazaCrear, Partial<RazaCrear>>(
-        [],
-        () => semilla[0],
-      ),
+    const roto: RecursoRazas = {
+      ...recursoSimulado<Raza, RazaCrear, RazaActualizar>([], () => semilla[0]),
       listar: () =>
         Promise.reject(
           new ApiError({
@@ -170,5 +173,177 @@ describe('PaginaCatalogo', () => {
     expect(
       within(alerta).getByRole('button', { name: /reintentar/i }),
     ).toBeTruthy()
+  })
+})
+
+const muchas = (n: number): Raza[] =>
+  Array.from({ length: n }, (_, i) => ({
+    id: `m${i}`,
+    nombre: `Raza ${i}`,
+    descripcion: null,
+    activo: true,
+  }))
+
+describe('PaginaCatalogo — revisión del PR #30', () => {
+  it('busca en todas las filas aunque el backend pagine de a 100', async () => {
+    const usuario = montar(recursoSimulado(muchas(130), construir))
+    await screen.findByRole('cell', { name: 'Raza 0' })
+
+    await usuario.type(
+      screen.getByRole('searchbox', { name: /buscar/i }),
+      'Raza 129',
+    )
+
+    expect(await screen.findByRole('cell', { name: 'Raza 129' })).toBeTruthy()
+  })
+
+  it('al buscar desde una página alta no queda una tabla vacía', async () => {
+    const usuario = montar(recursoSimulado(muchas(20), construir))
+    await screen.findByRole('cell', { name: 'Raza 0' })
+    await usuario.click(screen.getByRole('button', { name: /siguiente/i }))
+    await usuario.click(screen.getByRole('button', { name: /siguiente/i }))
+
+    await usuario.type(
+      screen.getByRole('searchbox', { name: /buscar/i }),
+      'Raza 1',
+    )
+
+    expect(screen.getAllByRole('row').length).toBeGreaterThan(1)
+  })
+
+  it('edita una fila', async () => {
+    const usuario = montar()
+    await usuario.click(
+      await screen.findByRole('button', { name: 'Editar Carniola' }),
+    )
+
+    const nombre = screen.getByLabelText('Nombre')
+    await usuario.clear(nombre)
+    await usuario.type(nombre, 'Carniola F1')
+    await usuario.click(screen.getByRole('button', { name: /guardar/i }))
+
+    expect(
+      await screen.findByRole('cell', { name: 'Carniola F1' }),
+    ).toBeTruthy()
+  })
+
+  it('reactiva una fila dada de baja', async () => {
+    const usuario = montar(
+      recursoSimulado([{ ...semilla[0], activo: false }], construir),
+    )
+
+    await usuario.click(
+      await screen.findByRole('button', { name: 'Reactivar Carniola' }),
+    )
+
+    expect(await screen.findByText('Activa')).toBeTruthy()
+  })
+
+  it('si la baja falla el error no aparece en la baja de otra fila', async () => {
+    const base = recursoSimulado<Raza, RazaCrear, RazaActualizar>(
+      semilla,
+      construir,
+    )
+    const recurso: RecursoRazas = {
+      ...base,
+      desactivar: () =>
+        Promise.reject(
+          new ApiError({
+            status: 409,
+            codigo: 'en_uso',
+            mensaje: 'Tiene tandas activas.',
+          }),
+        ),
+    }
+    const usuario = montar(recurso)
+
+    await usuario.click(
+      await screen.findByRole('button', { name: 'Dar de baja Carniola' }),
+    )
+    let dialogo = await screen.findByRole('dialog')
+    await usuario.click(
+      within(dialogo).getByRole('button', { name: /^dar de baja$/i }),
+    )
+    expect(
+      await within(dialogo).findByText(/tiene tandas activas/i),
+    ).toBeTruthy()
+    await usuario.click(
+      within(dialogo).getByRole('button', { name: /cancelar/i }),
+    )
+
+    await usuario.click(
+      screen.getByRole('button', { name: 'Dar de baja Italiana' }),
+    )
+    dialogo = await screen.findByRole('dialog')
+    expect(within(dialogo).queryByText(/tiene tandas activas/i)).toBeNull()
+  })
+
+  it('un 422 del backend marca el campo que corresponde', async () => {
+    const base = recursoSimulado<Raza, RazaCrear, RazaActualizar>(
+      semilla,
+      construir,
+    )
+    const recurso: RecursoRazas = {
+      ...base,
+      crear: () =>
+        Promise.reject(
+          new ApiError({
+            status: 422,
+            codigo: 'validacion',
+            mensaje: 'Los datos enviados no son validos.',
+            detalles: {
+              campos: [
+                {
+                  campo: 'body.nombre',
+                  mensaje: 'Ya existe una raza con ese nombre.',
+                },
+              ],
+            },
+          }),
+        ),
+    }
+    const usuario = montar(recurso)
+    await usuario.click(
+      await screen.findByRole('button', { name: /agregar raza/i }),
+    )
+
+    await usuario.type(screen.getByLabelText('Nombre'), 'Carniola')
+    await usuario.click(screen.getByRole('button', { name: /guardar/i }))
+
+    expect(
+      await screen.findByText('Ya existe una raza con ese nombre.'),
+    ).toBeTruthy()
+  })
+
+  it('si falla el refresco después de guardar, la tabla no desaparece', async () => {
+    const base = recursoSimulado<Raza, RazaCrear, RazaActualizar>(
+      semilla,
+      construir,
+    )
+    let llamadas = 0
+    const recurso: RecursoRazas = {
+      ...base,
+      listar: (p) => {
+        llamadas += 1
+        return llamadas === 1
+          ? base.listar(p)
+          : Promise.reject(
+              new ApiError({
+                status: 503,
+                codigo: 'http_503',
+                mensaje: 'No disponible.',
+              }),
+            )
+      },
+    }
+    const usuario = montar(recurso)
+    await usuario.click(
+      await screen.findByRole('button', { name: /agregar raza/i }),
+    )
+    await usuario.type(screen.getByLabelText('Nombre'), 'Buckfast')
+    await usuario.click(screen.getByRole('button', { name: /guardar/i }))
+
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByRole('cell', { name: 'Carniola' })).toBeTruthy()
   })
 })

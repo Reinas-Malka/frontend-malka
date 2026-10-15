@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   createMemoryRouter,
   RouterProvider,
@@ -67,5 +68,47 @@ describe('rutas', () => {
     montar('/no/existe')
     expect(screen.getByText(/esta página no existe/i)).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'Principal' })).toBeTruthy()
+  })
+
+  it('el menú del teléfono se cierra al navegar', async () => {
+    montar('/')
+    const boton = await screen.findByRole('button', { name: 'Abrir menú' })
+    await userEvent.setup().click(boton)
+    expect(boton.getAttribute('aria-expanded')).toBe('true')
+
+    await userEvent.setup().click(screen.getByRole('link', { name: 'Razas' }))
+
+    const reabrir = await screen.findByRole('button', { name: 'Abrir menú' })
+    expect(reabrir.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('si no baja el código de una pantalla se ve el error de la app', async () => {
+    const [raiz] = rutas
+    const router = createMemoryRouter(
+      [
+        {
+          ...raiz,
+          children: [
+            {
+              index: true,
+              lazy: () =>
+                Promise.reject(new Error('Falló la carga del módulo')),
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    )
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    )
+
+    const alerta = await screen.findByRole('alert')
+    expect(alerta.textContent).toContain('Falló la carga del módulo')
+    expect(
+      within(alerta).getByRole('button', { name: /reintentar/i }),
+    ).toBeTruthy()
   })
 })

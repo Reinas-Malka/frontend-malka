@@ -145,36 +145,48 @@ async function errorDesdeRespuesta(respuesta: Response): Promise<ApiError> {
   })
 }
 
+/** Combina la señal del llamador con el timeout. AbortSignal.any falta en
+ *  Safari < 17.4 y Chrome < 116: ahí manda solo la del llamador y ESA llamada
+ *  pierde el timeout (hoy ninguna pantalla pasa señal propia). */
+function combinarSenales(
+  timeout: AbortSignal,
+  delLlamador?: AbortSignal,
+): AbortSignal {
+  if (!delLlamador) return timeout
+  return typeof AbortSignal.any === 'function'
+    ? AbortSignal.any([delLlamador, timeout])
+    : delLlamador
+}
+
+const tiempoAgotado = () =>
+  new ApiError({
+    codigo: 'tiempo_agotado',
+    mensaje: 'La API tardó demasiado en responder.',
+  })
+
 export async function request<T>(
   path: string,
   opciones: OpcionesDeRequest = {},
 ): Promise<T> {
   const url = armarUrl(path, opciones.query)
+  // Fuera del try: si falla obtener el token (sesión vencida) no es "sin conexión".
+  const headers = await armarHeaders(opciones)
   const timeout = AbortSignal.timeout(opciones.timeoutMs ?? TIMEOUT_MS)
-  const senal = opciones.senal
-    ? AbortSignal.any([opciones.senal, timeout])
-    : timeout
 
   let respuesta: Response
   try {
     respuesta = await fetch(url, {
       method: opciones.metodo ?? 'GET',
-      headers: await armarHeaders(opciones),
+      headers,
       body:
         opciones.cuerpo === undefined
           ? undefined
           : JSON.stringify(opciones.cuerpo),
-      signal: senal,
+      signal: combinarSenales(timeout, opciones.senal),
     })
   } catch (error) {
-    if (timeout.aborted) {
-      throw new ApiError({
-        codigo: 'tiempo_agotado',
-        mensaje: 'La API tardó demasiado en responder.',
-      })
-    }
-    if (error instanceof DOMException && error.name === 'AbortError')
-      throw error
+    if (opciones.senal?.aborted) throw error // lo canceló quien llamó: no es un error de la API
+    if (timeout.aborted) throw tiempoAgotado()
     throw new ApiError({
       codigo: 'sin_conexion',
       mensaje:
@@ -184,5 +196,16 @@ export async function request<T>(
 
   if (!respuesta.ok) throw await errorDesdeRespuesta(respuesta)
   if (respuesta.status === 204) return undefined as T
-  return (await respuesta.json()) as T
+  try {
+    return (await respuesta.json()) as T
+  } catch {
+    if (timeout.aborted) throw tiempoAgotado()
+    throw new ApiError({
+      status: respuesta.status,
+      codigo: 'respuesta_invalida',
+      mensaje:
+        'La API respondió algo que no es JSON. Revisá VITE_API_BASE_URL.',
+      requestId: respuesta.headers.get('x-request-id'),
+    })
+  }
 }

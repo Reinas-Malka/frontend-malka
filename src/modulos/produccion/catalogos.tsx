@@ -56,6 +56,7 @@ export const catalogoRazas: ConfigCatalogo<
     nombre: v.nombre.trim(),
     descripcion: v.descripcion?.trim() || null,
   }),
+  reactivacion: { activo: true },
 }
 
 export const catalogoMadres: ConfigCatalogo<
@@ -89,6 +90,7 @@ export const catalogoMadres: ConfigCatalogo<
   valoresDeFila: (m) => ({ identificacion: m.identificacion }),
   aCrear: (v) => ({ identificacion: v.identificacion.trim() }),
   aActualizar: (v) => ({ identificacion: v.identificacion.trim() }),
+  reactivacion: { activo: true },
 }
 
 export const catalogoParques: ConfigCatalogo<
@@ -154,6 +156,7 @@ export const catalogoParques: ConfigCatalogo<
     ubicacion: v.ubicacion.trim(),
     capacidad_max: Number(v.capacidad_max),
   }),
+  reactivacion: { activo: true },
 }
 
 export const catalogoMateriales: ConfigCatalogo<
@@ -194,4 +197,5 @@ export const catalogoMateriales: ConfigCatalogo<
   valoresDeFila: (m) => ({ nombre: m.nombre, unidad: m.unidad }),
   aCrear: (v) => ({ nombre: v.nombre.trim(), unidad: v.unidad.trim() }),
   aActualizar: (v) => ({ nombre: v.nombre.trim(), unidad: v.unidad.trim() }),
+  reactivacion: { activo: true },
 }

@@ -58,4 +58,40 @@ describe('recursoSimulado', () => {
       codigo: 'no_encontrado',
     })
   })
+
+  it('la misma clave de idempotencia no duplica el alta', async () => {
+    const razas = nuevo()
+
+    const primera = await razas.crear({ nombre: 'Buckfast' }, 'k-1')
+    const segunda = await razas.crear({ nombre: 'Buckfast' }, 'k-1')
+
+    expect(segunda.id).toBe(primera.id)
+    expect((await razas.listar()).items).toHaveLength(6)
+  })
+
+  it('un PATCH con undefined no pisa campos y se recalculan los derivados', async () => {
+    type Cliente = {
+      id: string
+      nombre: string
+      letra: string
+      tipo: string
+      activo: boolean
+    }
+    const clientes = recursoSimulado<Cliente, Cliente, Partial<Cliente>>(
+      [{ id: 'c1', nombre: 'A', tipo: 'nacional', letra: 'B', activo: true }],
+      (d) => d,
+      (c) => ({ ...c, letra: c.tipo === 'exportacion' ? 'E' : 'B' }),
+    )
+
+    const editado = await clientes.actualizar('c1', {
+      nombre: undefined,
+      tipo: 'exportacion',
+    })
+
+    expect(editado).toMatchObject({
+      nombre: 'A',
+      tipo: 'exportacion',
+      letra: 'E',
+    })
+  })
 })

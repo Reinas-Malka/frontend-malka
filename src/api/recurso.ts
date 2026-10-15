@@ -41,12 +41,17 @@ export function recursoHttp<T, Crear, Actualizar>(
 const LIMITE_POR_DEFECTO = 50
 
 /** Recurso en memoria para la demo sin backend. Copia la semilla: las altas
- *  de una sesión no modifican DATOS_SIMULADOS. El cursor es el índice. */
+ *  de una sesión no modifican DATOS_SIMULADOS. El cursor es el índice.
+ *  `derivar` recalcula lo que en la API real calcula el servidor (p. ej. la
+ *  factura sugerida de un cliente) después de cada alta o edición. */
 export function recursoSimulado<T extends { id: string }, Crear, Actualizar>(
   semilla: readonly T[],
   construir: (datos: Crear, id: string) => T,
+  derivar: (fila: T) => T = (fila) => fila,
 ): Recurso<T, Crear, Actualizar> {
   let filas: T[] = semilla.map((fila) => ({ ...fila }))
+  // Como el backend: la misma clave devuelve el mismo resultado (24 h allá).
+  const altasPorClave = new Map<string, T>()
 
   const buscar = (id: string): T => {
     const fila = filas.find((f) => f.id === id)
@@ -65,6 +70,14 @@ export function recursoSimulado<T extends { id: string }, Crear, Actualizar>(
     return actualizada
   }
 
+  // PATCH: un campo ausente o undefined no se toca.
+  const definidos = (datos: Actualizar): Partial<T> =>
+    Object.fromEntries(
+      Object.entries(datos as Record<string, unknown>).filter(
+        ([, valor]) => valor !== undefined,
+      ),
+    ) as Partial<T>
+
   return {
     listar: async ({ limite = LIMITE_POR_DEFECTO, cursor } = {}) => {
       const desde = cursor ? Number(cursor) : 0
@@ -73,12 +86,18 @@ export function recursoSimulado<T extends { id: string }, Crear, Actualizar>(
       return { items, siguiente: hasta < filas.length ? String(hasta) : null }
     },
     obtener: async (id) => buscar(id),
-    crear: async (datos) => {
-      const nueva = construir(datos, crypto.randomUUID())
+    crear: async (datos, claveIdempotencia) => {
+      const previa = claveIdempotencia
+        ? altasPorClave.get(claveIdempotencia)
+        : undefined
+      if (previa) return previa
+      const nueva = derivar(construir(datos, crypto.randomUUID()))
       filas = [...filas, nueva]
+      if (claveIdempotencia) altasPorClave.set(claveIdempotencia, nueva)
       return nueva
     },
-    actualizar: async (id, datos) => reemplazar({ ...buscar(id), ...datos }),
+    actualizar: async (id, datos) =>
+      reemplazar(derivar({ ...buscar(id), ...definidos(datos) })),
     desactivar: async (id) => {
       reemplazar({ ...buscar(id), activo: false })
     },

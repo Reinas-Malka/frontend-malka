@@ -69,6 +69,7 @@ export const catalogoItemsVendibles: ConfigCatalogo<
   }),
   aCrear: (v) => ({ nombre: v.nombre.trim(), alicuota: v.alicuota }),
   aActualizar: (v) => ({ nombre: v.nombre.trim(), alicuota: v.alicuota }),
+  reactivacion: { activo: true },
 }
 
 const CONDICIONES_NACIONALES: Opcion[] = [
@@ -201,7 +202,9 @@ export const catalogoClientes: ConfigCatalogo<
     cuit_o_tax_id: '',
   },
   nombreDeFila: (c) => c.nombre,
-  textoDeBusqueda: (c) => `${c.nombre} ${c.cuit_o_tax_id} ${c.pais}`,
+  // El CUIT se guarda sin guiones: se busca en las dos formas.
+  textoDeBusqueda: (c) =>
+    `${c.nombre} ${c.cuit_o_tax_id} ${c.cuit_o_tax_id.replace(/^(\d{2})(\d{8})(\d)$/, '$1-$2-$3')} ${c.pais}`,
   valoresDeFila: (c) => ({
     nombre: c.nombre,
     tipo: c.tipo,
@@ -211,4 +214,5 @@ export const catalogoClientes: ConfigCatalogo<
   }),
   aCrear: aClienteCrear,
   aActualizar: aClienteCrear,
+  reactivacion: { activo: true },
 }

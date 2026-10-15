@@ -64,7 +64,15 @@ export function FormularioRecurso({
     try {
       await alGuardar(valores)
     } catch (error) {
-      const deCampo = erroresDelBackend(error, campos)
+      // Solo cuentan los errores de campos visibles: uno oculto no se vería.
+      const visibles = new Set(
+        camposVisibles(campos, valores).map((c) => c.nombre),
+      )
+      const deCampo = Object.fromEntries(
+        Object.entries(erroresDelBackend(error, campos)).filter(([nombre]) =>
+          visibles.has(nombre),
+        ),
+      )
       setErrores(deCampo)
       if (Object.keys(deCampo).length === 0) {
         setErrorGeneral(
