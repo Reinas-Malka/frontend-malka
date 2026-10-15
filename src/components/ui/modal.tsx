@@ -8,12 +8,22 @@ export const Modal = Dialog.Root
 export const ModalTrigger = Dialog.Trigger
 
 export function ModalContenido({
-  titulo, descripcion, children, className,
-}: { titulo: string; descripcion?: string; children: ReactNode; className?: string }) {
+  titulo,
+  descripcion,
+  children,
+  className,
+}: {
+  titulo: string
+  descripcion?: string
+  children: ReactNode
+  className?: string
+}) {
   return (
     <Dialog.Portal>
       <Dialog.Overlay className="fixed inset-0 z-40 bg-carbon-900/70 backdrop-blur-sm" />
       <Dialog.Content
+        // Sin descripción, se indica explícitamente (si no, Radix advierte).
+        {...(descripcion ? {} : { 'aria-describedby': undefined })}
         className={cn(
           'fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2',
           'rounded-tarjeta border border-borde bg-panel p-5 shadow-2xl',
@@ -21,9 +31,13 @@ export function ModalContenido({
           className,
         )}
       >
-        <Dialog.Title className="text-tarjeta-titulo font-semibold text-texto">{titulo}</Dialog.Title>
+        <Dialog.Title className="text-tarjeta-titulo font-semibold text-texto">
+          {titulo}
+        </Dialog.Title>
         {descripcion ? (
-          <Dialog.Description className="mt-1 text-sm text-texto-suave">{descripcion}</Dialog.Description>
+          <Dialog.Description className="mt-1 text-sm text-texto-suave">
+            {descripcion}
+          </Dialog.Description>
         ) : null}
         <div className="mt-4">{children}</div>
         <Dialog.Close

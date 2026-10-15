@@ -1,5 +1,13 @@
 /** Tipos derivados de docs/dominio.md del backend — nombres del dominio,
- *  sin traducir ni simplificar. Se actualizan cuando cambia el documento. */
+ *  sin traducir ni simplificar.
+ *
+ *  Las entidades que YA tienen endpoint son alias de src/api/esquema.d.ts,
+ *  generado del OpenAPI del backend (npm run contrato:tipos): si el backend
+ *  cambia un campo, el build lo marca. Las que todavía no tienen endpoint
+ *  (tanda, celda, comprobante, embarque) se escriben a mano desde dominio.md. */
+import type { components } from '@/api/esquema'
+
+type Esquemas = components['schemas']
 
 // --- ciclo de cría (C.3 y D) ---
 export type EstadoCelda =
@@ -13,35 +21,15 @@ export type EstadoCelda =
   | 'enjaulada'
   | 'despachada'
 
-/* Raza, Madre, Parque, Nucleo, Material y MovimientoMaterial siguen los
- *  *Respuesta de app/schemas/produccion.py: la API no devuelve tenant_id
- *  (lo resuelve la sesión, ADR 0009) y los Decimal viajan como texto. */
-export type Raza = {
-  id: string
-  nombre: string
-  descripcion: string | null
-  activo: boolean
-}
+// --- producción: alias de los *Respuesta del backend (sin tenant_id) ---
+export type Raza = Esquemas['RazaRespuesta']
 
-export type Madre = { id: string; identificacion: string; activo: boolean }
+export type Madre = Esquemas['MadreRespuesta']
 
-/** Parque de fecundación: donde la celda entra a un núcleo (≠ banco, que queda fuera de fase 1). */
-export type Parque = {
-  id: string
-  nombre: string
-  ubicacion: string // texto simple, pueden ser predios distintos
-  capacidad_max: number // en núcleos
-  nucleos_activos: number // lo calcula el backend
-  activo: boolean
-}
+/** Parque de fecundación: donde la celda entra a un núcleo (≠ banco, fuera de fase 1). */
+export type Parque = Esquemas['ParqueRespuesta']
 
-export type Nucleo = {
-  id: string
-  parque_id: string
-  fila: number
-  posicion: number
-  activo: boolean
-}
+export type Nucleo = Esquemas['NucleoRespuesta']
 
 export type Tanda = {
   id: string
@@ -67,33 +55,20 @@ export type Celda = {
 // --- materiales (movimientos con signo, stock = suma) ---
 export type TipoMovimiento = 'compra' | 'consumo' | 'ajuste'
 
-export type Material = {
-  id: string
-  nombre: string
-  unidad: string // texto corto, sin enum
-  stock: string // Decimal: suma de los movimientos
-  activo: boolean
-}
+export type Material = Esquemas['MaterialRespuesta']
 
-export type MovimientoMaterial = {
-  id: string
-  material_id: string
-  tipo: TipoMovimiento
-  cantidad: string // Decimal con signo: +compra, -consumo, ±ajuste
-  tanda_id: string | null // solo en el consumo que genera una tanda
-  motivo: string | null
-  fecha: string // ISO date (YYYY-MM-DD)
-}
+export type MovimientoMaterial = Omit<
+  Esquemas['MovimientoRespuesta'],
+  'tipo'
+> & { tipo: TipoMovimiento }
 
 /** Alícuotas de IVA de app/services/documentos/importes.py (Decimal como texto). */
 export type Alicuota = '0' | '0.025' | '0.05' | '0.105' | '0.21' | '0.27'
 
-export type ItemVendible = {
-  id: string
-  nombre: string
-  alicuota: Alicuota
-  activo: boolean
-}
+export type ItemVendible = Omit<
+  Esquemas['ItemVendibleRespuesta'],
+  'alicuota'
+> & { alicuota: Alicuota }
 
 // --- facturación y exportación (A|B|E transcripto, never calculado) ---
 export type TipoComprobante = 'A' | 'B' | 'E'
@@ -106,39 +81,17 @@ export const CONDICIONES_IVA = [
   'exento',
   'consumidor_final',
   'cliente_exterior',
-] as const
-export type CondicionIva = (typeof CONDICIONES_IVA)[number]
+] as const satisfies readonly Esquemas['CondicionIva'][]
+export type CondicionIva = Esquemas['CondicionIva']
 
-/** Alineados a app/schemas/clientes.py del backend (respuesta real de la API). */
-export type Cliente = {
-  id: string
-  nombre: string
-  pais: string
-  tipo: 'nacional' | 'exportacion'
-  condicion_iva: CondicionIva
-  cuit_o_tax_id: string
-  activo: boolean
-  tipo_documento_por_defecto: 'factura_a' | 'factura_b' | 'factura_e' // lo calcula siempre el backend
-}
+/** Alineado a app/schemas/clientes.py (respuesta real de la API). */
+export type Cliente = Esquemas['ClienteRespuesta']
 
-/** POST /api/v1/clientes — sin tenant_id: lo completa la sesion (ADR 0009). */
-export type ClienteCrear = {
-  nombre: string
-  pais: string
-  tipo: Cliente['tipo']
-  condicion_iva: Cliente['condicion_iva']
-  cuit_o_tax_id: string
-}
+/** POST /api/v1/clientes — sin tenant_id: lo completa la sesión (ADR 0009). */
+export type ClienteCrear = Esquemas['ClienteCrear']
 
 /** PATCH /api/v1/clientes/{id} — todo opcional. */
-export type ClienteActualizar = {
-  nombre?: string
-  pais?: string
-  tipo?: Cliente['tipo']
-  condicion_iva?: Cliente['condicion_iva']
-  cuit_o_tax_id?: string
-  activo?: boolean
-}
+export type ClienteActualizar = Esquemas['ClienteActualizar']
 
 export type Comprobante = {
   id: string

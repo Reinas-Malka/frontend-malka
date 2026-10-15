@@ -1,9 +1,11 @@
 @import './styles/tokens.css';
 
 /* Base de la app: fondo, tipografía y pestañas mínimas mientras llega el layout (#4). */
-body { background: var(--color-fondo); color: var(--color-texto); font-family: var(--font-sans); }
-main { min-height: 100dvh; }
-.pestanas { display: flex; gap: 0.25rem; padding: 0.5rem; background: var(--color-panel-alto); overflow-x: auto; }
-.pestanas button { padding: 0.5rem 1rem; border-radius: var(--radius-control); color: var(--color-texto-suave); font-size: 0.875rem; }
-.pestanas button[aria-current='page'] { background: var(--color-acento); color: var(--color-carbon-900); font-weight: 500; }
-.pestanas button:focus-visible { outline: 2px solid var(--color-acento); outline-offset: 2px; }
+body {
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--font-sans);
+}
+main {
+  min-height: 100dvh;
+}

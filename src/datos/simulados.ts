@@ -9,6 +9,7 @@ import {
   type Comprobante,
   type Embarque,
   type EstadoCelda,
+  type ItemVendible,
   type Madre,
   type Material,
   type MovimientoMaterial,
@@ -226,6 +227,12 @@ export const movimientos: MovimientoMaterial[] = [
   },
 ]
 
+export const itemsVendibles: ItemVendible[] = [
+  { id: id(91), nombre: 'Reina fecundada', alicuota: '0.21', activo: true },
+  { id: id(92), nombre: 'Reina virgen', alicuota: '0.21', activo: true },
+  { id: id(93), nombre: 'Celda real', alicuota: '0.21', activo: true },
+]
+
 export const clientes: Cliente[] = [
   {
     id: id(61),
@@ -292,6 +299,7 @@ export const embarques: Embarque[] = [
 ]
 
 export const DATOS_SIMULADOS = {
+  itemsVendibles,
   tandas,
   celdas,
   parques,

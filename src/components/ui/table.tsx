@@ -1,7 +1,13 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { Button } from './button'
+import { Button } from '@/components/ui/button'
 
 export type Columna<T> = {
   clave: keyof T & string
@@ -15,24 +21,45 @@ export type Columna<T> = {
 /** Tabla mobile-first: en pantallas chicas se scrollea horizontal,
  *  encabezados con botones de orden y paginación accesible abajo. */
 export function DataTable<T extends { id: string }>({
-  columnas, filas, porPagina = 8, vacio,
-}: { columnas: Columna<T>[]; filas: T[]; porPagina?: number; vacio: ReactNode }) {
-  const [orden, setOrden] = useState<{ clave: string; dir: 1 | -1 } | null>(null)
+  columnas,
+  filas,
+  porPagina = 8,
+  vacio,
+}: {
+  columnas: Columna<T>[]
+  filas: T[]
+  porPagina?: number
+  vacio: ReactNode
+}) {
+  const [orden, setOrden] = useState<{ clave: string; dir: 1 | -1 } | null>(
+    null,
+  )
   const [pagina, setPagina] = useState(0)
 
   const ordenadas = useMemo(() => {
     if (!orden) return filas
     const col = columnas.find((c) => c.clave === orden.clave)
-    return col?.orden ? [...filas].sort((a, b) => col.orden!(a, b) * orden.dir) : filas
+    return col?.orden
+      ? [...filas].sort((a, b) => col.orden!(a, b) * orden.dir)
+      : filas
   }, [filas, orden, columnas])
 
   const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / porPagina))
-  const paginadas = ordenadas.slice(pagina * porPagina, (pagina + 1) * porPagina)
+  // Si las filas cambian (búsqueda, baja) la página actual se recorta al total.
+  const paginaActual = Math.min(pagina, totalPaginas - 1)
+  const paginadas = ordenadas.slice(
+    paginaActual * porPagina,
+    (paginaActual + 1) * porPagina,
+  )
 
   if (filas.length === 0) return <>{vacio}</>
 
   function toggleOrden(clave: string) {
-    setOrden((o) => (o?.clave === clave ? { clave, dir: o.dir === 1 ? -1 : 1 } : { clave, dir: 1 }))
+    setOrden((o) =>
+      o?.clave === clave
+        ? { clave, dir: o.dir === 1 ? -1 : 1 }
+        : { clave, dir: 1 },
+    )
     setPagina(0)
   }
 
@@ -43,18 +70,29 @@ export function DataTable<T extends { id: string }>({
           <thead>
             <tr className="bg-panel-alto text-left text-texto-suave">
               {columnas.map((c) => (
-                <th key={c.clave} scope="col" className={cn('px-3 py-2 font-medium', c.className)}>
+                <th
+                  key={c.clave}
+                  scope="col"
+                  className={cn('px-3 py-2 font-medium', c.className)}
+                >
                   {c.orden ? (
                     <button
-                      className="inline-flex items-center gap-1 hover:text-texto focus-visible:outline-2 focus-visible:outline-acento"
+                      className="inline-flex min-h-10 items-center gap-1 hover:text-texto focus-visible:outline-2 focus-visible:outline-acento"
                       aria-label={`Ordenar por ${c.titulo}`}
                       onClick={() => toggleOrden(c.clave)}
                     >
                       {c.titulo}
                       {orden?.clave === c.clave ? (
-                        orden.dir === 1 ? <ArrowUp aria-hidden className="size-3" /> : <ArrowDown aria-hidden className="size-3" />
+                        orden.dir === 1 ? (
+                          <ArrowUp aria-hidden className="size-3" />
+                        ) : (
+                          <ArrowDown aria-hidden className="size-3" />
+                        )
                       ) : (
-                        <ArrowUpDown aria-hidden className="size-3 opacity-50" />
+                        <ArrowUpDown
+                          aria-hidden
+                          className="size-3 opacity-50"
+                        />
                       )}
                     </button>
                   ) : (
@@ -66,9 +104,15 @@ export function DataTable<T extends { id: string }>({
           </thead>
           <tbody>
             {paginadas.map((fila) => (
-              <tr key={fila.id} className="border-t border-borde/60 odd:bg-carbon-800/40">
+              <tr
+                key={fila.id}
+                className="border-t border-borde/60 odd:bg-carbon-800/40"
+              >
                 {columnas.map((c) => (
-                  <td key={c.clave} className={cn('px-3 py-2 text-texto', c.className)}>
+                  <td
+                    key={c.clave}
+                    className={cn('px-3 py-2 text-texto', c.className)}
+                  >
                     {c.render ? c.render(fila) : String(fila[c.clave] ?? '')}
                   </td>
                 ))}
@@ -78,15 +122,28 @@ export function DataTable<T extends { id: string }>({
         </table>
       </div>
       {totalPaginas > 1 && (
-        <nav aria-label="Paginación" className="flex items-center justify-between">
+        <nav
+          aria-label="Paginación"
+          className="flex items-center justify-between"
+        >
           <span className="text-xs text-texto-suave">
-            Página {pagina + 1} de {totalPaginas} · {filas.length} filas
+            Página {paginaActual + 1} de {totalPaginas} · {filas.length} filas
           </span>
           <div className="flex gap-2">
-            <Button tamano="chico" variante="secundario" disabled={pagina === 0} onClick={() => setPagina(p => p - 1)}>
+            <Button
+              tamano="chico"
+              variante="secundario"
+              disabled={paginaActual === 0}
+              onClick={() => setPagina(paginaActual - 1)}
+            >
               <ChevronLeft aria-hidden className="size-4" /> Anterior
             </Button>
-            <Button tamano="chico" variante="secundario" disabled={pagina >= totalPaginas - 1} onClick={() => setPagina(p => p + 1)}>
+            <Button
+              tamano="chico"
+              variante="secundario"
+              disabled={paginaActual >= totalPaginas - 1}
+              onClick={() => setPagina(paginaActual + 1)}
+            >
               Siguiente <ChevronRight aria-hidden className="size-4" />
             </Button>
           </div>

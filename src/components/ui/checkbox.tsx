@@ -3,7 +3,11 @@ import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /** Checkbox accesible (Radix): estados normal, disabled, foco visible. */
-export function Checkbox({ className, disabled, ...props }: Radix.CheckboxProps) {
+export function Checkbox({
+  className,
+  disabled,
+  ...props
+}: Radix.CheckboxProps) {
   return (
     <Radix.Root
       disabled={disabled}
