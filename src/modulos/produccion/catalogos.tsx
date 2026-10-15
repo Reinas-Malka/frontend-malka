@@ -57,6 +57,7 @@ export const catalogoRazas: ConfigCatalogo<
     descripcion: v.descripcion?.trim() || null,
   }),
   reactivacion: { activo: true },
+  rolesEscritura: ['admin', 'produccion'],
 }
 
 export const catalogoMadres: ConfigCatalogo<
@@ -91,6 +92,7 @@ export const catalogoMadres: ConfigCatalogo<
   aCrear: (v) => ({ identificacion: v.identificacion.trim() }),
   aActualizar: (v) => ({ identificacion: v.identificacion.trim() }),
   reactivacion: { activo: true },
+  rolesEscritura: ['admin', 'produccion'],
 }
 
 export const catalogoParques: ConfigCatalogo<
@@ -157,6 +159,7 @@ export const catalogoParques: ConfigCatalogo<
     capacidad_max: Number(v.capacidad_max),
   }),
   reactivacion: { activo: true },
+  rolesEscritura: ['admin', 'produccion'],
 }
 
 export const catalogoMateriales: ConfigCatalogo<
@@ -198,4 +201,5 @@ export const catalogoMateriales: ConfigCatalogo<
   aCrear: (v) => ({ nombre: v.nombre.trim(), unidad: v.unidad.trim() }),
   aActualizar: (v) => ({ nombre: v.nombre.trim(), unidad: v.unidad.trim() }),
   reactivacion: { activo: true },
+  rolesEscritura: ['admin', 'produccion'],
 }

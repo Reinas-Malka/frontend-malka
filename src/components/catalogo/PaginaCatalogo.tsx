@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input'
 import { Modal, ModalContenido } from '@/components/ui/modal'
 import { DataTable, type Columna } from '@/components/ui/table'
 import { useListado, useMutacionesDe } from '@/hooks/useRecurso'
+import { puede, type Rol } from '@/auth/identidad'
+import { useSesion } from '@/auth/useSesion'
 
 type Fila = { id: string; activo: boolean }
 
@@ -37,6 +39,9 @@ export type ConfigCatalogo<T extends Fila, C, A> = {
   aActualizar: (valores: Valores) => A
   /** El PATCH que vuelve a activar una fila dada de baja: { activo: true }. */
   reactivacion: A
+  /** Roles que pueden dar de alta, editar y dar de baja: los mismos que el
+   *  require_role del router del backend. Leer, pueden todos. */
+  rolesEscritura: readonly Rol[]
 }
 
 type Edicion<T> = { modo: 'alta'; clave: string } | { modo: 'edicion'; fila: T }
@@ -53,6 +58,8 @@ export function PaginaCatalogo<T extends Fila, C, A>({
   config: ConfigCatalogo<T, C, A>
 }) {
   const { clave, recurso, singular } = config
+  const { identidad } = useSesion()
+  const escribe = puede(identidad, config.rolesEscritura)
   const listado = useListado(clave, recurso)
   const { crear, actualizar, desactivar } = useMutacionesDe(clave, recurso)
   const [busqueda, setBusqueda] = useState('')
@@ -88,7 +95,10 @@ export function PaginaCatalogo<T extends Fila, C, A>({
       titulo: 'Estado',
       render: (f) => <Estado activo={f.activo} femenino={config.femenino} />,
     },
-    {
+  ]
+  // Sin permiso de escritura no hay columna de acciones ni botón de alta.
+  if (escribe) {
+    columnas.push({
       clave: 'id',
       titulo: 'Acciones',
       className: 'text-right',
@@ -101,8 +111,8 @@ export function PaginaCatalogo<T extends Fila, C, A>({
           alReactivar={() => reactivar(fila)}
         />
       ),
-    },
-  ]
+    })
+  }
 
   async function guardar(valores: Valores) {
     const enCurso = edicion
@@ -137,7 +147,7 @@ export function PaginaCatalogo<T extends Fila, C, A>({
       <EncabezadoDePagina
         titulo={config.titulo}
         descripcion={config.descripcion}
-        acciones={agregar}
+        acciones={escribe ? agregar : undefined}
       />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

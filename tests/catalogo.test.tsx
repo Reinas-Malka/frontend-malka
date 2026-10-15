@@ -11,6 +11,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 import { ApiError } from '../src/api/client'
 import { recursoSimulado, type Recurso } from '../src/api/recurso'
+import { ProveedorDeSesionFijo } from '../src/auth/sesion'
 import {
   PaginaCatalogo,
   type ConfigCatalogo,
@@ -67,6 +68,7 @@ function config(
       descripcion: v.descripcion || null,
     }),
     reactivacion: { activo: true },
+    rolesEscritura: ['admin'],
   }
 }
 
@@ -80,9 +82,13 @@ function montar(
     defaultOptions: { queries: { retry: false } },
   })
   render(
-    <QueryClientProvider client={cliente}>
-      <PaginaCatalogo config={config(recurso)} />
-    </QueryClientProvider>,
+    <ProveedorDeSesionFijo
+      identidad={{ email: 'admin@malka.test', roles: ['admin'], tenantId: 't' }}
+    >
+      <QueryClientProvider client={cliente}>
+        <PaginaCatalogo config={config(recurso)} />
+      </QueryClientProvider>
+    </ProveedorDeSesionFijo>,
   )
   return userEvent.setup()
 }

@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
 import {
   createMemoryRouter,
   RouterProvider,
@@ -19,11 +20,13 @@ import {
 
 // api/recursos.ts decide simulado/real al cargarse: el flag va antes del import.
 let rutas: RouteObject[]
+let ProveedorDeSesion: (p: { children: ReactNode }) => ReactNode
 let enlaces: { a: string; texto: string }[]
 
 beforeAll(async () => {
   vi.stubEnv('VITE_DATOS_SIMULADOS', 'true')
   rutas = (await import('../src/app/router')).rutas
+  ProveedorDeSesion = (await import('../src/auth/sesion')).ProveedorDeSesion
   const { NAVEGACION } = await import('../src/app/navegacion')
   enlaces = NAVEGACION.flatMap((g) => g.enlaces)
 })
@@ -38,7 +41,9 @@ function montar(ruta: string) {
   })
   render(
     <QueryClientProvider client={cliente}>
-      <RouterProvider router={router} />
+      <ProveedorDeSesion>
+        <RouterProvider router={router} />
+      </ProveedorDeSesion>
     </QueryClientProvider>,
   )
 }
@@ -83,7 +88,7 @@ describe('rutas', () => {
   })
 
   it('si no baja el código de una pantalla se ve el error de la app', async () => {
-    const [raiz] = rutas
+    const raiz = rutas.find((r) => r.path === '/') as RouteObject
     const router = createMemoryRouter(
       [
         {

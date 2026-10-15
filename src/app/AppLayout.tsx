@@ -1,7 +1,10 @@
-import { Hexagon, Menu, X } from 'lucide-react'
+import { Hexagon, LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { NAVEGACION } from '@/app/navegacion'
+import { NOMBRE_DE_ROL } from '@/auth/identidad'
+import { useSesion } from '@/auth/useSesion'
+import { Button } from '@/components/ui/button'
 import { BannerDatosSimulados } from '@/datos/BannerDatosSimulados'
 import { cn } from '@/lib/utils'
 
@@ -86,6 +89,7 @@ export function AppLayout() {
               </ul>
             </div>
           ))}
+          <UsuarioActual />
         </nav>
 
         <main
@@ -106,5 +110,35 @@ function Marca() {
       <Hexagon aria-hidden className="size-5 fill-miel-500/20 text-miel-400" />
       Malka Suite
     </span>
+  )
+}
+
+/** Quién está conectado, con qué rol, y la salida (cierra también la sesión
+ *  del hosted UI de Cognito). */
+function UsuarioActual() {
+  const { identidad, salir } = useSesion()
+  const [saliendo, setSaliendo] = useState(false)
+  if (!identidad) return null
+  const roles =
+    identidad.roles.map((rol) => NOMBRE_DE_ROL[rol]).join(', ') ||
+    'Sin rol asignado'
+  return (
+    <div className="mt-6 space-y-2 border-t border-borde px-2 pt-4">
+      <p className="truncate text-sm text-texto" title={identidad.email}>
+        {identidad.email}
+      </p>
+      <p className="text-xs text-texto-suave">{roles}</p>
+      <Button
+        variante="secundario"
+        className="w-full"
+        cargando={saliendo}
+        onClick={() => {
+          setSaliendo(true)
+          void salir().catch(() => setSaliendo(false))
+        }}
+      >
+        <LogOut aria-hidden className="size-4" /> Salir
+      </Button>
+    </div>
   )
 }

@@ -70,6 +70,7 @@ export const catalogoItemsVendibles: ConfigCatalogo<
   aCrear: (v) => ({ nombre: v.nombre.trim(), alicuota: v.alicuota }),
   aActualizar: (v) => ({ nombre: v.nombre.trim(), alicuota: v.alicuota }),
   reactivacion: { activo: true },
+  rolesEscritura: ['admin', 'produccion'],
 }
 
 const CONDICIONES_NACIONALES: Opcion[] = [
@@ -215,4 +216,5 @@ export const catalogoClientes: ConfigCatalogo<
   aCrear: aClienteCrear,
   aActualizar: aClienteCrear,
   reactivacion: { activo: true },
+  rolesEscritura: ['admin', 'ventas'],
 }

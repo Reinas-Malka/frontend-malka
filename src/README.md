@@ -1,21 +1,22 @@
 # Estructura de src/
 
-| Carpeta                | Qué va                                                                 | Ejemplo                                  |
-| ---------------------- | ---------------------------------------------------------------------- | ---------------------------------------- |
-| `app/`                 | Armazón: router, layout con menú, navegación y el cliente de consultas | `router.tsx`, `navegacion.ts`            |
-| `api/`                 | Todo lo que habla con el backend                                       | `client.ts`, `recurso.ts`, `recursos.ts` |
-| `api/esquema.d.ts`     | **Generado** del OpenAPI del backend: no se edita a mano               | ver `contrato/README.md`                 |
-| `components/ui/`       | Componentes base con todos sus estados (skill `diseno-frontend`)       | `Button`, `DataTable`, `Modal`           |
-| `components/catalogo/` | La pantalla genérica de alta, edición, baja y búsqueda                 | `PaginaCatalogo`, `FormularioRecurso`    |
-| `components/pagina/`   | Piezas comunes de toda pantalla                                        | `EncabezadoDePagina`                     |
-| `modulos/<dominio>/`   | Configuración y lógica de cada dominio (producción, ventas…)           | `modulos/ventas/catalogos.tsx`           |
-| `documentos/`          | Lógica de la subida de documentos                                      | `subirPorUrlPrefermada.ts`               |
-| `pages/`               | Una pantalla por ruta, **solo composición**                            | `StatusPage`, `CatalogoPages`            |
-| `hooks/`               | `use*` compartidos                                                     | `useListado`, `useMutacionesDe`          |
-| `tipos/`               | Tipos del dominio (alias del esquema generado donde hay endpoint)      | `dominio.ts`                             |
-| `types/`               | Tipos de documentos y health (se unifica con `tipos/` en el issue #29) | `documentos.ts`                          |
-| `datos/`               | Datos simulados y lo que todavía no tiene endpoint                     | `simulados.ts`                           |
-| `lib/`                 | Utilidades puras sin React                                             | `cuit.ts`, `utils.ts`                    |
+| Carpeta                | Qué va                                                                      | Ejemplo                                  |
+| ---------------------- | --------------------------------------------------------------------------- | ---------------------------------------- |
+| `app/`                 | Armazón: router, layout con menú, navegación y el cliente de consultas      | `router.tsx`, `navegacion.ts`            |
+| `api/`                 | Todo lo que habla con el backend                                            | `client.ts`, `recurso.ts`, `recursos.ts` |
+| `auth/`                | Login con Cognito (#6), sesión y roles. Flujo explicado en `auth/README.md` | `useSesion`, `RutaPrivada`               |
+| `api/esquema.d.ts`     | **Generado** del OpenAPI del backend: no se edita a mano                    | ver `contrato/README.md`                 |
+| `components/ui/`       | Componentes base con todos sus estados (skill `diseno-frontend`)            | `Button`, `DataTable`, `Modal`           |
+| `components/catalogo/` | La pantalla genérica de alta, edición, baja y búsqueda                      | `PaginaCatalogo`, `FormularioRecurso`    |
+| `components/pagina/`   | Piezas comunes de toda pantalla                                             | `EncabezadoDePagina`                     |
+| `modulos/<dominio>/`   | Configuración y lógica de cada dominio (producción, ventas…)                | `modulos/ventas/catalogos.tsx`           |
+| `documentos/`          | Lógica de la subida de documentos                                           | `subirPorUrlPrefermada.ts`               |
+| `pages/`               | Una pantalla por ruta, **solo composición**                                 | `StatusPage`, `CatalogoPages`            |
+| `hooks/`               | `use*` compartidos                                                          | `useListado`, `useMutacionesDe`          |
+| `tipos/`               | Tipos del dominio (alias del esquema generado donde hay endpoint)           | `dominio.ts`                             |
+| `types/`               | Tipos de documentos y health (se unifica con `tipos/` en el issue #29)      | `documentos.ts`                          |
+| `datos/`               | Datos simulados y lo que todavía no tiene endpoint                          | `simulados.ts`                           |
+| `lib/`                 | Utilidades puras sin React                                                  | `cuit.ts`, `utils.ts`                    |
 
 ## Cómo agregar…
 
