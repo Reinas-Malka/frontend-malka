@@ -1,4 +1,4 @@
-import { request } from './client'
+import { request } from '@/api/client'
 import type { PedidoDeSubida, SubidaPreparada } from '@/types/documentos'
 
 // El backend no expone el endpoint todavia (issue #38): en desarrollo se
@@ -15,8 +15,7 @@ export function pedirSubida(pedido: PedidoDeSubida): Promise<SubidaPreparada> {
   }
 
   return request<SubidaPreparada>('/api/v1/documentos/subidas', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(pedido),
+    metodo: 'POST',
+    cuerpo: pedido,
   })
 }
