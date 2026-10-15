@@ -2,7 +2,7 @@
  *  la app pregunta `useSesion()` y el cliente HTTP recibe el token por
  *  fijarProveedorDeToken. Con VITE_DATOS_SIMULADOS=true no hay login: la demo
  *  corre con un usuario de ejemplo (y el banner fijo). */
-import { UserManager, type User } from 'oidc-client-ts'
+import { ErrorResponse, UserManager, type User } from 'oidc-client-ts'
 import { useEffect, useState, type ReactNode } from 'react'
 import { fijarAlNoAutenticado, fijarProveedorDeToken } from '@/api/client'
 import { configuracionCognito } from '@/auth/config'
@@ -54,7 +54,7 @@ export function ProveedorDeSesionFijo({
   )
 }
 
-type Gestor = { gestor: UserManager; clienteId: string } | { error: string }
+type Gestor = { gestor: UserManager } | { error: string }
 
 /** Crea el UserManager y conecta el cliente HTTP. Se hace al crear (no en un
  *  efecto): los efectos de los hijos corren antes que los del padre y la
@@ -78,7 +78,7 @@ function crearGestor(): Gestor {
     // El backend rechazó el token (vencido o revocado): se descarta la sesión
     // y RutaPrivada manda al login, recordando la pantalla.
     fijarAlNoAutenticado(() => void gestor.removeUser())
-    return { gestor, clienteId: config.client_id }
+    return { gestor }
   } catch (error) {
     return {
       error:
@@ -108,7 +108,12 @@ function ProveedorDeSesionCognito({ children }: { children: ReactNode }) {
     })
     const alCargar = (u: User) => setUsuario(u)
     const alDescargar = () => setUsuario(null)
-    const alFallarRenovacion = () => void gestor.removeUser()
+    // Un corte de red no cierra la sesión: solo si Cognito rechaza el
+    // refresh token (vencido o revocado) se descarta y se vuelve al login.
+    const alFallarRenovacion = (error: Error) => {
+      if (error instanceof ErrorResponse && error.error === 'invalid_grant')
+        void gestor.removeUser()
+    }
     gestor.events.addUserLoaded(alCargar)
     gestor.events.addUserUnloaded(alDescargar)
     gestor.events.addSilentRenewError(alFallarRenovacion)
@@ -136,7 +141,7 @@ function ProveedorDeSesionCognito({ children }: { children: ReactNode }) {
     )
   }
 
-  const { gestor, clienteId } = creado
+  const { gestor } = creado
   const valor: ValorDeSesion = {
     identidad: usuario ? identidadDesdePerfil(usuario.profile) : null,
     estado,
@@ -150,15 +155,17 @@ function ProveedorDeSesionCognito({ children }: { children: ReactNode }) {
         (u.state as { volverA?: unknown } | undefined)?.volverA,
       )
     },
-    // El /logout de Cognito pide client_id y logout_uri (además cierra la
-    // sesión del hosted UI, no solo la de esta pestaña).
-    salir: () =>
-      gestor.signoutRedirect({
-        extraQueryParams: {
-          client_id: clienteId,
-          logout_uri: `${window.location.origin}/`,
-        },
-      }),
+    // Al salir: 1) se revoca el refresh token en Cognito (si no, sirve 30
+    // días más); 2) se borra la sesión local, así el ID token no viaja como
+    // id_token_hint en la URL del logout; 3) se cierra la sesión del hosted
+    // UI (/logout pide client_id, que la librería agrega sola, y logout_uri).
+    salir: async () => {
+      await gestor.revokeTokens(['refresh_token']).catch(() => undefined)
+      await gestor.removeUser()
+      await gestor.signoutRedirect({
+        extraQueryParams: { logout_uri: `${window.location.origin}/` },
+      })
+    },
   }
   return (
     <ContextoDeSesion.Provider value={valor}>

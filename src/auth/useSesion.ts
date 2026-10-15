@@ -24,11 +24,14 @@ export function useSesion(): ValorDeSesion {
   return valor
 }
 
-/** Solo rutas internas: evita usar el login como redirector abierto. */
+/** Solo rutas internas: evita usar el login como redirector abierto. Los
+ *  navegadores tratan "\\" como "/" e ignoran tabs y saltos de línea en una
+ *  URL ("/\\evil.com" y "/\t/evil.com" llevan a evil.com): se rechazan y,
+ *  además, la ruta tiene que resolver en el mismo origen. */
 export function destinoSeguro(destino: unknown): string {
-  return typeof destino === 'string' &&
-    destino.startsWith('/') &&
-    !destino.startsWith('//')
-    ? destino
-    : '/'
+  if (typeof destino !== 'string' || !destino.startsWith('/')) return '/'
+  if (/[\\\u0000-\u001f\u007f]/.test(destino)) return '/'
+  const base = 'https://malka.invalid'
+  const url = new URL(destino, base)
+  return url.origin === base ? `${url.pathname}${url.search}${url.hash}` : '/'
 }
