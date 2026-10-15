@@ -1,3 +1,4 @@
+import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
 import { useState } from 'react'
 import { pedirSubida } from '@/api/documentos'
 import {
@@ -69,8 +70,11 @@ function SubidaDocumentoPage() {
   const ocupado = estado.status === 'preparando' || estado.status === 'subiendo'
 
   return (
-    <main>
-      <h1>Subir documento</h1>
+    <section className="space-y-seccion">
+      <EncabezadoDePagina
+        titulo="Subir documento"
+        descripcion="El PDF va directo a S3 con una URL prefirmada; el sistema solo registra la metadata."
+      />
       <p>
         El archivo va directo al almacenamiento del sistema mediante un enlace
         temporario; no pasa por la API.
@@ -110,7 +114,7 @@ function SubidaDocumentoPage() {
           </button>
         </p>
       )}
-    </main>
+    </section>
   )
 }
 

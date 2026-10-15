@@ -1,43 +1,41 @@
-import { useEffect, useState } from 'react'
-import { getHealth } from '@/api/health'
+import { useQuery } from '@tanstack/react-query'
+import { describirError } from '@/api/client'
+import { getDisponibilidad, getHealth } from '@/api/health'
 import StatusCard from '@/components/StatusCard'
-import type { Health } from '@/types/health'
-
-type State =
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'success'; health: Health }
+import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
+import { Cargando, ErrorDePantalla } from '@/components/ui/estados'
 
 function StatusPage() {
-  const [state, setState] = useState<State>({ status: 'loading' })
-
-  useEffect(() => {
-    let ignore = false
-
-    getHealth()
-      .then((health) => {
-        if (!ignore) setState({ status: 'success', health })
-      })
-      .catch((error: unknown) => {
-        if (ignore) return
-        const message =
-          error instanceof Error ? error.message : 'Error desconocido'
-        setState({ status: 'error', message })
-      })
-
-    return () => {
-      ignore = true
-    }
-  }, [])
+  const health = useQuery({ queryKey: ['health'], queryFn: getHealth })
+  // Independiente de /health: si la base falla, la API igual se muestra viva.
+  const disponibilidad = useQuery({
+    queryKey: ['health', 'ready'],
+    queryFn: getDisponibilidad,
+  })
 
   return (
-    <main>
-      <h1>Estado de la API</h1>
-
-      {state.status === 'loading' && <p>Consultando…</p>}
-      {state.status === 'error' && <p role="alert">{state.message}</p>}
-      {state.status === 'success' && <StatusCard health={state.health} />}
-    </main>
+    <section className="space-y-seccion">
+      <EncabezadoDePagina
+        titulo="Estado del sistema"
+        descripcion="Si la API y la base responden, el resto de las pantallas puede trabajar."
+      />
+      {health.isPending ? (
+        <Cargando columnas={2} filas={3} />
+      ) : health.isError ? (
+        <ErrorDePantalla
+          error={describirError(health.error)}
+          reintentar={() => void health.refetch()}
+        />
+      ) : (
+        <StatusCard health={health.data} disponibilidad={disponibilidad.data} />
+      )}
+      {disponibilidad.isError && health.isSuccess ? (
+        <ErrorDePantalla
+          error={describirError(disponibilidad.error)}
+          reintentar={() => void disponibilidad.refetch()}
+        />
+      ) : null}
+    </section>
   )
 }
 

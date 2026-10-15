@@ -6,7 +6,11 @@ import { cn } from '@/lib/utils'
 export const Select = Radix.Root
 export const SelectGroup = Radix.Group
 
-export function SelectTrigger({ className, children, ...props }: Radix.SelectTriggerProps) {
+export function SelectTrigger({
+  className,
+  children,
+  ...props
+}: Radix.SelectTriggerProps) {
   return (
     <Radix.Trigger
       className={cn(
@@ -18,12 +22,18 @@ export function SelectTrigger({ className, children, ...props }: Radix.SelectTri
       {...props}
     >
       {children}
-      <Radix.Icon asChild><ChevronDown aria-hidden className="size-4 text-texto-suave" /></Radix.Icon>
+      <Radix.Icon asChild>
+        <ChevronDown aria-hidden className="size-4 text-texto-suave" />
+      </Radix.Icon>
     </Radix.Trigger>
   )
 }
 
-export function SelectContenido({ className, children, ...props }: Radix.SelectContentProps) {
+export function SelectContenido({
+  className,
+  children,
+  ...props
+}: Radix.SelectContentProps) {
   return (
     <Radix.Portal>
       <Radix.Content
@@ -41,7 +51,11 @@ export function SelectContenido({ className, children, ...props }: Radix.SelectC
   )
 }
 
-export function SelectOpcion({ className, children, ...props }: Radix.SelectItemProps) {
+export function SelectOpcion({
+  className,
+  children,
+  ...props
+}: Radix.SelectItemProps) {
   return (
     <Radix.Item
       className={cn(
@@ -53,7 +67,9 @@ export function SelectOpcion({ className, children, ...props }: Radix.SelectItem
       {...props}
     >
       <Radix.ItemText>{children}</Radix.ItemText>
-      <Radix.ItemIndicator><Check className="size-4" /></Radix.ItemIndicator>
+      <Radix.ItemIndicator>
+        <Check className="size-4" />
+      </Radix.ItemIndicator>
     </Radix.Item>
   )
 }

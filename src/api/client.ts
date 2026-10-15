@@ -40,6 +40,24 @@ export function esApiError(error: unknown): error is ApiError {
   return error instanceof ApiError
 }
 
+export type ErrorParaMostrar = {
+  codigo?: string
+  mensaje: string
+  requestId?: string | null
+}
+
+/** Lo que una pantalla muestra de un error cualquiera (ApiError o no). */
+export function describirError(error: unknown): ErrorParaMostrar {
+  if (esApiError(error)) {
+    return {
+      codigo: error.codigo,
+      mensaje: error.mensaje,
+      requestId: error.requestId,
+    }
+  }
+  return { mensaje: error instanceof Error ? error.message : 'Algo falló.' }
+}
+
 type ProveedorDeToken = () => string | null | Promise<string | null>
 let proveedorDeToken: ProveedorDeToken = () => null
 

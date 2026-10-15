@@ -19,6 +19,10 @@ const variantes = cva(
   },
 )
 
-export function Badge({ className, tono, ...props }: HTMLAttributes<HTMLSpanElement> & VariantProps<typeof variantes>) {
+export function Badge({
+  className,
+  tono,
+  ...props
+}: HTMLAttributes<HTMLSpanElement> & VariantProps<typeof variantes>) {
   return <span className={cn(variantes({ tono }), className)} {...props} />
 }

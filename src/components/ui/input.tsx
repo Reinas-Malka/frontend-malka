@@ -5,7 +5,8 @@ type Props = InputHTMLAttributes<HTMLInputElement> & { invalido?: boolean }
 
 /** Input base. Estados: normal, focus, disabled, inválido (aria-invalid). */
 export const Input = forwardRef<HTMLInputElement, Props>(function Input(
-  { className, invalido, ...props }, ref,
+  { className, invalido, ...props },
+  ref,
 ) {
   return (
     <input

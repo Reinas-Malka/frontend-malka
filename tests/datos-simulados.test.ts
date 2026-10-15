@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { DATOS_SIMULADOS } from '../src/datos/simulados'
-import { CUPULAS_POR_CUADRO, DOCUMENTOS_DEL_EMBARQUE } from '../src/tipos/dominio'
+import {
+  CUPULAS_POR_CUADRO,
+  DOCUMENTOS_DEL_EMBARQUE,
+} from '../src/tipos/dominio'
 
 describe('datos simulados verosímiles', () => {
   it('las tandas son múltiplos de cúpulas por cuadro', () => {

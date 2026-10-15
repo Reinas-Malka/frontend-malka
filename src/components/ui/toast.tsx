@@ -5,7 +5,15 @@ import { cn } from '@/lib/utils'
 type Tono = 'ok' | 'aviso' | 'peligro'
 
 /** Toast accesible (Radix): cierra solo, con rol y foco safe. */
-export function ToastAviso({ titulo, descripcion, tono = 'ok' }: { titulo: string; descripcion?: string; tono?: Tono }) {
+export function ToastAviso({
+  titulo,
+  descripcion,
+  tono = 'ok',
+}: {
+  titulo: string
+  descripcion?: string
+  tono?: Tono
+}) {
   const [abierto, setAbierto] = useState(true)
   useEffect(() => {
     const t = setTimeout(() => setAbierto(false), 5000)
@@ -22,8 +30,14 @@ export function ToastAviso({ titulo, descripcion, tono = 'ok' }: { titulo: strin
         tono === 'peligro' && 'border-peligro/50',
       )}
     >
-      <Toast.Title className="text-sm font-medium text-texto">{titulo}</Toast.Title>
-      {descripcion ? <Toast.Description className="mt-0.5 text-xs text-texto-suave">{descripcion}</Toast.Description> : null}
+      <Toast.Title className="text-sm font-medium text-texto">
+        {titulo}
+      </Toast.Title>
+      {descripcion ? (
+        <Toast.Description className="mt-0.5 text-xs text-texto-suave">
+          {descripcion}
+        </Toast.Description>
+      ) : null}
     </Toast.Root>
   )
 }

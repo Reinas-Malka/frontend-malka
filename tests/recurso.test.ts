@@ -11,19 +11,28 @@ const semilla: Raza[] = Array.from({ length: 5 }, (_, i) => ({
 }))
 
 const nuevo = () =>
-  recursoSimulado<Raza, RazaCrear, Partial<RazaCrear>>(semilla, (datos, id) => ({
-    id,
-    activo: true,
-    ...datos,
-  }))
+  recursoSimulado<Raza, RazaCrear, Partial<RazaCrear>>(
+    semilla,
+    (datos, id) => ({
+      id,
+      activo: true,
+      ...datos,
+    }),
+  )
 
 describe('recursoSimulado', () => {
   it('pagina con cursor como el backend', async () => {
     const razas = nuevo()
 
     const primera = await razas.listar({ limite: 2 })
-    const segunda = await razas.listar({ limite: 2, cursor: primera.siguiente ?? undefined })
-    const ultima = await razas.listar({ limite: 2, cursor: segunda.siguiente ?? undefined })
+    const segunda = await razas.listar({
+      limite: 2,
+      cursor: primera.siguiente ?? undefined,
+    })
+    const ultima = await razas.listar({
+      limite: 2,
+      cursor: segunda.siguiente ?? undefined,
+    })
 
     expect(primera.items.map((r) => r.id)).toEqual(['r0', 'r1'])
     expect(segunda.items.map((r) => r.id)).toEqual(['r2', 'r3'])
