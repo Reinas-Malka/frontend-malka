@@ -61,6 +61,15 @@ export function describirError(error: unknown): ErrorParaMostrar {
 type ProveedorDeToken = () => string | null | Promise<string | null>
 let proveedorDeToken: ProveedorDeToken = () => null
 
+type AlNoAutenticado = () => void
+let alNoAutenticado: AlNoAutenticado = () => {}
+
+/** El módulo de sesión registra qué hacer ante un 401 del backend (token
+ *  vencido o revocado): volver a ingresar sin dejar la pantalla rota. */
+export function fijarAlNoAutenticado(accion: AlNoAutenticado): void {
+  alNoAutenticado = accion
+}
+
 /** El módulo de sesión (#6) registra acá cómo obtener el JWT vigente. */
 export function fijarProveedorDeToken(proveedor: ProveedorDeToken): void {
   proveedorDeToken = proveedor
@@ -194,7 +203,11 @@ export async function request<T>(
     })
   }
 
-  if (!respuesta.ok) throw await errorDesdeRespuesta(respuesta)
+  if (!respuesta.ok) {
+    const error = await errorDesdeRespuesta(respuesta)
+    if (error.status === 401) alNoAutenticado()
+    throw error
+  }
   if (respuesta.status === 204) return undefined as T
   try {
     return (await respuesta.json()) as T
