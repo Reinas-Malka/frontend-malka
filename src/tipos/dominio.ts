@@ -13,9 +13,20 @@ export type EstadoCelda =
   | 'enjaulada'
   | 'despachada'
 
-export type Raza = { id: string; tenant_id: string; nombre: string; descripcion?: string; activo: boolean }
+export type Raza = {
+  id: string
+  tenant_id: string
+  nombre: string
+  descripcion?: string
+  activo: boolean
+}
 
-export type Madre = { id: string; tenant_id: string; identificacion: string; activo: boolean }
+export type Madre = {
+  id: string
+  tenant_id: string
+  identificacion: string
+  activo: boolean
+}
 
 /** Parque de fecundación: donde la celda entra a un núcleo (≠ banco, que queda fuera de fase 1). */
 export type Parque = {
@@ -60,7 +71,12 @@ export type Celda = {
 // --- materiales (movimientos con signo, stock = suma) ---
 export type TipoMovimiento = 'compra' | 'consumo' | 'ajuste'
 
-export type Material = { id: string; tenant_id: string; nombre: string; unidad: string } // unidad texto corto, sin enum
+export type Material = {
+  id: string
+  tenant_id: string
+  nombre: string
+  unidad: string
+} // unidad texto corto, sin enum
 
 export type MovimientoMaterial = {
   id: string
@@ -82,7 +98,12 @@ export type Cliente = {
   nombre: string
   pais: string
   tipo: 'nacional' | 'exportacion'
-  condicion_iva: 'responsable_inscripto' | 'monotributo' | 'exento' | 'consumidor_final' | 'exterior'
+  condicion_iva:
+    | 'responsable_inscripto'
+    | 'monotributo'
+    | 'exento'
+    | 'consumidor_final'
+    | 'exterior'
   cuit_o_tax_id: string
   activo: boolean
   tipo_documento_por_defecto?: 'factura_a' | 'factura_b' | 'factura_e'
@@ -150,7 +171,12 @@ export type DocumentoEmbarque = {
 
 /** Completitud del embarque: los 6 tipos presentes (la demo del 30/11). */
 export const DOCUMENTOS_DEL_EMBARQUE: TipoDocumentoEmbarque[] = [
-  'factura_e', 'permiso_embarque', 'guia_aerea', 'lista_empaque', 'dte', 'shipper_certificate',
+  'factura_e',
+  'permiso_embarque',
+  'guia_aerea',
+  'lista_empaque',
+  'dte',
+  'shipper_certificate',
 ]
 
 export const CUPULAS_POR_CUADRO = 135 // constante del dominio: un solo lugar
