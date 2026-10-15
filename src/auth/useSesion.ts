@@ -30,7 +30,11 @@ export function useSesion(): ValorDeSesion {
  *  además, la ruta tiene que resolver en el mismo origen. */
 export function destinoSeguro(destino: unknown): string {
   if (typeof destino !== 'string' || !destino.startsWith('/')) return '/'
-  if (/[\\\u0000-\u001f\u007f]/.test(destino)) return '/'
+  const tieneControlOBarra = [...destino].some((c) => {
+    const codigo = c.charCodeAt(0)
+    return c === '\\' || codigo < 0x20 || codigo === 0x7f
+  })
+  if (tieneControlOBarra) return '/'
   const base = 'https://malka.invalid'
   const url = new URL(destino, base)
   return url.origin === base ? `${url.pathname}${url.search}${url.hash}` : '/'
