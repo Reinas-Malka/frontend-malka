@@ -7,7 +7,9 @@ import {
   type Banco,
   type Celda,
   type Cliente,
+  DOCUMENTOS_DEL_EMBARQUE,
   type Comprobante,
+  type DocumentoEmbarque,
   type Embarque,
   type EstadoCelda,
   type ItemVendible,
@@ -18,6 +20,7 @@ import {
   type Parque,
   type Raza,
   type Tanda,
+  type TipoDocumentoEmbarque,
 } from '@/tipos/dominio'
 
 const iso = (dias: number) => {
@@ -311,14 +314,68 @@ export const comprobantes: Comprobante[] = [
   },
 ]
 
+// Fecha `date` del backend (YYYY-MM-DD), no un timestamp.
+const fecha = (dias: number) => iso(dias).slice(0, 10)
+// La key lleva el tenant en el prefijo, como exige el CHECK de la 0010.
+const archivo = (nombre: string) => `documentos/${T}/${nombre}.pdf`
+
+const NUMEROS_CHILE: Record<TipoDocumentoEmbarque, string> = {
+  factura_e: 'E 0003-00000041',
+  permiso_embarque: '26 001 EC01 004512 K',
+  guia_aerea: '045-12345675',
+  lista_empaque: 'LE-2026-031',
+  dte: 'DTE-2026-118734',
+  shipper_certificate: 'SC-2026-031',
+}
+
+/** Un envío directo (Chile, lo recibe el cliente) con los 6 documentos y uno
+ *  consolidado (hub en España, se redistribuye por fuera) al que le faltan 4. */
+export const documentosEmbarque: DocumentoEmbarque[] = [
+  ...DOCUMENTOS_DEL_EMBARQUE.map((tipo, n) => ({
+    id: id(83 + n),
+    embarque_id: id(81),
+    tipo,
+    numero: NUMEROS_CHILE[tipo],
+    archivo_s3_key: archivo(`chile-${tipo}`),
+    fecha: fecha(4),
+  })),
+  {
+    id: id(89),
+    embarque_id: id(82),
+    tipo: 'factura_e',
+    numero: 'E 0003-00000044',
+    archivo_s3_key: archivo('espana-factura-e'),
+    fecha: fecha(1),
+  },
+  {
+    id: id(90),
+    embarque_id: id(82),
+    tipo: 'lista_empaque',
+    numero: 'LE-2026-034',
+    archivo_s3_key: archivo('espana-lista-empaque'),
+    fecha: fecha(1),
+  },
+]
+
+const cargados = (embarque: string) =>
+  documentosEmbarque.filter((d) => d.embarque_id === embarque).length
+
 export const embarques: Embarque[] = [
   {
     id: id(81),
-    tenant_id: T,
-    destino_pais: 'NZ',
-    fecha_vuelo: iso(22),
-    awb: '081-12345675',
+    destino_pais: 'CL',
+    fecha_vuelo: fecha(3),
+    awb: '045-12345675',
     estado: 'en_transito',
+    documentos_cargados: cargados(id(81)),
+  },
+  {
+    id: id(82),
+    destino_pais: 'ES',
+    fecha_vuelo: fecha(-12),
+    awb: null,
+    estado: 'en_preparacion',
+    documentos_cargados: cargados(id(82)),
   },
 ]
 
@@ -336,4 +393,5 @@ export const DATOS_SIMULADOS = {
   clientes,
   comprobantes,
   embarques,
+  documentosEmbarque,
 }

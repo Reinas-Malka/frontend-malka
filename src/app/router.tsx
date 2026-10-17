@@ -44,6 +44,18 @@ export const rutas: RouteObject[] = [
             lazy: catalogo('ItemsVendiblesPage'),
           },
           {
+            path: 'exportacion/embarques',
+            lazy: async () => ({
+              Component: (await import('@/pages/EmbarquesPage')).default,
+            }),
+          },
+          {
+            path: 'exportacion/embarques/:id',
+            lazy: async () => ({
+              Component: (await import('@/pages/EmbarquePage')).default,
+            }),
+          },
+          {
             path: 'documentos/subir',
             lazy: async () => ({
               Component: (await import('@/pages/SubidaDocumentoPage')).default,

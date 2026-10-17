@@ -3,6 +3,7 @@ import {
   Gauge,
   Package,
   Palette,
+  Plane,
   Tag,
   Trees,
   Upload,
@@ -35,6 +36,12 @@ export const NAVEGACION: Grupo[] = [
     enlaces: [
       { a: '/ventas/clientes', texto: 'Clientes', icono: Users },
       { a: '/ventas/items-vendibles', texto: 'Ítems vendibles', icono: Tag },
+    ],
+  },
+  {
+    titulo: 'Exportación',
+    enlaces: [
+      { a: '/exportacion/embarques', texto: 'Embarques', icono: Plane },
     ],
   },
   {
