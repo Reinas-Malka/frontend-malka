@@ -4,6 +4,43 @@
  */
 
 export interface paths {
+  '/api/v1/bancos': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Listar Bancos */
+    get: operations['listar_bancos_api_v1_bancos_get']
+    put?: never
+    /** Crear Banco */
+    post: operations['crear_banco_api_v1_bancos_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/bancos/{banco_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Obtener Banco */
+    get: operations['obtener_banco_api_v1_bancos__banco_id__get']
+    put?: never
+    post?: never
+    /** Desactivar Banco */
+    delete: operations['desactivar_banco_api_v1_bancos__banco_id__delete']
+    options?: never
+    head?: never
+    /** Actualizar Banco */
+    patch: operations['actualizar_banco_api_v1_bancos__banco_id__patch']
+    trace?: never
+  }
   '/api/v1/clientes': {
     parameters: {
       query?: never
@@ -390,6 +427,41 @@ export interface components {
      * @enum {string}
      */
     Alicuota: '0' | '0.025' | '0.05' | '0.105' | '0.21' | '0.27'
+    /** BancoActualizar */
+    BancoActualizar: {
+      /** Activo */
+      activo?: boolean | null
+      /** Capacidad Max */
+      capacidad_max?: number | null
+      /** Identificador */
+      identificador?: string | null
+    }
+    /** BancoCrear */
+    BancoCrear: {
+      /**
+       * Capacidad Max
+       * @default 276
+       */
+      capacidad_max: number
+      /** Identificador */
+      identificador: string
+    }
+    /** BancoRespuesta */
+    BancoRespuesta: {
+      /** Activo */
+      activo: boolean
+      /** Capacidad Max */
+      capacidad_max: number
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Identificador */
+      identificador: string
+      /** Reinas En Banco */
+      reinas_en_banco: number
+    }
     /**
      * ClienteActualizar
      * @description Cuerpo de PATCH /api/v1/clientes/{id}: solo los campos que cambian.
@@ -742,6 +814,13 @@ export interface components {
       /** Posicion */
       posicion: number
     }
+    /** Pagina[BancoRespuesta] */
+    Pagina_BancoRespuesta_: {
+      /** Items */
+      items: components['schemas']['BancoRespuesta'][]
+      /** Siguiente */
+      siguiente?: string | null
+    }
     /** Pagina[ItemVendibleRespuesta] */
     Pagina_ItemVendibleRespuesta_: {
       /** Items */
@@ -1015,6 +1094,172 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  listar_bancos_api_v1_bancos_get: {
+    parameters: {
+      query?: {
+        incluir_inactivos?: boolean
+        /** @description Cantidad maxima de items (1 a 100). */
+        limite?: number
+        /** @description El campo `siguiente` de la pagina anterior. */
+        cursor?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Pagina_BancoRespuesta_']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  crear_banco_api_v1_bancos_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BancoCrear']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BancoRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  obtener_banco_api_v1_bancos__banco_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        banco_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BancoRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  desactivar_banco_api_v1_bancos__banco_id__delete: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        banco_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  actualizar_banco_api_v1_bancos__banco_id__patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        banco_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BancoActualizar']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BancoRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   listar_clientes_api_v1_clientes_get: {
     parameters: {
       query?: {

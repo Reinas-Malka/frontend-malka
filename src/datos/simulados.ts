@@ -4,6 +4,7 @@
  *  ~D10, nacimiento D11, fecundación nac+10, enjaulado I0+16. */
 import {
   CUPULAS_POR_CUADRO,
+  type Banco,
   type Celda,
   type Cliente,
   type Comprobante,
@@ -89,25 +90,31 @@ export const tandas: Tanda[] = [
     id: id(31),
     tenant_id: T,
     fecha_traslarve: iso(40),
-    madre_id: id(11),
+    madre_id: null,
     raza_id: id(1),
     retroactivo: false,
+    fila_continuadora: 3,
+    posicion_continuadora: 2,
   }, // 2 cuadros → 270
   {
     id: id(32),
     tenant_id: T,
     fecha_traslarve: iso(18),
-    madre_id: id(12),
+    madre_id: null,
     raza_id: id(2),
     retroactivo: false,
+    fila_continuadora: 3,
+    posicion_continuadora: 3,
   }, // 3 cuadros → 405
   {
     id: id(33),
     tenant_id: T,
     fecha_traslarve: iso(6),
-    madre_id: id(13),
+    madre_id: null,
     raza_id: id(1),
     retroactivo: true,
+    fila_continuadora: null,
+    posicion_continuadora: null,
   }, // 1 cuadro → 135
 ]
 
@@ -122,6 +129,9 @@ const PRIMER_ID: Record<string, number> = {
   [id(32)]: 11_000,
   [id(33)]: 12_000,
 }
+
+/** Dos bancos: las reinas enjauladas se reparten entre ellos (dominio 16/10). */
+const BANCOS_IDS = [id(95), id(96)]
 
 /** Estados coherentes con la antigüedad de cada tanda. */
 function celdasDe(tandaId: string, edadDias: number): Celda[] {
@@ -158,6 +168,9 @@ function celdasDe(tandaId: string, edadDias: number): Celda[] {
           ? iso(edadDias - 21)
           : null,
       fecha_enjaulado: estado === 'enjaulada' ? iso(edadDias - 26) : null,
+      banco_id: estado === 'enjaulada' ? BANCOS_IDS[i % 2] : null,
+      fecha_descarte: estado === 'descartada' ? iso(edadDias - 5) : null,
+      fecha_extravio: estado === 'extraviada' ? iso(edadDias - 21) : null,
     }
   })
 }
@@ -167,6 +180,17 @@ export const celdas: Celda[] = [
   ...celdasDe(id(32), 18),
   ...celdasDe(id(33), 6),
 ]
+
+/** Las reinas de cada banco se cuentan desde las celdas, como en el backend. */
+export const bancos: Banco[] = BANCOS_IDS.map((bancoId, n) => ({
+  id: bancoId,
+  identificador: `B-0${n + 1}`,
+  capacidad_max: 276,
+  reinas_en_banco: celdas.filter(
+    (c) => c.banco_id === bancoId && c.estado === 'enjaulada',
+  ).length,
+  activo: true,
+}))
 
 export const materiales: Material[] = [
   {
@@ -299,6 +323,7 @@ export const embarques: Embarque[] = [
 ]
 
 export const DATOS_SIMULADOS = {
+  bancos,
   itemsVendibles,
   tandas,
   celdas,

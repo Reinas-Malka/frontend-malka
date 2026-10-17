@@ -2,6 +2,7 @@
  *  Viven en un módulo aparte para que el router las cargue bajo demanda. */
 import { PaginaCatalogo } from '@/components/catalogo/PaginaCatalogo'
 import {
+  catalogoBancos,
   catalogoMadres,
   catalogoMateriales,
   catalogoParques,
@@ -14,6 +15,7 @@ import {
 
 export const RazasPage = () => <PaginaCatalogo config={catalogoRazas} />
 export const MadresPage = () => <PaginaCatalogo config={catalogoMadres} />
+export const BancosPage = () => <PaginaCatalogo config={catalogoBancos} />
 export const ParquesPage = () => <PaginaCatalogo config={catalogoParques} />
 export const MaterialesPage = () => (
   <PaginaCatalogo config={catalogoMateriales} />

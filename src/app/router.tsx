@@ -36,6 +36,7 @@ export const rutas: RouteObject[] = [
           { path: 'produccion/razas', lazy: catalogo('RazasPage') },
           { path: 'produccion/madres', lazy: catalogo('MadresPage') },
           { path: 'produccion/parques', lazy: catalogo('ParquesPage') },
+          { path: 'produccion/bancos', lazy: catalogo('BancosPage') },
           { path: 'produccion/materiales', lazy: catalogo('MaterialesPage') },
           { path: 'ventas/clientes', lazy: catalogo('ClientesPage') },
           {

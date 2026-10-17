@@ -1,5 +1,4 @@
 import {
-  Crown,
   Dna,
   Gauge,
   Package,
@@ -8,6 +7,7 @@ import {
   Trees,
   Upload,
   Users,
+  Warehouse,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -25,8 +25,8 @@ export const NAVEGACION: Grupo[] = [
     titulo: 'Producción',
     enlaces: [
       { a: '/produccion/razas', texto: 'Razas', icono: Dna },
-      { a: '/produccion/madres', texto: 'Madres', icono: Crown },
       { a: '/produccion/parques', texto: 'Parques', icono: Trees },
+      { a: '/produccion/bancos', texto: 'Bancos', icono: Warehouse },
       { a: '/produccion/materiales', texto: 'Materiales', icono: Package },
     ],
   },

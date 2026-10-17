@@ -7,6 +7,7 @@ import { usaDatosSimulados } from '@/datos/cliente'
 import { DATOS_SIMULADOS } from '@/datos/simulados'
 import type {
   Alicuota,
+  Banco,
   Cliente,
   CondicionIva,
   ItemVendible,
@@ -70,6 +71,18 @@ export const parques = elegir<
   id,
   ...d,
   nucleos_activos: 0,
+  activo: true,
+}))
+
+/** Banco (16/10): las reinas se cuentan desde las celdas; uno nuevo arranca vacío. */
+export const bancos = elegir<
+  Banco,
+  Esquemas['BancoCrear'],
+  Esquemas['BancoActualizar']
+>('/api/v1/bancos', DATOS_SIMULADOS.bancos, (d, id) => ({
+  id,
+  ...d,
+  reinas_en_banco: 0,
   activo: true,
 }))
 

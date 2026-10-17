@@ -60,3 +60,43 @@ describe('datos simulados con el contrato del backend', () => {
       expect(typeof m.stock).toBe('string')
   })
 })
+
+describe('datos simulados con el dominio del 16/10 (bancos y celdas)', () => {
+  const { celdas, bancos, tandas } = DATOS_SIMULADOS
+
+  it('la fecha de pérdida va si y solo si la celda se perdió por esa causa', () => {
+    for (const c of celdas) {
+      expect(c.estado === 'descartada').toBe(c.fecha_descarte !== null)
+      expect(c.estado === 'extraviada').toBe(c.fecha_extravio !== null)
+    }
+  })
+
+  it('solo una reina enjaulada o despachada está en un banco, y el banco existe', () => {
+    const ids = new Set(bancos.map((b) => b.id))
+    const enBanco = celdas.filter((c) => c.banco_id !== null)
+    expect(enBanco.length).toBeGreaterThan(0)
+    for (const c of enBanco) {
+      expect(['enjaulada', 'despachada']).toContain(c.estado)
+      expect(ids.has(c.banco_id as string)).toBe(true)
+    }
+  })
+
+  it('las reinas de cada banco salen de las celdas y no pasan la capacidad', () => {
+    for (const b of bancos) {
+      const contadas = celdas.filter(
+        (c) => c.banco_id === b.id && c.estado === 'enjaulada',
+      ).length
+      expect(b.reinas_en_banco).toBe(contadas)
+      expect(contadas).toBeLessThanOrEqual(b.capacidad_max)
+    }
+  })
+
+  it('la continuadora de la tanda va completa o vacía, y sin madre obligatoria', () => {
+    for (const t of tandas) {
+      expect(t.fila_continuadora === null).toBe(
+        t.posicion_continuadora === null,
+      )
+    }
+    expect(tandas.some((t) => t.madre_id === null)).toBe(true)
+  })
+})
