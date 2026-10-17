@@ -10,7 +10,8 @@ export type Opcion = { valor: string; etiqueta: string }
 export type Campo = {
   nombre: string
   etiqueta: string
-  tipo?: 'texto' | 'texto-largo' | 'numero' | 'seleccion'
+  /** 'fecha' viaja como AAAA-MM-DD, el `date` del backend. */
+  tipo?: 'texto' | 'texto-largo' | 'numero' | 'seleccion' | 'fecha'
   requerido?: boolean
   /** Largo máximo (texto) o valor máximo (número). */
   max?: number
@@ -40,7 +41,10 @@ function errorDeCampo(
   const limpio = valor.trim()
   if (!limpio)
     return campo.requerido ? `${campo.etiqueta} es obligatorio.` : null
-  if (campo.tipo === 'numero') {
+  if (campo.tipo === 'fecha') {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(limpio))
+      return `${campo.etiqueta} tiene que ser una fecha.`
+  } else if (campo.tipo === 'numero') {
     const n = Number(limpio)
     if (!Number.isFinite(n)) return `${campo.etiqueta} tiene que ser un número.`
     if (campo.min !== undefined && n < campo.min)

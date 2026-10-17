@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { elegirCliente, usaDatosSimulados } from '../src/datos/cliente'
 import { DATOS_SIMULADOS } from '../src/datos/simulados'
+import { normalizarAwb } from '../src/lib/awb'
 import { CONDICIONES_IVA } from '../src/tipos/dominio'
 
 describe('elección del cliente de datos', () => {
@@ -98,5 +99,38 @@ describe('datos simulados con el dominio del 16/10 (bancos y celdas)', () => {
       )
     }
     expect(tandas.some((t) => t.madre_id === null)).toBe(true)
+  })
+})
+
+describe('embarques simulados con los CHECK de la migración 0010', () => {
+  const { embarques, documentosEmbarque } = DATOS_SIMULADOS
+  const TENANT = '11111111-1111-4111-8111-111111111111'
+
+  it('destino fuera de Argentina, guía aérea válida y obligatoria al salir', () => {
+    for (const e of embarques) {
+      expect(e.destino_pais).not.toBe('AR')
+      if (e.awb !== null) expect(normalizarAwb(e.awb)).toBe(e.awb)
+      if (e.estado === 'en_transito' || e.estado === 'entregado')
+        expect(e.awb).not.toBeNull()
+    }
+  })
+
+  it('un documento por tipo, del embarque correcto y con la key del criadero', () => {
+    const ids = new Set(embarques.map((e) => e.id))
+    const vistos = new Set<string>()
+    for (const d of documentosEmbarque) {
+      expect(ids.has(d.embarque_id)).toBe(true)
+      expect(vistos.has(`${d.embarque_id}/${d.tipo}`)).toBe(false)
+      vistos.add(`${d.embarque_id}/${d.tipo}`)
+      expect(d.archivo_s3_key.startsWith(`documentos/${TENANT}/`)).toBe(true)
+      expect(d.fecha).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    }
+  })
+
+  it('documentos_cargados es el conteo real, como lo calcula el backend', () => {
+    for (const e of embarques)
+      expect(e.documentos_cargados).toBe(
+        documentosEmbarque.filter((d) => d.embarque_id === e.id).length,
+      )
   })
 })

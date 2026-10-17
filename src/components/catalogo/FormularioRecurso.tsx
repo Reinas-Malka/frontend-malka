@@ -147,6 +147,7 @@ export function FormularioRecurso({
               <Input
                 id={id}
                 value={valor}
+                type={campo.tipo === 'fecha' ? 'date' : undefined}
                 inputMode={campo.tipo === 'numero' ? 'numeric' : undefined}
                 invalido={Boolean(error)}
                 aria-describedby={describedBy}

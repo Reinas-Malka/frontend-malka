@@ -1,10 +1,7 @@
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
 import { useState } from 'react'
-import { pedirSubida } from '@/api/documentos'
-import {
-  esUrlVencida,
-  subirPorUrlPrefermada,
-} from '@/documentos/subirPorUrlPrefermada'
+import { useSesion } from '@/auth/useSesion'
+import { subirArchivo } from '@/documentos/subirArchivo'
 import { validarArchivo } from '@/documentos/validarArchivo'
 
 type EstadoSubida =
@@ -21,19 +18,7 @@ function mensajeDe(error: unknown): string {
 function SubidaDocumentoPage() {
   const [estado, setEstado] = useState<EstadoSubida>({ status: 'inactivo' })
 
-  async function subirUnaVez(
-    archivo: File,
-    alAvanzar: (progreso: number) => void,
-  ) {
-    const subida = await pedirSubida({
-      nombre: archivo.name,
-      tipo: archivo.type,
-      tamano: archivo.size,
-    })
-    setEstado({ status: 'subiendo', progreso: 0 })
-    await subirPorUrlPrefermada(subida, archivo, alAvanzar)
-    return subida.clave
-  }
+  const { identidad } = useSesion()
 
   async function manejarSeleccion(archivo: File | undefined) {
     if (!archivo) return
@@ -46,24 +31,13 @@ function SubidaDocumentoPage() {
 
     setEstado({ status: 'preparando' })
     try {
-      const clave = await subirUnaVez(archivo, (progreso) =>
-        setEstado({ status: 'subiendo', progreso }),
-      )
+      const clave = await subirArchivo(archivo, {
+        tenantId: identidad?.tenantId ?? '',
+        alAvanzar: (progreso) => setEstado({ status: 'subiendo', progreso }),
+      })
       setEstado({ status: 'listo', clave })
     } catch (error) {
-      if (!esUrlVencida(error)) {
-        setEstado({ status: 'error', mensaje: mensajeDe(error) })
-        return
-      }
-      // La prefirmada venció: se pide otra y se reintenta una sola vez.
-      try {
-        const clave = await subirUnaVez(archivo, (progreso) =>
-          setEstado({ status: 'subiendo', progreso }),
-        )
-        setEstado({ status: 'listo', clave })
-      } catch (segundoError) {
-        setEstado({ status: 'error', mensaje: mensajeDe(segundoError) })
-      }
+      setEstado({ status: 'error', mensaje: mensajeDe(error) })
     }
   }
 

@@ -297,6 +297,42 @@
     "title": "ClienteRespuesta",
     "type": "object"
    },
+   "CompletitudRespuesta": {
+    "description": "Respuesta de GET /api/v1/embarques/{id}/completitud.",
+    "properties": {
+     "completo": {
+      "title": "Completo",
+      "type": "boolean"
+     },
+     "embarque_id": {
+      "format": "uuid",
+      "title": "Embarque Id",
+      "type": "string"
+     },
+     "faltantes": {
+      "items": {
+       "$ref": "#/components/schemas/TipoDocumentoEmbarque"
+      },
+      "title": "Faltantes",
+      "type": "array"
+     },
+     "presentes": {
+      "items": {
+       "$ref": "#/components/schemas/TipoDocumentoEmbarque"
+      },
+      "title": "Presentes",
+      "type": "array"
+     }
+    },
+    "required": [
+     "embarque_id",
+     "completo",
+     "presentes",
+     "faltantes"
+    ],
+    "title": "CompletitudRespuesta",
+    "type": "object"
+   },
    "CondicionIva": {
     "enum": [
      "responsable_inscripto",
@@ -329,6 +365,221 @@
     ],
     "title": "Disponibilidad",
     "type": "object"
+   },
+   "DocumentoCrear": {
+    "additionalProperties": false,
+    "description": "Cuerpo de POST /api/v1/embarques/{id}/documentos.",
+    "properties": {
+     "archivo_s3_key": {
+      "maxLength": 300,
+      "pattern": "^documentos/[0-9a-f-]{36}/[A-Za-z0-9._/-]+$",
+      "title": "Archivo S3 Key",
+      "type": "string"
+     },
+     "fecha": {
+      "format": "date",
+      "title": "Fecha",
+      "type": "string"
+     },
+     "numero": {
+      "maxLength": 50,
+      "minLength": 1,
+      "title": "Numero",
+      "type": "string"
+     },
+     "tipo": {
+      "$ref": "#/components/schemas/TipoDocumentoEmbarque"
+     }
+    },
+    "required": [
+     "tipo",
+     "numero",
+     "archivo_s3_key",
+     "fecha"
+    ],
+    "title": "DocumentoCrear",
+    "type": "object"
+   },
+   "DocumentoRespuesta": {
+    "properties": {
+     "archivo_s3_key": {
+      "title": "Archivo S3 Key",
+      "type": "string"
+     },
+     "embarque_id": {
+      "format": "uuid",
+      "title": "Embarque Id",
+      "type": "string"
+     },
+     "fecha": {
+      "format": "date",
+      "title": "Fecha",
+      "type": "string"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "numero": {
+      "title": "Numero",
+      "type": "string"
+     },
+     "tipo": {
+      "$ref": "#/components/schemas/TipoDocumentoEmbarque"
+     }
+    },
+    "required": [
+     "id",
+     "embarque_id",
+     "tipo",
+     "numero",
+     "archivo_s3_key",
+     "fecha"
+    ],
+    "title": "DocumentoRespuesta",
+    "type": "object"
+   },
+   "EmbarqueActualizar": {
+    "additionalProperties": false,
+    "description": "Cuerpo de PATCH: solo los campos que cambian. awb: null la borra.",
+    "properties": {
+     "awb": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Awb"
+     },
+     "destino_pais": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Destino Pais"
+     },
+     "estado": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/EstadoEmbarque"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "fecha_vuelo": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Vuelo"
+     }
+    },
+    "title": "EmbarqueActualizar",
+    "type": "object"
+   },
+   "EmbarqueCrear": {
+    "additionalProperties": false,
+    "description": "Cuerpo de POST /api/v1/embarques. Arranca siempre en preparacion.",
+    "properties": {
+     "awb": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Awb"
+     },
+     "destino_pais": {
+      "pattern": "^[A-Z]{2}$",
+      "title": "Destino Pais",
+      "type": "string"
+     },
+     "fecha_vuelo": {
+      "format": "date",
+      "title": "Fecha Vuelo",
+      "type": "string"
+     }
+    },
+    "required": [
+     "destino_pais",
+     "fecha_vuelo"
+    ],
+    "title": "EmbarqueCrear",
+    "type": "object"
+   },
+   "EmbarqueRespuesta": {
+    "properties": {
+     "awb": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Awb"
+     },
+     "destino_pais": {
+      "title": "Destino Pais",
+      "type": "string"
+     },
+     "documentos_cargados": {
+      "title": "Documentos Cargados",
+      "type": "integer"
+     },
+     "estado": {
+      "$ref": "#/components/schemas/EstadoEmbarque"
+     },
+     "fecha_vuelo": {
+      "format": "date",
+      "title": "Fecha Vuelo",
+      "type": "string"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "destino_pais",
+     "fecha_vuelo",
+     "awb",
+     "estado",
+     "documentos_cargados"
+    ],
+    "title": "EmbarqueRespuesta",
+    "type": "object"
+   },
+   "EstadoEmbarque": {
+    "enum": [
+     "en_preparacion",
+     "en_transito",
+     "entregado",
+     "cancelado"
+    ],
+    "title": "EstadoEmbarque",
+    "type": "string"
    },
    "EstadoPedido": {
     "enum": [
@@ -1025,6 +1276,60 @@
      "items"
     ],
     "title": "Pagina[BancoRespuesta]",
+    "type": "object"
+   },
+   "Pagina_DocumentoRespuesta_": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/DocumentoRespuesta"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "siguiente": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Siguiente"
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "title": "Pagina[DocumentoRespuesta]",
+    "type": "object"
+   },
+   "Pagina_EmbarqueRespuesta_": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/EmbarqueRespuesta"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "siguiente": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Siguiente"
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "title": "Pagina[EmbarqueRespuesta]",
     "type": "object"
    },
    "Pagina_ItemVendibleRespuesta_": {
@@ -1737,6 +2042,19 @@
     "title": "TipoDocumento",
     "type": "string"
    },
+   "TipoDocumentoEmbarque": {
+    "description": "Los 6 documentos de un envio, en el orden de docs/dominio.md.",
+    "enum": [
+     "factura_e",
+     "permiso_embarque",
+     "guia_aerea",
+     "lista_empaque",
+     "dte",
+     "shipper_certificate"
+    ],
+    "title": "TipoDocumentoEmbarque",
+    "type": "string"
+   },
    "ValidationError": {
     "properties": {
      "loc": {
@@ -2329,6 +2647,431 @@
     "summary": "Actualizar Cliente",
     "tags": [
      "clientes"
+    ]
+   }
+  },
+  "/api/v1/embarques": {
+   "get": {
+    "operationId": "listar_embarques_api_v1_embarques_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "estado",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/EstadoEmbarque"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Estado"
+      }
+     },
+     {
+      "description": "Cantidad maxima de items (1 a 100).",
+      "in": "query",
+      "name": "limite",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "description": "Cantidad maxima de items (1 a 100).",
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Limite",
+       "type": "integer"
+      }
+     },
+     {
+      "description": "El campo `siguiente` de la pagina anterior.",
+      "in": "query",
+      "name": "cursor",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "maxLength": 500,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "El campo `siguiente` de la pagina anterior.",
+       "title": "Cursor"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Pagina_EmbarqueRespuesta_"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Listar Embarques",
+    "tags": [
+     "embarques"
+    ]
+   },
+   "post": {
+    "operationId": "crear_embarque_api_v1_embarques_post",
+    "parameters": [
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EmbarqueCrear"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EmbarqueRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Crear Embarque",
+    "tags": [
+     "embarques"
+    ]
+   }
+  },
+  "/api/v1/embarques/{embarque_id}": {
+   "get": {
+    "operationId": "obtener_embarque_api_v1_embarques__embarque_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "embarque_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Embarque Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EmbarqueRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Obtener Embarque",
+    "tags": [
+     "embarques"
+    ]
+   },
+   "patch": {
+    "operationId": "actualizar_embarque_api_v1_embarques__embarque_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "embarque_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Embarque Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EmbarqueActualizar"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EmbarqueRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Actualizar Embarque",
+    "tags": [
+     "embarques"
+    ]
+   }
+  },
+  "/api/v1/embarques/{embarque_id}/completitud": {
+   "get": {
+    "operationId": "completitud_del_embarque_api_v1_embarques__embarque_id__completitud_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "embarque_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Embarque Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CompletitudRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Completitud Del Embarque",
+    "tags": [
+     "embarques"
+    ]
+   }
+  },
+  "/api/v1/embarques/{embarque_id}/documentos": {
+   "get": {
+    "operationId": "listar_documentos_api_v1_embarques__embarque_id__documentos_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "embarque_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Embarque Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Pagina_DocumentoRespuesta_"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Listar Documentos",
+    "tags": [
+     "embarques"
+    ]
+   },
+   "post": {
+    "operationId": "agregar_documento_api_v1_embarques__embarque_id__documentos_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "embarque_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Embarque Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DocumentoCrear"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DocumentoRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Agregar Documento",
+    "tags": [
+     "embarques"
     ]
    }
   },

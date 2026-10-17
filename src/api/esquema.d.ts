@@ -78,6 +78,77 @@ export interface paths {
     patch: operations['actualizar_cliente_api_v1_clientes__cliente_id__patch']
     trace?: never
   }
+  '/api/v1/embarques': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Listar Embarques */
+    get: operations['listar_embarques_api_v1_embarques_get']
+    put?: never
+    /** Crear Embarque */
+    post: operations['crear_embarque_api_v1_embarques_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/embarques/{embarque_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Obtener Embarque */
+    get: operations['obtener_embarque_api_v1_embarques__embarque_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    /** Actualizar Embarque */
+    patch: operations['actualizar_embarque_api_v1_embarques__embarque_id__patch']
+    trace?: never
+  }
+  '/api/v1/embarques/{embarque_id}/completitud': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Completitud Del Embarque */
+    get: operations['completitud_del_embarque_api_v1_embarques__embarque_id__completitud_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/embarques/{embarque_id}/documentos': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Listar Documentos */
+    get: operations['listar_documentos_api_v1_embarques__embarque_id__documentos_get']
+    put?: never
+    /** Agregar Documento */
+    post: operations['agregar_documento_api_v1_embarques__embarque_id__documentos_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/items-vendibles': {
     parameters: {
       query?: never
@@ -521,6 +592,23 @@ export interface components {
       readonly tipo_documento_por_defecto: components['schemas']['TipoDocumento']
     }
     /**
+     * CompletitudRespuesta
+     * @description Respuesta de GET /api/v1/embarques/{id}/completitud.
+     */
+    CompletitudRespuesta: {
+      /** Completo */
+      completo: boolean
+      /**
+       * Embarque Id
+       * Format: uuid
+       */
+      embarque_id: string
+      /** Faltantes */
+      faltantes: components['schemas']['TipoDocumentoEmbarque'][]
+      /** Presentes */
+      presentes: components['schemas']['TipoDocumentoEmbarque'][]
+    }
+    /**
      * CondicionIva
      * @enum {string}
      */
@@ -542,6 +630,98 @@ export interface components {
       /** Estado */
       estado: string
     }
+    /**
+     * DocumentoCrear
+     * @description Cuerpo de POST /api/v1/embarques/{id}/documentos.
+     */
+    DocumentoCrear: {
+      /** Archivo S3 Key */
+      archivo_s3_key: string
+      /**
+       * Fecha
+       * Format: date
+       */
+      fecha: string
+      /** Numero */
+      numero: string
+      tipo: components['schemas']['TipoDocumentoEmbarque']
+    }
+    /** DocumentoRespuesta */
+    DocumentoRespuesta: {
+      /** Archivo S3 Key */
+      archivo_s3_key: string
+      /**
+       * Embarque Id
+       * Format: uuid
+       */
+      embarque_id: string
+      /**
+       * Fecha
+       * Format: date
+       */
+      fecha: string
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Numero */
+      numero: string
+      tipo: components['schemas']['TipoDocumentoEmbarque']
+    }
+    /**
+     * EmbarqueActualizar
+     * @description Cuerpo de PATCH: solo los campos que cambian. awb: null la borra.
+     */
+    EmbarqueActualizar: {
+      /** Awb */
+      awb?: string | null
+      /** Destino Pais */
+      destino_pais?: string | null
+      estado?: components['schemas']['EstadoEmbarque'] | null
+      /** Fecha Vuelo */
+      fecha_vuelo?: string | null
+    }
+    /**
+     * EmbarqueCrear
+     * @description Cuerpo de POST /api/v1/embarques. Arranca siempre en preparacion.
+     */
+    EmbarqueCrear: {
+      /** Awb */
+      awb?: string | null
+      /** Destino Pais */
+      destino_pais: string
+      /**
+       * Fecha Vuelo
+       * Format: date
+       */
+      fecha_vuelo: string
+    }
+    /** EmbarqueRespuesta */
+    EmbarqueRespuesta: {
+      /** Awb */
+      awb: string | null
+      /** Destino Pais */
+      destino_pais: string
+      /** Documentos Cargados */
+      documentos_cargados: number
+      estado: components['schemas']['EstadoEmbarque']
+      /**
+       * Fecha Vuelo
+       * Format: date
+       */
+      fecha_vuelo: string
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+    }
+    /**
+     * EstadoEmbarque
+     * @enum {string}
+     */
+    EstadoEmbarque: 'en_preparacion' | 'en_transito' | 'entregado' | 'cancelado'
     /**
      * EstadoPedido
      * @enum {string}
@@ -821,6 +1001,20 @@ export interface components {
       /** Siguiente */
       siguiente?: string | null
     }
+    /** Pagina[DocumentoRespuesta] */
+    Pagina_DocumentoRespuesta_: {
+      /** Items */
+      items: components['schemas']['DocumentoRespuesta'][]
+      /** Siguiente */
+      siguiente?: string | null
+    }
+    /** Pagina[EmbarqueRespuesta] */
+    Pagina_EmbarqueRespuesta_: {
+      /** Items */
+      items: components['schemas']['EmbarqueRespuesta'][]
+      /** Siguiente */
+      siguiente?: string | null
+    }
     /** Pagina[ItemVendibleRespuesta] */
     Pagina_ItemVendibleRespuesta_: {
       /** Items */
@@ -1076,6 +1270,18 @@ export interface components {
      * @enum {string}
      */
     TipoDocumento: 'factura_a' | 'factura_b' | 'factura_e'
+    /**
+     * TipoDocumentoEmbarque
+     * @description Los 6 documentos de un envio, en el orden de docs/dominio.md.
+     * @enum {string}
+     */
+    TipoDocumentoEmbarque:
+      | 'factura_e'
+      | 'permiso_embarque'
+      | 'guia_aerea'
+      | 'lista_empaque'
+      | 'dte'
+      | 'shipper_certificate'
     /** ValidationError */
     ValidationError: {
       /** Location */
@@ -1409,6 +1615,243 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ClienteRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  listar_embarques_api_v1_embarques_get: {
+    parameters: {
+      query?: {
+        estado?: components['schemas']['EstadoEmbarque'] | null
+        /** @description Cantidad maxima de items (1 a 100). */
+        limite?: number
+        /** @description El campo `siguiente` de la pagina anterior. */
+        cursor?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Pagina_EmbarqueRespuesta_']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  crear_embarque_api_v1_embarques_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EmbarqueCrear']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EmbarqueRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  obtener_embarque_api_v1_embarques__embarque_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        embarque_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EmbarqueRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  actualizar_embarque_api_v1_embarques__embarque_id__patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        embarque_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EmbarqueActualizar']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EmbarqueRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  completitud_del_embarque_api_v1_embarques__embarque_id__completitud_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        embarque_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CompletitudRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  listar_documentos_api_v1_embarques__embarque_id__documentos_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        embarque_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Pagina_DocumentoRespuesta_']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  agregar_documento_api_v1_embarques__embarque_id__documentos_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path: {
+        embarque_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DocumentoCrear']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DocumentoRespuesta']
         }
       }
       /** @description Validation Error */
