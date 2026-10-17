@@ -1,4 +1,9 @@
+import { CircleCheck } from 'lucide-react'
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { BarraDeProgreso } from '@/components/ui/progreso'
+import { SelectorDeArchivo } from '@/components/ui/selector-de-archivo'
 import { useState } from 'react'
 import { useSesion } from '@/auth/useSesion'
 import { subirArchivo } from '@/documentos/subirArchivo'
@@ -47,47 +52,64 @@ function SubidaDocumentoPage() {
     <section className="space-y-seccion">
       <EncabezadoDePagina
         titulo="Subir documento"
-        descripcion="El PDF va directo a S3 con una URL prefirmada; el sistema solo registra la metadata."
-      />
-      <p>
-        El archivo va directo al almacenamiento del sistema mediante un enlace
-        temporario; no pasa por la API.
-      </p>
-
-      <input
-        type="file"
-        accept=".pdf,.jpg,.jpeg,.png"
-        disabled={ocupado}
-        onChange={(evento) => {
-          const archivo = evento.target.files?.[0]
-          void manejarSeleccion(archivo)
-          evento.target.value = ''
-        }}
+        descripcion="El archivo va directo al almacenamiento con un enlace temporario, sin pasar por la API. El sistema registra solo sus datos."
       />
 
-      {estado.status === 'preparando' && <p>Preparando el enlace de subida…</p>}
+      <Card className="max-w-xl space-y-4">
+        <SelectorDeArchivo
+          archivo={null}
+          aceptar=".pdf,.jpg,.jpeg,.png"
+          ayuda="PDF, JPG o PNG de hasta 10 MB."
+          deshabilitado={ocupado}
+          invalido={estado.status === 'error'}
+          alElegir={(archivo) => void manejarSeleccion(archivo ?? undefined)}
+        />
 
-      {estado.status === 'subiendo' && (
-        <p>
-          Subiendo… <progress max={100} value={estado.progreso} />{' '}
-          {estado.progreso}%
-        </p>
-      )}
+        {estado.status === 'preparando' ? (
+          <p role="status" className="text-sm text-texto-suave">
+            Preparando el enlace de subida…
+          </p>
+        ) : null}
 
-      {estado.status === 'listo' && (
-        <p role="status">
-          Listo: el documento quedó en <code>{estado.clave}</code>.
-        </p>
-      )}
+        {estado.status === 'subiendo' ? (
+          <BarraDeProgreso valor={estado.progreso} etiqueta="Subiendo" />
+        ) : null}
 
-      {estado.status === 'error' && (
-        <p role="alert">
-          {estado.mensaje}{' '}
-          <button onClick={() => setEstado({ status: 'inactivo' })}>
-            Reintentar
-          </button>
-        </p>
-      )}
+        {estado.status === 'listo' ? (
+          <div
+            role="status"
+            className="flex items-start gap-2 rounded-control border border-ok/40 bg-ok/10 p-3 text-sm text-texto"
+          >
+            <CircleCheck
+              aria-hidden
+              className="mt-0.5 size-4 shrink-0 text-ok-texto"
+            />
+            <p className="min-w-0">
+              Listo: el documento quedó guardado en{' '}
+              <code className="break-all font-mono text-xs text-texto-suave">
+                {estado.clave}
+              </code>
+              .
+            </p>
+          </div>
+        ) : null}
+
+        {estado.status === 'error' ? (
+          <div
+            role="alert"
+            className="flex flex-col items-start gap-2 rounded-control border border-peligro/40 bg-peligro/10 p-3 text-sm text-texto"
+          >
+            <p>{estado.mensaje}</p>
+            <Button
+              variante="secundario"
+              tamano="chico"
+              onClick={() => setEstado({ status: 'inactivo' })}
+            >
+              Elegir otro archivo
+            </Button>
+          </div>
+        ) : null}
+      </Card>
     </section>
   )
 }

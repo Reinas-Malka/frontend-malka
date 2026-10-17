@@ -40,7 +40,7 @@ export function Field({
         <p
           id={`${htmlFor}-error`}
           role="alert"
-          className="text-xs text-peligro"
+          className="text-xs text-peligro-texto"
         >
           {error}
         </p>

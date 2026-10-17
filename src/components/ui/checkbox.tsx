@@ -12,7 +12,7 @@ export function Checkbox({
     <Radix.Root
       disabled={disabled}
       className={cn(
-        'peer size-5 shrink-0 rounded-control border border-borde bg-carbon-900/60',
+        'peer size-5 shrink-0 rounded-control border border-borde-control bg-carbon-900/60',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento',
         'data-[state=checked]:border-acento data-[state=checked]:bg-acento',
         'disabled:cursor-not-allowed disabled:opacity-50',
