@@ -102,6 +102,7 @@ export function PaginaCatalogo<T extends Fila, C, A>({
       clave: 'id',
       titulo: 'Acciones',
       className: 'text-right',
+      enTarjeta: 'acciones',
       render: (fila) => (
         <AccionesDeFila
           nombre={config.nombreDeFila(fila)}
@@ -159,7 +160,7 @@ export function PaginaCatalogo<T extends Fila, C, A>({
           onChange={(e) => setBusqueda(e.target.value)}
           className="max-w-sm"
         />
-        <p role="status" className="text-sm text-ok">
+        <p role="status" className="text-sm text-ok-texto">
           {aviso}
         </p>
       </div>

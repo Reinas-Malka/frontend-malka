@@ -1,6 +1,11 @@
 @import './styles/tokens.css';
 
 /* Base de la app: fondo, tipografía y pestañas mínimas mientras llega el layout (#4). */
+:root {
+  /* Tema oscuro también para lo nativo: scrollbars, date picker, file input. */
+  color-scheme: dark;
+  scrollbar-color: var(--color-borde-control) var(--color-panel-alto);
+}
 body {
   background: var(--color-fondo);
   color: var(--color-texto);

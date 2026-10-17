@@ -39,13 +39,23 @@
   --color-panel: var(--color-carbon-700);
   --color-panel-alto: var(--color-carbon-900);
   --color-borde: #4f493f;
+  /* Borde de inputs y selects: 3:1 contra el panel y el fondo del control
+     (WCAG 1.4.11). El borde de tarjetas puede ser más suave; el de un
+     campo no, porque al sol no se ve dónde escribir. */
+  --color-borde-control: #938a7d;
   --color-texto: var(--color-carbon-50);
-  --color-texto-suave: var(--color-carbon-400);
+  /* #a39d93 (carbon-400) daba 4,0:1 sobre el panel: no llega a AA (4,5). */
+  --color-texto-suave: #bab3a8;
   --color-acento: var(--color-miel-500);
   --color-acento-hover: var(--color-miel-400);
   --color-ok: #7cb342;
   --color-aviso: var(--color-ambar-400);
   --color-peligro: #e05d44;
+  /* Para TEXTO (errores, insignias): los de arriba son para rellenos y
+     bordes. Pasan 4,5:1 sobre el panel y sobre su propia insignia. */
+  --color-ok-texto: #acd97a;
+  --color-aviso-texto: #f7b54a;
+  --color-peligro-texto: #f8ab99;
 
   /* --- estados del ciclo (dominio C.3) --- */
   --color-estado-cria: var(--color-miel-300);

@@ -16,7 +16,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
         'h-10 w-full rounded-control border bg-carbon-900/60 px-3 text-sm text-texto placeholder:text-texto-suave',
         'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-acento',
         'disabled:cursor-not-allowed disabled:opacity-50',
-        invalido ? 'border-peligro' : 'border-borde',
+        invalido ? 'border-peligro-texto' : 'border-borde-control',
         className,
       )}
       {...props}
