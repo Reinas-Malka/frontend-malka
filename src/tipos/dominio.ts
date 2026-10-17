@@ -26,18 +26,24 @@ export type Raza = Esquemas['RazaRespuesta']
 
 export type Madre = Esquemas['MadreRespuesta']
 
-/** Parque de fecundación: donde la celda entra a un núcleo (≠ banco, fuera de fase 1). */
+/** Parque de fecundación: donde la celda entra a un núcleo (≠ banco, que guarda reinas ya enjauladas). */
 export type Parque = Esquemas['ParqueRespuesta']
 
 export type Nucleo = Esquemas['NucleoRespuesta']
+
+/** Banco: reinas enjauladas listas para despacho (dominio del 16/10). */
+export type Banco = Esquemas['BancoRespuesta']
 
 export type Tanda = {
   id: string
   tenant_id: string
   fecha_traslarve: string // ISO date — ancla del eje A (D0)
-  madre_id: string
+  madre_id: string | null // madres fuera de alcance (16/10): opcional
   raza_id: string
   retroactivo: boolean
+  // Ubicación en la continuadora los primeros 10 días: las dos o ninguna.
+  fila_continuadora: number | null
+  posicion_continuadora: number | null
 }
 
 export type Celda = {
@@ -50,6 +56,9 @@ export type Celda = {
   fecha_nacimiento: string | null // ~D11 del traslarve / I0+1
   fecha_fecundacion: string | null // nac+10 o extraviada
   fecha_enjaulado: string | null // I0+16, lista para despacho
+  banco_id: string | null // solo enjaulada o despachada
+  fecha_descarte: string | null // solo en descartada
+  fecha_extravio: string | null // solo en extraviada
 }
 
 // --- materiales (movimientos con signo, stock = suma) ---

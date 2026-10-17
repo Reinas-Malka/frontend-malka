@@ -38,6 +38,107 @@
     "title": "Alicuota",
     "type": "string"
    },
+   "BancoActualizar": {
+    "additionalProperties": false,
+    "properties": {
+     "activo": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Activo"
+     },
+     "capacidad_max": {
+      "anyOf": [
+       {
+        "maximum": 10000.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Capacidad Max"
+     },
+     "identificador": {
+      "anyOf": [
+       {
+        "maxLength": 50,
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Identificador"
+     }
+    },
+    "title": "BancoActualizar",
+    "type": "object"
+   },
+   "BancoCrear": {
+    "additionalProperties": false,
+    "properties": {
+     "capacidad_max": {
+      "default": 276,
+      "maximum": 10000.0,
+      "minimum": 1.0,
+      "title": "Capacidad Max",
+      "type": "integer"
+     },
+     "identificador": {
+      "maxLength": 50,
+      "minLength": 1,
+      "title": "Identificador",
+      "type": "string"
+     }
+    },
+    "required": [
+     "identificador"
+    ],
+    "title": "BancoCrear",
+    "type": "object"
+   },
+   "BancoRespuesta": {
+    "properties": {
+     "activo": {
+      "title": "Activo",
+      "type": "boolean"
+     },
+     "capacidad_max": {
+      "title": "Capacidad Max",
+      "type": "integer"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "identificador": {
+      "title": "Identificador",
+      "type": "string"
+     },
+     "reinas_en_banco": {
+      "title": "Reinas En Banco",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "identificador",
+     "capacidad_max",
+     "reinas_en_banco",
+     "activo"
+    ],
+    "title": "BancoRespuesta",
+    "type": "object"
+   },
    "ClienteActualizar": {
     "additionalProperties": false,
     "description": "Cuerpo de PATCH /api/v1/clientes/{id}: solo los campos que cambian.\n\nLas reglas no se repiten aca: el repositorio aplica los cambios sobre el\ncliente guardado y valida el resultado completo con ClienteCrear.",
@@ -899,6 +1000,33 @@
     "title": "NucleoRespuesta",
     "type": "object"
    },
+   "Pagina_BancoRespuesta_": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/BancoRespuesta"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "siguiente": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Siguiente"
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "title": "Pagina[BancoRespuesta]",
+    "type": "object"
+   },
    "Pagina_ItemVendibleRespuesta_": {
     "properties": {
      "items": {
@@ -1657,6 +1785,294 @@
  },
  "openapi": "3.1.0",
  "paths": {
+  "/api/v1/bancos": {
+   "get": {
+    "operationId": "listar_bancos_api_v1_bancos_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "incluir_inactivos",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Incluir Inactivos",
+       "type": "boolean"
+      }
+     },
+     {
+      "description": "Cantidad maxima de items (1 a 100).",
+      "in": "query",
+      "name": "limite",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "description": "Cantidad maxima de items (1 a 100).",
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Limite",
+       "type": "integer"
+      }
+     },
+     {
+      "description": "El campo `siguiente` de la pagina anterior.",
+      "in": "query",
+      "name": "cursor",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "maxLength": 500,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "El campo `siguiente` de la pagina anterior.",
+       "title": "Cursor"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Pagina_BancoRespuesta_"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Listar Bancos",
+    "tags": [
+     "bancos"
+    ]
+   },
+   "post": {
+    "operationId": "crear_banco_api_v1_bancos_post",
+    "parameters": [
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BancoCrear"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BancoRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Crear Banco",
+    "tags": [
+     "bancos"
+    ]
+   }
+  },
+  "/api/v1/bancos/{banco_id}": {
+   "delete": {
+    "operationId": "desactivar_banco_api_v1_bancos__banco_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "banco_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Banco Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Desactivar Banco",
+    "tags": [
+     "bancos"
+    ]
+   },
+   "get": {
+    "operationId": "obtener_banco_api_v1_bancos__banco_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "banco_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Banco Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BancoRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Obtener Banco",
+    "tags": [
+     "bancos"
+    ]
+   },
+   "patch": {
+    "operationId": "actualizar_banco_api_v1_bancos__banco_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "banco_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Banco Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BancoActualizar"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BancoRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Actualizar Banco",
+    "tags": [
+     "bancos"
+    ]
+   }
+  },
   "/api/v1/clientes": {
    "get": {
     "operationId": "listar_clientes_api_v1_clientes_get",

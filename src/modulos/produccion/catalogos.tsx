@@ -1,9 +1,9 @@
 /** Catálogos de producción (backend #30). Cada uno es solo configuración:
  *  la pantalla es components/catalogo/PaginaCatalogo. */
 import type { components } from '@/api/esquema'
-import { madres, materiales, parques, razas } from '@/api/recursos'
+import { bancos, madres, materiales, parques, razas } from '@/api/recursos'
 import type { ConfigCatalogo } from '@/components/catalogo/PaginaCatalogo'
-import type { Madre, Material, Parque, Raza } from '@/tipos/dominio'
+import type { Banco, Madre, Material, Parque, Raza } from '@/tipos/dominio'
 
 type Esquemas = components['schemas']
 
@@ -103,7 +103,7 @@ export const catalogoParques: ConfigCatalogo<
   clave: 'parques',
   titulo: 'Parques de fecundación',
   descripcion:
-    'Donde cada celda entra a un núcleo. No confundir con el banco de reinas.',
+    'Donde cada celda entra a un núcleo para fecundarse. No confundir con el banco, que guarda las reinas ya enjauladas.',
   singular: 'parque',
   recurso: parques,
   columnas: [
@@ -156,6 +156,75 @@ export const catalogoParques: ConfigCatalogo<
   aActualizar: (v) => ({
     nombre: v.nombre.trim(),
     ubicacion: v.ubicacion.trim(),
+    capacidad_max: Number(v.capacidad_max),
+  }),
+  reactivacion: { activo: true },
+  rolesEscritura: ['admin', 'produccion'],
+}
+
+// Confirmada por la clienta el 16/10; igual que el default del backend.
+const CAPACIDAD_BANCO_POR_DEFECTO = 276
+
+export const catalogoBancos: ConfigCatalogo<
+  Banco,
+  Esquemas['BancoCrear'],
+  Esquemas['BancoActualizar']
+> = {
+  clave: 'bancos',
+  titulo: 'Bancos',
+  descripcion:
+    'Donde se guardan las reinas ya enjauladas, listas para despacho. No confundir con el parque de fecundación.',
+  singular: 'banco',
+  recurso: bancos,
+  columnas: [
+    {
+      clave: 'identificador',
+      titulo: 'Identificador',
+      orden: (a, b) => a.identificador.localeCompare(b.identificador),
+    },
+    {
+      clave: 'reinas_en_banco',
+      titulo: 'Reinas',
+      render: (b) => `${b.reinas_en_banco} / ${b.capacidad_max}`,
+      orden: (a, b) => a.reinas_en_banco - b.reinas_en_banco,
+    },
+  ],
+  campos: [
+    {
+      nombre: 'identificador',
+      etiqueta: 'Identificador',
+      requerido: true,
+      max: 50,
+      placeholder: 'B-01',
+    },
+    {
+      nombre: 'capacidad_max',
+      etiqueta: 'Capacidad (reinas)',
+      tipo: 'numero',
+      requerido: true,
+      min: 1,
+      max: MAX_CAPACIDAD,
+      validar: (v) =>
+        Number.isInteger(Number(v))
+          ? null
+          : 'La capacidad es un número entero de reinas.',
+    },
+  ],
+  valoresIniciales: {
+    identificador: '',
+    capacidad_max: String(CAPACIDAD_BANCO_POR_DEFECTO),
+  },
+  nombreDeFila: (b) => b.identificador,
+  valoresDeFila: (b) => ({
+    identificador: b.identificador,
+    capacidad_max: String(b.capacidad_max),
+  }),
+  aCrear: (v) => ({
+    identificador: v.identificador.trim(),
+    capacidad_max: Number(v.capacidad_max),
+  }),
+  aActualizar: (v) => ({
+    identificador: v.identificador.trim(),
     capacidad_max: Number(v.capacidad_max),
   }),
   reactivacion: { activo: true },
