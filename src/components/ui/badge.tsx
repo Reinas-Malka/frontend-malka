@@ -9,10 +9,10 @@ const variantes = cva(
     variants: {
       tono: {
         neutro: 'border-borde bg-panel text-texto-suave',
-        miel: 'border-miel-600/40 bg-miel-500/15 text-miel-300',
-        ok: 'border-ok/40 bg-ok/15 text-ok',
-        aviso: 'border-aviso/40 bg-aviso/15 text-aviso',
-        peligro: 'border-peligro/40 bg-peligro/15 text-peligro',
+        miel: 'border-miel-600/40 bg-miel-500/10 text-miel-300',
+        ok: 'border-ok/40 bg-ok/10 text-ok-texto',
+        aviso: 'border-aviso/40 bg-aviso/10 text-aviso-texto',
+        peligro: 'border-peligro/40 bg-peligro/10 text-peligro-texto',
       },
     },
     defaultVariants: { tono: 'neutro' },

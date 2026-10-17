@@ -10,6 +10,7 @@ import {
 } from '@/components/catalogo/campos'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Field } from '@/components/ui/label'
 import {
   Select,
@@ -133,15 +134,13 @@ export function FormularioRecurso({
                 </SelectContenido>
               </Select>
             ) : campo.tipo === 'texto-largo' ? (
-              <textarea
+              <Textarea
                 id={id}
                 value={valor}
-                rows={3}
-                aria-invalid={error ? true : undefined}
+                invalido={Boolean(error)}
                 aria-describedby={describedBy}
                 placeholder={campo.placeholder}
                 onChange={(e) => cambiar(campo.nombre, e.target.value)}
-                className="w-full rounded-control border border-borde bg-carbon-900/60 px-3 py-2 text-sm text-texto placeholder:text-texto-suave focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-acento aria-[invalid=true]:border-peligro"
               />
             ) : (
               <Input

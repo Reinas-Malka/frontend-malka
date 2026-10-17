@@ -58,7 +58,7 @@ export function ErrorDePantalla({
     >
       <p className="text-sm font-medium text-texto">
         {error?.codigo ? (
-          <span className="font-mono text-xs text-peligro">
+          <span className="font-mono text-xs text-peligro-texto">
             {error.codigo} ·{' '}
           </span>
         ) : null}

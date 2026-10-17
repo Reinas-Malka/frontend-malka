@@ -4,6 +4,8 @@ import { useSesion } from '@/auth/useSesion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field } from '@/components/ui/label'
+import { BarraDeProgreso } from '@/components/ui/progreso'
+import { SelectorDeArchivo } from '@/components/ui/selector-de-archivo'
 import { subirArchivo } from '@/documentos/subirArchivo'
 import { validarArchivo } from '@/documentos/validarArchivo'
 import type { DocumentoCrear, TipoDocumentoEmbarque } from '@/tipos/dominio'
@@ -105,28 +107,21 @@ export function CargaDeDocumento({
           onChange={(e) => setFecha(e.target.value)}
         />
       </Field>
-      <Field
-        label="Archivo"
-        htmlFor="doc-archivo"
-        error={errores.archivo}
-        ayuda={ayudaArchivo}
-      >
-        <Input
+      <Field label="Archivo" htmlFor="doc-archivo" error={errores.archivo}>
+        <SelectorDeArchivo
           id="doc-archivo"
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
+          archivo={archivo}
+          alElegir={setArchivo}
+          aceptar=".pdf,.jpg,.jpeg,.png"
+          ayuda={ayudaArchivo}
           invalido={Boolean(errores.archivo)}
-          aria-describedby={
-            errores.archivo ? 'doc-archivo-error' : 'doc-archivo-ayuda'
-          }
-          onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
+          deshabilitado={ocupado}
+          describedBy={errores.archivo ? 'doc-archivo-error' : undefined}
         />
       </Field>
 
       {ocupado ? (
-        <p role="status" className="text-sm text-texto-suave">
-          Subiendo el archivo… {progreso}%
-        </p>
+        <BarraDeProgreso valor={progreso ?? 0} etiqueta="Subiendo el archivo" />
       ) : null}
       {errorGeneral ? (
         <p
