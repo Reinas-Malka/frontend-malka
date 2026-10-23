@@ -344,6 +344,24 @@
     "title": "CondicionIva",
     "type": "string"
    },
+   "DescargaPreparada": {
+    "properties": {
+     "expira_en_segundos": {
+      "title": "Expira En Segundos",
+      "type": "integer"
+     },
+     "url_descarga": {
+      "title": "Url Descarga",
+      "type": "string"
+     }
+    },
+    "required": [
+     "url_descarga",
+     "expira_en_segundos"
+    ],
+    "title": "DescargaPreparada",
+    "type": "object"
+   },
    "Disponibilidad": {
     "description": "Respuesta de la prueba de disponibilidad.",
     "properties": {
@@ -364,6 +382,48 @@
      "dependencias"
     ],
     "title": "Disponibilidad",
+    "type": "object"
+   },
+   "DisponibilidadReinas": {
+    "properties": {
+     "bancos": {
+      "items": {
+       "$ref": "#/components/schemas/ExistenciaEnBanco"
+      },
+      "title": "Bancos",
+      "type": "array"
+     },
+     "disponible": {
+      "title": "Disponible",
+      "type": "integer"
+     },
+     "enjauladas": {
+      "title": "Enjauladas",
+      "type": "integer"
+     },
+     "raza": {
+      "title": "Raza",
+      "type": "string"
+     },
+     "raza_id": {
+      "format": "uuid",
+      "title": "Raza Id",
+      "type": "string"
+     },
+     "reservadas": {
+      "title": "Reservadas",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "raza_id",
+     "raza",
+     "enjauladas",
+     "reservadas",
+     "disponible",
+     "bancos"
+    ],
+    "title": "DisponibilidadReinas",
     "type": "object"
    },
    "DocumentoCrear": {
@@ -590,6 +650,53 @@
     ],
     "title": "EstadoPedido",
     "type": "string"
+   },
+   "EstadoReserva": {
+    "enum": [
+     "activa",
+     "consumida",
+     "liberada"
+    ],
+    "title": "EstadoReserva",
+    "type": "string"
+   },
+   "ExistenciaEnBanco": {
+    "properties": {
+     "banco_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Banco Id"
+     },
+     "identificador": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Identificador"
+     },
+     "reinas": {
+      "title": "Reinas",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "banco_id",
+     "identificador",
+     "reinas"
+    ],
+    "title": "ExistenciaEnBanco",
+    "type": "object"
    },
    "HTTPValidationError": {
     "properties": {
@@ -1548,6 +1655,33 @@
     "title": "Pagina[RazaRespuesta]",
     "type": "object"
    },
+   "Pagina_TandaRespuesta_": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/TandaRespuesta"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "siguiente": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Siguiente"
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "title": "Pagina[TandaRespuesta]",
+    "type": "object"
+   },
    "ParqueActualizar": {
     "additionalProperties": false,
     "properties": {
@@ -1730,6 +1864,40 @@
      "items"
     ],
     "title": "PedidoCrear",
+    "type": "object"
+   },
+   "PedidoDeSubida": {
+    "additionalProperties": false,
+    "description": "Cuerpo de POST /api/v1/documentos/subidas: que se va a subir.",
+    "properties": {
+     "nombre": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Nombre",
+      "type": "string"
+     },
+     "tamano": {
+      "exclusiveMinimum": 0.0,
+      "maximum": 10485760.0,
+      "title": "Tamano",
+      "type": "integer"
+     },
+     "tipo": {
+      "enum": [
+       "application/pdf",
+       "image/jpeg",
+       "image/png"
+      ],
+      "title": "Tipo",
+      "type": "string"
+     }
+    },
+    "required": [
+     "nombre",
+     "tipo",
+     "tamano"
+    ],
+    "title": "PedidoDeSubida",
     "type": "object"
    },
    "PedidoItemCrear": {
@@ -1995,6 +2163,41 @@
     "title": "RazaRespuesta",
     "type": "object"
    },
+   "ReservaRespuesta": {
+    "properties": {
+     "cantidad": {
+      "title": "Cantidad",
+      "type": "integer"
+     },
+     "estado": {
+      "$ref": "#/components/schemas/EstadoReserva"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "pedido_item_id": {
+      "format": "uuid",
+      "title": "Pedido Item Id",
+      "type": "string"
+     },
+     "raza_id": {
+      "format": "uuid",
+      "title": "Raza Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "pedido_item_id",
+     "raza_id",
+     "cantidad",
+     "estado"
+    ],
+    "title": "ReservaRespuesta",
+    "type": "object"
+   },
    "Salud": {
     "description": "Respuesta de la prueba de vida.",
     "properties": {
@@ -2023,6 +2226,288 @@
      "momento"
     ],
     "title": "Salud",
+    "type": "object"
+   },
+   "SubidaPreparada": {
+    "description": "URL de PUT para el navegador y la key que despues se registra.",
+    "properties": {
+     "clave": {
+      "title": "Clave",
+      "type": "string"
+     },
+     "expira_en_segundos": {
+      "title": "Expira En Segundos",
+      "type": "integer"
+     },
+     "url_subida": {
+      "title": "Url Subida",
+      "type": "string"
+     }
+    },
+    "required": [
+     "url_subida",
+     "clave",
+     "expira_en_segundos"
+    ],
+    "title": "SubidaPreparada",
+    "type": "object"
+   },
+   "TandaCreada": {
+    "description": "Respuesta del alta: la tanda, su consumo y el stock que queda.\n\nSi el stock queda negativo, la tanda se crea igual y viene el aviso\nstock_negativo (docs/dominio.md: no se bloquea).",
+    "properties": {
+     "advertencias": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/Advertencia"
+      },
+      "title": "Advertencias",
+      "type": "array"
+     },
+     "celdas": {
+      "title": "Celdas",
+      "type": "integer"
+     },
+     "celdas_por_estado": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Celdas Por Estado",
+      "type": "object"
+     },
+     "consumo": {
+      "$ref": "#/components/schemas/MovimientoRespuesta"
+     },
+     "fecha_traslarve": {
+      "format": "date",
+      "title": "Fecha Traslarve",
+      "type": "string"
+     },
+     "fila_continuadora": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fila Continuadora"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "madre_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Madre Id"
+     },
+     "posicion_continuadora": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Posicion Continuadora"
+     },
+     "raza_id": {
+      "format": "uuid",
+      "title": "Raza Id",
+      "type": "string"
+     },
+     "retroactivo": {
+      "title": "Retroactivo",
+      "type": "boolean"
+     },
+     "stock": {
+      "title": "Stock",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "raza_id",
+     "madre_id",
+     "fecha_traslarve",
+     "retroactivo",
+     "fila_continuadora",
+     "posicion_continuadora",
+     "celdas",
+     "celdas_por_estado",
+     "consumo",
+     "stock"
+    ],
+    "title": "TandaCreada",
+    "type": "object"
+   },
+   "TandaCrear": {
+    "additionalProperties": false,
+    "description": "Alta de tanda: cuadros de madera, nunca un numero libre de cupulas.\n\nLa tanda se identifica por su raza (dominio del 16/10): la madre es\nopcional, porque las madres quedan fuera de alcance.\n\nEl domingo se valida en el repositorio, no aca: tiene su propio codigo\nde error (fecha_no_laborable) y aca saldria como \"validacion\".",
+    "properties": {
+     "cuadros": {
+      "maximum": 3.0,
+      "minimum": 1.0,
+      "title": "Cuadros",
+      "type": "integer"
+     },
+     "fecha_traslarve": {
+      "format": "date",
+      "title": "Fecha Traslarve",
+      "type": "string"
+     },
+     "fila_continuadora": {
+      "anyOf": [
+       {
+        "maximum": 1000.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fila Continuadora"
+     },
+     "madre_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Madre Id"
+     },
+     "material_id": {
+      "format": "uuid",
+      "title": "Material Id",
+      "type": "string"
+     },
+     "posicion_continuadora": {
+      "anyOf": [
+       {
+        "maximum": 1000.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Posicion Continuadora"
+     },
+     "raza_id": {
+      "format": "uuid",
+      "title": "Raza Id",
+      "type": "string"
+     },
+     "retroactivo": {
+      "default": false,
+      "title": "Retroactivo",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "raza_id",
+     "material_id",
+     "fecha_traslarve",
+     "cuadros"
+    ],
+    "title": "TandaCrear",
+    "type": "object"
+   },
+   "TandaRespuesta": {
+    "properties": {
+     "celdas": {
+      "title": "Celdas",
+      "type": "integer"
+     },
+     "celdas_por_estado": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Celdas Por Estado",
+      "type": "object"
+     },
+     "fecha_traslarve": {
+      "format": "date",
+      "title": "Fecha Traslarve",
+      "type": "string"
+     },
+     "fila_continuadora": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fila Continuadora"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "madre_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Madre Id"
+     },
+     "posicion_continuadora": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Posicion Continuadora"
+     },
+     "raza_id": {
+      "format": "uuid",
+      "title": "Raza Id",
+      "type": "string"
+     },
+     "retroactivo": {
+      "title": "Retroactivo",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "id",
+     "raza_id",
+     "madre_id",
+     "fecha_traslarve",
+     "retroactivo",
+     "fila_continuadora",
+     "posicion_continuadora",
+     "celdas",
+     "celdas_por_estado"
+    ],
+    "title": "TandaRespuesta",
     "type": "object"
    },
    "TipoCliente": {
@@ -2647,6 +3132,180 @@
     "summary": "Actualizar Cliente",
     "tags": [
      "clientes"
+    ]
+   }
+  },
+  "/api/v1/disponibilidad": {
+   "get": {
+    "operationId": "obtener_disponibilidad_api_v1_disponibilidad_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "raza_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "uuid",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Raza Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/DisponibilidadReinas"
+         },
+         "title": "Response Obtener Disponibilidad Api V1 Disponibilidad Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Obtener Disponibilidad",
+    "tags": [
+     "disponibilidad"
+    ]
+   }
+  },
+  "/api/v1/documentos/descarga": {
+   "get": {
+    "operationId": "preparar_descarga_api_v1_documentos_descarga_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "clave",
+      "required": true,
+      "schema": {
+       "maxLength": 300,
+       "minLength": 1,
+       "title": "Clave",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DescargaPreparada"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Preparar Descarga",
+    "tags": [
+     "documentos"
+    ]
+   }
+  },
+  "/api/v1/documentos/subidas": {
+   "post": {
+    "operationId": "preparar_subida_api_v1_documentos_subidas_post",
+    "parameters": [
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PedidoDeSubida"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SubidaPreparada"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Preparar Subida",
+    "tags": [
+     "documentos"
     ]
    }
   },
@@ -4903,6 +5562,58 @@
     ]
    }
   },
+  "/api/v1/pedidos/{pedido_id}/reservas": {
+   "post": {
+    "operationId": "reservar_pedido_api_v1_pedidos__pedido_id__reservas_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "pedido_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Pedido Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ReservaRespuesta"
+         },
+         "title": "Response Reservar Pedido Api V1 Pedidos  Pedido Id  Reservas Post",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Reservar Pedido",
+    "tags": [
+     "pedidos"
+    ]
+   }
+  },
   "/api/v1/razas": {
    "get": {
     "operationId": "listar_razas_api_v1_razas_get",
@@ -5188,6 +5899,240 @@
     "summary": "Actualizar Raza",
     "tags": [
      "razas"
+    ]
+   }
+  },
+  "/api/v1/tandas": {
+   "get": {
+    "operationId": "listar_tandas_api_v1_tandas_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "raza_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "uuid",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Raza Id"
+      }
+     },
+     {
+      "in": "query",
+      "name": "desde",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Desde"
+      }
+     },
+     {
+      "in": "query",
+      "name": "hasta",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Hasta"
+      }
+     },
+     {
+      "description": "Cantidad maxima de items (1 a 100).",
+      "in": "query",
+      "name": "limite",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "description": "Cantidad maxima de items (1 a 100).",
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Limite",
+       "type": "integer"
+      }
+     },
+     {
+      "description": "El campo `siguiente` de la pagina anterior.",
+      "in": "query",
+      "name": "cursor",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "maxLength": 500,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "El campo `siguiente` de la pagina anterior.",
+       "title": "Cursor"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Pagina_TandaRespuesta_"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Listar Tandas",
+    "tags": [
+     "tandas"
+    ]
+   },
+   "post": {
+    "operationId": "crear_tanda_api_v1_tandas_post",
+    "parameters": [
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TandaCrear"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TandaCreada"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Crear Tanda",
+    "tags": [
+     "tandas"
+    ]
+   }
+  },
+  "/api/v1/tandas/{tanda_id}": {
+   "get": {
+    "operationId": "obtener_tanda_api_v1_tandas__tanda_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "tanda_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Tanda Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TandaRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Obtener Tanda",
+    "tags": [
+     "tandas"
     ]
    }
   },

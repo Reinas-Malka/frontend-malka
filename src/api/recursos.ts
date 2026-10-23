@@ -13,6 +13,7 @@ import type {
   ItemVendible,
   Madre,
   Material,
+  Nucleo,
   Parque,
   Raza,
 } from '@/tipos/dominio'
@@ -71,6 +72,17 @@ export const parques = elegir<
   id,
   ...d,
   nucleos_activos: 0,
+  activo: true,
+}))
+
+/** Núcleo (baby nuc) de un parque: fila y posición. El parque no cambia después. */
+export const nucleos = elegir<
+  Nucleo,
+  Esquemas['NucleoCrear'],
+  Esquemas['NucleoActualizar']
+>('/api/v1/nucleos', DATOS_SIMULADOS.nucleos, (d, id) => ({
+  id,
+  ...d,
   activo: true,
 }))
 
