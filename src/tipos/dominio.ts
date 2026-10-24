@@ -129,6 +129,8 @@ export type EmbarqueActualizar = Esquemas['EmbarqueActualizar']
 export type DocumentoEmbarque = Esquemas['DocumentoRespuesta']
 export type DocumentoCrear = Esquemas['DocumentoCrear']
 export type Completitud = Esquemas['CompletitudRespuesta']
+/** URL prefirmada para bajar un documento (backend #102). */
+export type DescargaPreparada = Esquemas['DescargaPreparada']
 
 /** Los 6 documentos de un envío, en el orden de docs/dominio.md (el mismo
  *  que devuelve el backend). Completitud = los 6 presentes: la demo del 30/11. */

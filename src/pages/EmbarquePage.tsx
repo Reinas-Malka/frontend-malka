@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Pencil, Upload } from 'lucide-react'
+import { ArrowLeft, Download, Pencil, Upload } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { describirError } from '@/api/client'
+import { pedirDescarga } from '@/api/documentos'
 import { embarques } from '@/api/embarques'
 import { puede } from '@/auth/identidad'
 import { useSesion } from '@/auth/useSesion'
@@ -70,6 +71,22 @@ export default function EmbarquePage() {
   const { identidad } = useSesion()
   const cliente = useQueryClient()
   const [dialogo, setDialogo] = useState<Dialogo | null>(null)
+  const [descargando, setDescargando] = useState<string | null>(null)
+  const [errorDescarga, setErrorDescarga] = useState<string | null>(null)
+
+  // La URL vence en 2 minutos: se pide recién al tocar, nunca antes.
+  async function descargar(doc: DocumentoEmbarque) {
+    setDescargando(doc.id)
+    setErrorDescarga(null)
+    try {
+      const { url_descarga } = await pedirDescarga(doc.archivo_s3_key)
+      window.location.assign(url_descarga)
+    } catch (error) {
+      setErrorDescarga(describirError(error).mensaje)
+    } finally {
+      setDescargando(null)
+    }
+  }
 
   const embarque = useQuery({
     queryKey: [CLAVE_EMBARQUES, id],
@@ -194,6 +211,17 @@ export default function EmbarquePage() {
                   ) : (
                     <Badge tono="aviso">Falta</Badge>
                   )}
+                  {doc ? (
+                    <Button
+                      tamano="chico"
+                      variante="secundario"
+                      aria-label={`Descargar ${nombre}`}
+                      cargando={descargando === doc.id}
+                      onClick={() => void descargar(doc)}
+                    >
+                      <Download className="size-4" aria-hidden /> Descargar
+                    </Button>
+                  ) : null}
                   {!doc && escribe ? (
                     <Button
                       tamano="chico"
@@ -214,6 +242,14 @@ export default function EmbarquePage() {
             )
           })}
         </ul>
+        {errorDescarga ? (
+          <p
+            role="alert"
+            className="rounded-control border border-peligro/40 bg-peligro/10 p-3 text-sm text-texto"
+          >
+            {errorDescarga}
+          </p>
+        ) : null}
       </div>
 
       <Modal

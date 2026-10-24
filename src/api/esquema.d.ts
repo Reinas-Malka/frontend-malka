@@ -78,6 +78,57 @@ export interface paths {
     patch: operations['actualizar_cliente_api_v1_clientes__cliente_id__patch']
     trace?: never
   }
+  '/api/v1/disponibilidad': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Obtener Disponibilidad */
+    get: operations['obtener_disponibilidad_api_v1_disponibilidad_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/documentos/descarga': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Preparar Descarga */
+    get: operations['preparar_descarga_api_v1_documentos_descarga_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/documentos/subidas': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Preparar Subida */
+    post: operations['preparar_subida_api_v1_documentos_subidas_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/embarques': {
     parameters: {
       query?: never
@@ -387,6 +438,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/pedidos/{pedido_id}/reservas': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Reservar Pedido */
+    post: operations['reservar_pedido_api_v1_pedidos__pedido_id__reservas_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/razas': {
     parameters: {
       query?: never
@@ -422,6 +490,41 @@ export interface paths {
     head?: never
     /** Actualizar Raza */
     patch: operations['actualizar_raza_api_v1_razas__raza_id__patch']
+    trace?: never
+  }
+  '/api/v1/tandas': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Listar Tandas */
+    get: operations['listar_tandas_api_v1_tandas_get']
+    put?: never
+    /** Crear Tanda */
+    post: operations['crear_tanda_api_v1_tandas_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/tandas/{tanda_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Obtener Tanda */
+    get: operations['obtener_tanda_api_v1_tandas__tanda_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
     trace?: never
   }
   '/health': {
@@ -618,6 +721,13 @@ export interface components {
       | 'exento'
       | 'consumidor_final'
       | 'cliente_exterior'
+    /** DescargaPreparada */
+    DescargaPreparada: {
+      /** Expira En Segundos */
+      expira_en_segundos: number
+      /** Url Descarga */
+      url_descarga: string
+    }
     /**
      * Disponibilidad
      * @description Respuesta de la prueba de disponibilidad.
@@ -629,6 +739,24 @@ export interface components {
       }
       /** Estado */
       estado: string
+    }
+    /** DisponibilidadReinas */
+    DisponibilidadReinas: {
+      /** Bancos */
+      bancos: components['schemas']['ExistenciaEnBanco'][]
+      /** Disponible */
+      disponible: number
+      /** Enjauladas */
+      enjauladas: number
+      /** Raza */
+      raza: string
+      /**
+       * Raza Id
+       * Format: uuid
+       */
+      raza_id: string
+      /** Reservadas */
+      reservadas: number
     }
     /**
      * DocumentoCrear
@@ -727,6 +855,20 @@ export interface components {
      * @enum {string}
      */
     EstadoPedido: 'borrador' | 'reservado' | 'entregado' | 'cancelado'
+    /**
+     * EstadoReserva
+     * @enum {string}
+     */
+    EstadoReserva: 'activa' | 'consumida' | 'liberada'
+    /** ExistenciaEnBanco */
+    ExistenciaEnBanco: {
+      /** Banco Id */
+      banco_id: string | null
+      /** Identificador */
+      identificador: string | null
+      /** Reinas */
+      reinas: number
+    }
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
@@ -1071,6 +1213,13 @@ export interface components {
       /** Siguiente */
       siguiente?: string | null
     }
+    /** Pagina[TandaRespuesta] */
+    Pagina_TandaRespuesta_: {
+      /** Items */
+      items: components['schemas']['TandaRespuesta'][]
+      /** Siguiente */
+      siguiente?: string | null
+    }
     /** ParqueActualizar */
     ParqueActualizar: {
       /** Activo */
@@ -1134,6 +1283,21 @@ export interface components {
       /** Items */
       items: components['schemas']['PedidoItemCrear'][]
       moneda: components['schemas']['Moneda']
+    }
+    /**
+     * PedidoDeSubida
+     * @description Cuerpo de POST /api/v1/documentos/subidas: que se va a subir.
+     */
+    PedidoDeSubida: {
+      /** Nombre */
+      nombre: string
+      /** Tamano */
+      tamano: number
+      /**
+       * Tipo
+       * @enum {string}
+       */
+      tipo: 'application/pdf' | 'image/jpeg' | 'image/png'
     }
     /**
      * PedidoItemCrear
@@ -1243,6 +1407,27 @@ export interface components {
       /** Nombre */
       nombre: string
     }
+    /** ReservaRespuesta */
+    ReservaRespuesta: {
+      /** Cantidad */
+      cantidad: number
+      estado: components['schemas']['EstadoReserva']
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /**
+       * Pedido Item Id
+       * Format: uuid
+       */
+      pedido_item_id: string
+      /**
+       * Raza Id
+       * Format: uuid
+       */
+      raza_id: string
+    }
     /**
      * Salud
      * @description Respuesta de la prueba de vida.
@@ -1259,6 +1444,136 @@ export interface components {
       momento: string
       /** Version */
       version: string
+    }
+    /**
+     * SubidaPreparada
+     * @description URL de PUT para el navegador y la key que despues se registra.
+     */
+    SubidaPreparada: {
+      /** Clave */
+      clave: string
+      /** Expira En Segundos */
+      expira_en_segundos: number
+      /** Url Subida */
+      url_subida: string
+    }
+    /**
+     * TandaCreada
+     * @description Respuesta del alta: la tanda, su consumo y el stock que queda.
+     *
+     *     Si el stock queda negativo, la tanda se crea igual y viene el aviso
+     *     stock_negativo (docs/dominio.md: no se bloquea).
+     */
+    TandaCreada: {
+      /**
+       * Advertencias
+       * @default []
+       */
+      advertencias: components['schemas']['Advertencia'][]
+      /** Celdas */
+      celdas: number
+      /** Celdas Por Estado */
+      celdas_por_estado: {
+        [key: string]: number
+      }
+      consumo: components['schemas']['MovimientoRespuesta']
+      /**
+       * Fecha Traslarve
+       * Format: date
+       */
+      fecha_traslarve: string
+      /** Fila Continuadora */
+      fila_continuadora: number | null
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Madre Id */
+      madre_id: string | null
+      /** Posicion Continuadora */
+      posicion_continuadora: number | null
+      /**
+       * Raza Id
+       * Format: uuid
+       */
+      raza_id: string
+      /** Retroactivo */
+      retroactivo: boolean
+      /** Stock */
+      stock: string
+    }
+    /**
+     * TandaCrear
+     * @description Alta de tanda: cuadros de madera, nunca un numero libre de cupulas.
+     *
+     *     La tanda se identifica por su raza (dominio del 16/10): la madre es
+     *     opcional, porque las madres quedan fuera de alcance.
+     *
+     *     El domingo se valida en el repositorio, no aca: tiene su propio codigo
+     *     de error (fecha_no_laborable) y aca saldria como "validacion".
+     */
+    TandaCrear: {
+      /** Cuadros */
+      cuadros: number
+      /**
+       * Fecha Traslarve
+       * Format: date
+       */
+      fecha_traslarve: string
+      /** Fila Continuadora */
+      fila_continuadora?: number | null
+      /** Madre Id */
+      madre_id?: string | null
+      /**
+       * Material Id
+       * Format: uuid
+       */
+      material_id: string
+      /** Posicion Continuadora */
+      posicion_continuadora?: number | null
+      /**
+       * Raza Id
+       * Format: uuid
+       */
+      raza_id: string
+      /**
+       * Retroactivo
+       * @default false
+       */
+      retroactivo: boolean
+    }
+    /** TandaRespuesta */
+    TandaRespuesta: {
+      /** Celdas */
+      celdas: number
+      /** Celdas Por Estado */
+      celdas_por_estado: {
+        [key: string]: number
+      }
+      /**
+       * Fecha Traslarve
+       * Format: date
+       */
+      fecha_traslarve: string
+      /** Fila Continuadora */
+      fila_continuadora: number | null
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Madre Id */
+      madre_id: string | null
+      /** Posicion Continuadora */
+      posicion_continuadora: number | null
+      /**
+       * Raza Id
+       * Format: uuid
+       */
+      raza_id: string
+      /** Retroactivo */
+      retroactivo: boolean
     }
     /**
      * TipoCliente
@@ -1615,6 +1930,104 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ClienteRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  obtener_disponibilidad_api_v1_disponibilidad_get: {
+    parameters: {
+      query?: {
+        raza_id?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DisponibilidadReinas'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  preparar_descarga_api_v1_documentos_descarga_get: {
+    parameters: {
+      query: {
+        clave: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DescargaPreparada']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  preparar_subida_api_v1_documentos_subidas_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PedidoDeSubida']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SubidaPreparada']
         }
       }
       /** @description Validation Error */
@@ -2873,6 +3286,37 @@ export interface operations {
       }
     }
   }
+  reservar_pedido_api_v1_pedidos__pedido_id__reservas_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        pedido_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReservaRespuesta'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   listar_razas_api_v1_razas_get: {
     parameters: {
       query?: {
@@ -3026,6 +3470,110 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['RazaRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  listar_tandas_api_v1_tandas_get: {
+    parameters: {
+      query?: {
+        raza_id?: string | null
+        desde?: string | null
+        hasta?: string | null
+        /** @description Cantidad maxima de items (1 a 100). */
+        limite?: number
+        /** @description El campo `siguiente` de la pagina anterior. */
+        cursor?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Pagina_TandaRespuesta_']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  crear_tanda_api_v1_tandas_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TandaCrear']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['TandaCreada']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  obtener_tanda_api_v1_tandas__tanda_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        tanda_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['TandaRespuesta']
         }
       }
       /** @description Validation Error */

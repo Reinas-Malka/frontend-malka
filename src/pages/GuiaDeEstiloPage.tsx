@@ -91,7 +91,7 @@ export function GuiaDeEstiloPage() {
             <Field
               label="Identificación de la madre"
               htmlFor="madre"
-              error="La madre tiene que existir en el catálogo"
+              error="La raza tiene que existir en el catálogo"
             >
               <Input id="madre" invalido placeholder="Reina A-12" />
             </Field>
@@ -132,8 +132,8 @@ export function GuiaDeEstiloPage() {
             </Vacio>
             <ErrorDePantalla
               error={{
-                codigo: 'STOCK_INSUFICIENTE',
-                mensaje: 'No hay cúpulas para 3 cuadros.',
+                codigo: 'stock_insuficiente',
+                mensaje: 'No hay reinas suficientes para reservar el pedido.',
               }}
               reintentar={() => {}}
             />
