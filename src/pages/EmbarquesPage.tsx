@@ -13,12 +13,12 @@ import { Button } from '@/components/ui/button'
 import { Cargando, ErrorDePantalla, Vacio } from '@/components/ui/estados'
 import { Modal, ModalContenido } from '@/components/ui/modal'
 import { DataTable, type Columna } from '@/components/ui/table'
+import { nombreDePais } from '@/lib/paises'
 import {
   CAMPOS_ALTA,
   CLAVE_EMBARQUES,
   ROLES_EXPORTACION,
   aEmbarqueCrear,
-  nombreDePais,
 } from '@/modulos/exportacion/embarques'
 import {
   EstadoDeEmbarque,

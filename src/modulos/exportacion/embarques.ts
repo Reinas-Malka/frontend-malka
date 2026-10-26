@@ -17,18 +17,6 @@ export const ROLES_EXPORTACION: readonly Rol[] = ['admin', 'ventas']
 
 export const CLAVE_EMBARQUES = 'embarques'
 
-const regiones = new Intl.DisplayNames(['es'], { type: 'region' })
-
-/** "Chile (CL)": el país sale del código ISO, no de una tabla propia. */
-export function nombreDePais(codigo: string): string {
-  try {
-    const nombre = regiones.of(codigo)
-    return nombre && nombre !== codigo ? `${nombre} (${codigo})` : codigo
-  } catch {
-    return codigo
-  }
-}
-
 function errorDeDestino(valor: string): string | null {
   const codigo = valor.toUpperCase()
   if (!/^[A-Z]{2}$/.test(codigo))
