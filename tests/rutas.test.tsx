@@ -52,8 +52,14 @@ describe('rutas', () => {
   it('cada enlace del menú tiene su pantalla y queda marcado como actual', async () => {
     for (const { a, texto } of enlaces) {
       montar(a)
-      // Las pantallas son lazy: el router pinta cuando baja el chunk.
-      const menu = await screen.findByRole('navigation', { name: 'Principal' })
+      // Las pantallas son lazy: el router pinta cuando baja el chunk. La
+      // primera que usa el formulario y el modal tarda más en una máquina
+      // lenta (Windows, carpeta sincronizada): 1 s por defecto no alcanza.
+      const menu = await screen.findByRole(
+        'navigation',
+        { name: 'Principal' },
+        { timeout: 5000 },
+      )
       expect(
         within(menu)
           .getByRole('link', { name: texto })
@@ -62,7 +68,7 @@ describe('rutas', () => {
       expect(await screen.findByRole('heading', { level: 1 })).toBeTruthy()
       cleanup()
     }
-  })
+    }, 20_000) // recorre todas las pantallas: más que los 5 s por defecto
 
   it('con datos simulados muestra el banner fijo', async () => {
     montar('/produccion/razas')
