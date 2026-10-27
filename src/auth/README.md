@@ -64,7 +64,7 @@ un solo lugar: `ACCESOS` en `src/app/navegacion.ts`.
 - La regla va **por prefijo** (gana el más largo), así cubre también las rutas
   que no están en el menú. Una sección nueva se suma a `ACCESOS`; si no, la
   abre cualquier rol. `tests/navegacion-por-rol.test.tsx` fija qué ve cada rol.
-  
+
 ## Probarlo en local
 
 `.env.local` con las `VITE_COGNITO_*` (son públicas: están en las variables del repo) y la app en **localhost:5173**, que es el origen registrado en Cognito y en el CORS. Los usuarios de prueba están en `docs/cognito.md` del backend. La contraseña se pide al equipo y no se versiona.
