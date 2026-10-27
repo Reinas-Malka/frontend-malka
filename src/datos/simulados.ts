@@ -18,7 +18,9 @@ import {
   type MovimientoMaterial,
   type Nucleo,
   type Parque,
+  type Pedido,
   type Raza,
+  type Reserva,
   type Tanda,
   type TipoDocumentoEmbarque,
 } from '@/tipos/dominio'
@@ -294,6 +296,104 @@ export const clientes: Cliente[] = [
   },
 ]
 
+/** Cuatro pedidos para recorrer los estados: uno nacional para reservar y
+ *  entregar entre los dos bancos, uno de exportación ya reservado, uno que
+ *  no alcanza (Buckfast todavía no tiene reinas enjauladas) y uno cancelado
+ *  desde borrador, sin reservas. */
+export const pedidos: Pedido[] = [
+  {
+    id: id(201),
+    cliente_id: id(61),
+    estado: 'borrador',
+    moneda: 'ARS',
+    destino_pais: null,
+    incoterm: null,
+    fecha_entrega_solicitada: dia(-10),
+    items: [
+      {
+        id: id(211),
+        numero_linea: 1,
+        item_vendible_id: id(91),
+        raza_id: id(1),
+        cantidad: 20,
+        precio_unitario: '45000.00',
+        alicuota: '0.21',
+      },
+    ],
+  },
+  {
+    id: id(202),
+    cliente_id: id(62),
+    estado: 'reservado',
+    moneda: 'USD',
+    destino_pais: 'NZ',
+    incoterm: 'CPT',
+    fecha_entrega_solicitada: dia(-21),
+    items: [
+      {
+        id: id(212),
+        numero_linea: 1,
+        item_vendible_id: id(91),
+        raza_id: id(1),
+        cantidad: 50,
+        precio_unitario: '38.50',
+        alicuota: '0.21',
+      },
+    ],
+  },
+  {
+    id: id(203),
+    cliente_id: id(61),
+    estado: 'borrador',
+    moneda: 'ARS',
+    destino_pais: null,
+    incoterm: null,
+    fecha_entrega_solicitada: dia(-30),
+    items: [
+      {
+        id: id(213),
+        numero_linea: 1,
+        item_vendible_id: id(91),
+        raza_id: id(2),
+        cantidad: 30,
+        precio_unitario: '42000.00',
+        alicuota: '0.21',
+      },
+    ],
+  },
+  {
+    id: id(204),
+    cliente_id: id(61),
+    estado: 'cancelado',
+    moneda: 'ARS',
+    destino_pais: null,
+    incoterm: null,
+    fecha_entrega_solicitada: dia(5),
+    items: [
+      {
+        id: id(214),
+        numero_linea: 1,
+        item_vendible_id: id(93),
+        raza_id: id(1),
+        cantidad: 15,
+        precio_unitario: '8000.00',
+        alicuota: '0.21',
+      },
+    ],
+  },
+]
+
+/** La reserva del pedido de exportación: una por línea, con su cantidad. */
+export const reservas: Reserva[] = [
+  {
+    id: id(221),
+    pedido_item_id: id(212),
+    raza_id: id(1),
+    cantidad: 50,
+    estado: 'activa',
+  },
+]
+
 export const comprobantes: Comprobante[] = [
   {
     id: id(71),
@@ -405,4 +505,6 @@ export const DATOS_SIMULADOS = {
   comprobantes,
   embarques,
   documentosEmbarque,
+  pedidos,
+  reservas,
 }

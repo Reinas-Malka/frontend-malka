@@ -16,3 +16,12 @@ export function formatearFechaHora(
     timeZone,
   }).format(new Date(fecha))
 }
+
+/** Hoy como `date` del backend (AAAA-MM-DD), con la hora de Argentina como
+ *  hoy() de app/fechas.py: a las 22 h del 31 en AR ya es el 1 en UTC. */
+export function hoyEnArgentina(ahora: Date = new Date()): string {
+  // en-CA formatea como AAAA-MM-DD.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+  }).format(ahora)
+}
