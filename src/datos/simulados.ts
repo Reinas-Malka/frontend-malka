@@ -281,6 +281,17 @@ export const clientes: Cliente[] = [
     activo: true,
     tipo_documento_por_defecto: 'factura_e',
   },
+  // Dado de baja: en la demo se ve la factura B y el botón "Reactivar".
+  {
+    id: id(63),
+    nombre: 'Miel del Delta',
+    pais: 'AR',
+    tipo: 'nacional',
+    condicion_iva: 'monotributo',
+    cuit_o_tax_id: '27234567891',
+    activo: false,
+    tipo_documento_por_defecto: 'factura_b',
+  },
 ]
 
 export const comprobantes: Comprobante[] = [
