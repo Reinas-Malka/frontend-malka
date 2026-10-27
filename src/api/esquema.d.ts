@@ -438,6 +438,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/pedidos/{pedido_id}/estado': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Cambiar Estado Pedido */
+    post: operations['cambiar_estado_pedido_api_v1_pedidos__pedido_id__estado_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/pedidos/{pedido_id}/reservas': {
     parameters: {
       query?: never
@@ -521,6 +538,29 @@ export interface paths {
     get: operations['obtener_tanda_api_v1_tandas__tanda_id__get']
     put?: never
     post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/tandas/{tanda_id}/operaciones': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Operar Tanda
+     * @description Descartar, introducir, cosechar o pasar a banco, por lote (#28).
+     *
+     *     El campo accion elige la operacion. Con Idempotency-Key, un reintento
+     *     devuelve lo ya hecho y no mueve celdas dos veces (#25).
+     */
+    post: operations['operar_tanda_api_v1_tandas__tanda_id__operaciones_post']
     delete?: never
     options?: never
     head?: never
@@ -635,6 +675,17 @@ export interface components {
       identificador: string
       /** Reinas En Banco */
       reinas_en_banco: number
+    }
+    /**
+     * Cancelar
+     * @description Pasa un pedido en borrador o reservado a cancelado. Sin mas datos.
+     */
+    Cancelar: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      estado: 'cancelado'
     }
     /**
      * ClienteActualizar
@@ -846,6 +897,24 @@ export interface components {
       id: string
     }
     /**
+     * Entregar
+     * @description Pasa un pedido reservado a entregado, eligiendo los bancos por linea.
+     *
+     *     Que esten todas las lineas y con la cantidad reservada lo revisa el
+     *     repositorio con validar_despacho: aca no se conocen las reservas.
+     */
+    Entregar: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      estado: 'entregado'
+      /** Fecha */
+      fecha?: string | null
+      /** Lineas */
+      lineas: components['schemas']['LineaDespacho'][]
+    }
+    /**
      * EstadoEmbarque
      * @enum {string}
      */
@@ -922,6 +991,19 @@ export interface components {
       id: string
       /** Nombre */
       nombre: string
+    }
+    /**
+     * LineaDespacho
+     * @description Una linea del pedido y de que bancos salen sus reinas.
+     */
+    LineaDespacho: {
+      /** Bancos */
+      bancos: components['schemas']['SalidaDeBanco'][]
+      /**
+       * Pedido Item Id
+       * Format: uuid
+       */
+      pedido_item_id: string
     }
     /** MadreActualizar */
     MadreActualizar: {
@@ -1136,10 +1218,109 @@ export interface components {
       /** Posicion */
       posicion: number
     }
+    /**
+     * OperacionCosechar
+     * @description Cosechar la tanda: una sola vez, en un dia.
+     *
+     *     cantidad son las reinas cosechadas; el resto de las celdas del parque
+     *     pasa solo a descartada. Puede ser 0 (se perdio todo).
+     */
+    OperacionCosechar: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      accion: 'cosechar'
+      /** Cantidad */
+      cantidad: number
+      /**
+       * Fecha
+       * Format: date
+       */
+      fecha: string
+    }
+    /**
+     * OperacionDescartar
+     * @description Descartar celdas que todavia no se introdujeron (quedan sin nucleo).
+     */
+    OperacionDescartar: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      accion: 'descartar'
+      /** Cantidad */
+      cantidad: number
+      /**
+       * Fecha
+       * Format: date
+       */
+      fecha: string
+    }
+    /**
+     * OperacionIntroducir
+     * @description Introducir en un parque: el sistema elige los nucleos, nunca el usuario.
+     */
+    OperacionIntroducir: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      accion: 'introducir'
+      /** Cantidad */
+      cantidad: number
+      /**
+       * Fecha
+       * Format: date
+       */
+      fecha: string
+      /**
+       * Parque Id
+       * Format: uuid
+       */
+      parque_id: string
+    }
+    /**
+     * OperacionPasarABanco
+     * @description Pasar reinas enjauladas que todavia no estan en un banco.
+     */
+    OperacionPasarABanco: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      accion: 'pasar_a_banco'
+      /**
+       * Banco Id
+       * Format: uuid
+       */
+      banco_id: string
+      /** Cantidad */
+      cantidad: number
+    }
+    /** OperacionRealizada */
+    OperacionRealizada: {
+      /** Accion */
+      accion: string
+      /** Cantidad */
+      cantidad: number
+      /** Descartadas En Cosecha */
+      descartadas_en_cosecha?: number | null
+      /** Reparto */
+      reparto?: components['schemas']['RepartoNucleo'][] | null
+      tanda: components['schemas']['TandaRespuesta']
+    }
     /** Pagina[BancoRespuesta] */
     Pagina_BancoRespuesta_: {
       /** Items */
       items: components['schemas']['BancoRespuesta'][]
+      /** Siguiente */
+      siguiente?: string | null
+    }
+    /** Pagina[ClienteRespuesta] */
+    Pagina_ClienteRespuesta_: {
+      /** Items */
+      items: components['schemas']['ClienteRespuesta'][]
       /** Siguiente */
       siguiente?: string | null
     }
@@ -1262,8 +1443,9 @@ export interface components {
      * PedidoCrear
      * @description Cuerpo de POST /api/v1/pedidos.
      *
-     *     Sin estado: el alta crea siempre en borrador y las transiciones son de
-     *     #36. Sin tenant_id: lo completa PostgreSQL (ADR 0009). extra="forbid"
+     *     Sin estado: el alta crea siempre en borrador y el estado cambia con
+     *     /reservas (#35) y /estado (#36). Sin tenant_id: lo completa PostgreSQL
+     *     (ADR 0009). extra="forbid"
      *     rechaza cualquiera de los dos si llegan.
      */
     PedidoCrear: {
@@ -1407,6 +1589,23 @@ export interface components {
       /** Nombre */
       nombre: string
     }
+    /**
+     * RepartoNucleo
+     * @description Cuantas celdas fueron a un nucleo en esta introduccion.
+     */
+    RepartoNucleo: {
+      /** Celdas */
+      celdas: number
+      /** Fila */
+      fila: number
+      /**
+       * Nucleo Id
+       * Format: uuid
+       */
+      nucleo_id: string
+      /** Posicion */
+      posicion: number
+    }
     /** ReservaRespuesta */
     ReservaRespuesta: {
       /** Cantidad */
@@ -1427,6 +1626,16 @@ export interface components {
        * Format: uuid
        */
       raza_id: string
+    }
+    /**
+     * SalidaDeBanco
+     * @description De que banco salen reinas para una linea, y cuantas.
+     */
+    SalidaDeBanco: {
+      /** Banco Id */
+      banco_id: string | null
+      /** Cantidad */
+      cantidad: number
     }
     /**
      * Salud
@@ -1785,6 +1994,10 @@ export interface operations {
     parameters: {
       query?: {
         incluir_inactivos?: boolean
+        /** @description Cantidad maxima de items (1 a 100). */
+        limite?: number
+        /** @description El campo `siguiente` de la pagina anterior. */
+        cursor?: string | null
       }
       header?: never
       path?: never
@@ -1798,7 +2011,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['ClienteRespuesta'][]
+          'application/json': components['schemas']['Pagina_ClienteRespuesta_']
         }
       }
       /** @description Validation Error */
@@ -3286,6 +3499,45 @@ export interface operations {
       }
     }
   }
+  cambiar_estado_pedido_api_v1_pedidos__pedido_id__estado_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path: {
+        pedido_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json':
+          components['schemas']['Entregar'] | components['schemas']['Cancelar']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PedidoRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   reservar_pedido_api_v1_pedidos__pedido_id__reservas_post: {
     parameters: {
       query?: never
@@ -3574,6 +3826,48 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['TandaRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  operar_tanda_api_v1_tandas__tanda_id__operaciones_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path: {
+        tanda_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json':
+          | components['schemas']['OperacionDescartar']
+          | components['schemas']['OperacionIntroducir']
+          | components['schemas']['OperacionCosechar']
+          | components['schemas']['OperacionPasarABanco']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['OperacionRealizada']
         }
       }
       /** @description Validation Error */
