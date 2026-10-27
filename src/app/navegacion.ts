@@ -14,11 +14,45 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import { puede, ROLES, type Identidad, type Rol } from '@/auth/identidad'
+
 export type Enlace = { a: string; texto: string; icono: LucideIcon }
 export type Grupo = { titulo: string; enlaces: Enlace[] }
 
-/** Menú lateral. Un solo lugar: el router y el layout leen de acá.
- *  Los roles por enlace (#4) se agregan cuando exista la sesión (#6). */
+/** Qué roles abren cada sección (#4): el menú esconde lo demás y el layout
+ *  no lo muestra aunque se escriba la URL. Por prefijo, así cubre también
+ *  las rutas que no están en el menú (madres, el detalle de un embarque).
+ *  Gana el prefijo más largo; una ruta sin prefijo acá la abre cualquier rol.
+ *
+ *  Es comodidad de UI: el que decide es el backend (require_role → 403). */
+export const ACCESOS: readonly { prefijo: string; roles: readonly Rol[] }[] = [
+  { prefijo: '/produccion', roles: ['admin', 'produccion', 'lectura'] },
+  { prefijo: '/ventas', roles: ['admin', 'ventas', 'lectura'] },
+  // Los carga producción y los usa ventas para cotizar.
+  { prefijo: '/ventas/items-vendibles', roles: ROLES },
+  { prefijo: '/exportacion', roles: ['admin', 'ventas', 'lectura'] },
+  // Solo quien puede pedir la subida (POST /documentos/subidas).
+  { prefijo: '/documentos', roles: ['admin', 'ventas'] },
+  { prefijo: '/guia-de-estilo', roles: ['admin'] },
+]
+
+function rolesPara(ruta: string): readonly Rol[] {
+  const coincidencias = ACCESOS.filter(
+    ({ prefijo }) => ruta === prefijo || ruta.startsWith(`${prefijo}/`),
+  )
+  const masLarga = coincidencias.sort(
+    (a, b) => b.prefijo.length - a.prefijo.length,
+  )[0]
+  return masLarga?.roles ?? ROLES
+}
+
+/** ¿Esta persona puede abrir esta ruta? Sin sesión o sin rol, ninguna. */
+export function puedeAbrir(identidad: Identidad | null, ruta: string): boolean {
+  return puede(identidad, rolesPara(ruta))
+}
+
+/** Menú lateral. Un solo lugar: el router y el layout leen de acá. */
+
 export const NAVEGACION: Grupo[] = [
   {
     titulo: 'General',

@@ -1,17 +1,24 @@
 import { Hexagon, LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
-import { NAVEGACION } from '@/app/navegacion'
+import { NAVEGACION, puedeAbrir } from '@/app/navegacion'
 import { NOMBRE_DE_ROL } from '@/auth/identidad'
 import { useSesion } from '@/auth/useSesion'
 import { Button } from '@/components/ui/button'
 import { BannerDatosSimulados } from '@/datos/BannerDatosSimulados'
 import { cn } from '@/lib/utils'
+import { SinPermisoPage } from '@/pages/SinPermisoPage'
 
 /** Estructura de toda pantalla: banner de datos simulados, menú lateral
- *  (cajón en el teléfono) y el contenido de la ruta. */
+ *  (cajón en el teléfono) y el contenido de la ruta. El menú y el contenido
+ *  respetan el rol (#4): lo que el rol no abre, ni se ve. */
 export function AppLayout() {
   const { pathname } = useLocation()
+  const { identidad } = useSesion()
+  const grupos = NAVEGACION.map((grupo) => ({
+    ...grupo,
+    enlaces: grupo.enlaces.filter(({ a }) => puedeAbrir(identidad, a)),
+  })).filter((grupo) => grupo.enlaces.length > 0)
   // El menú queda abierto solo en la ruta donde se abrió: cualquier
   // navegación (enlace, atrás, adelante) lo cierra sin efectos.
   const [abiertoEn, setAbiertoEn] = useState<string | null>(null)
@@ -60,7 +67,7 @@ export function AppLayout() {
           <div className="mb-6 hidden px-2 md:block">
             <Marca />
           </div>
-          {NAVEGACION.map((grupo) => (
+          {grupos.map((grupo) => (
             <div key={grupo.titulo} className="mb-5">
               <p className="mb-1 px-2 text-xs font-medium uppercase tracking-wide text-texto-suave">
                 {grupo.titulo}
@@ -97,7 +104,11 @@ export function AppLayout() {
           tabIndex={-1}
           className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8"
         >
-          <Outlet />
+          {puedeAbrir(identidad, pathname) ? (
+            <Outlet />
+          ) : (
+            <SinPermisoPage sinRol={identidad?.roles.length === 0} />
+          )}
         </main>
       </div>
     </div>
