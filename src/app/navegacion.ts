@@ -1,4 +1,5 @@
 import {
+  ClipboardList,
   Dna,
   Gauge,
   Grid3x3,
@@ -36,6 +37,7 @@ export const NAVEGACION: Grupo[] = [
   {
     titulo: 'Ventas',
     enlaces: [
+      { a: '/ventas/pedidos', texto: 'Pedidos', icono: ClipboardList },
       { a: '/ventas/clientes', texto: 'Clientes', icono: Users },
       { a: '/ventas/items-vendibles', texto: 'Ítems vendibles', icono: Tag },
     ],

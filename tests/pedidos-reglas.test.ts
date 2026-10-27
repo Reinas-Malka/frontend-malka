@@ -10,6 +10,7 @@ import {
   normalizarPrecio,
   puedePasar,
 } from '../src/lib/pedidos'
+import { leerFiltros, resumenDeLineas } from '../src/modulos/ventas/pedidos'
 import type { PedidoCrear } from '../src/tipos/dominio'
 
 const [PARA_RESERVAR, RESERVADO, SIN_STOCK, CANCELADO] = DATOS_SIMULADOS.pedidos
@@ -307,5 +308,47 @@ describe('API de pedidos simulada (mismas respuestas que el backend)', () => {
         ],
       }),
     ).rejects.toMatchObject({ status: 409, codigo: 'transicion_invalida' })
+  })
+})
+
+describe('listado de pedidos: filtros, tamaño y páginas', () => {
+  it('lee los filtros de la URL e ignora un estado que no existe', () => {
+    expect(
+      leerFiltros(new URLSearchParams('estado=reservado&cliente=c1')),
+    ).toEqual({ estado: 'reservado', cliente_id: 'c1' })
+    expect(leerFiltros(new URLSearchParams('estado=perdido&cliente='))).toEqual(
+      { estado: undefined, cliente_id: undefined },
+    )
+  })
+
+  it('resume el tamaño en líneas y reinas, en singular y plural', () => {
+    expect(resumenDeLineas(RESERVADO)).toBe('1 línea · 50 reinas')
+    const dos = {
+      ...RESERVADO,
+      items: [
+        { ...RESERVADO.items[0], cantidad: 1 },
+        { ...RESERVADO.items[0], id: 'otra', cantidad: 0 },
+      ],
+    }
+    expect(resumenDeLineas(dos)).toBe('2 líneas · 1 reina')
+  })
+
+  it('pagina de a 50, del más nuevo al más viejo, con los filtros puestos', async () => {
+    const muchos = Array.from({ length: 60 }, (_, n) => ({
+      ...PARA_RESERVAR,
+      id: `p${n}`,
+    }))
+    const api = pedidosSimulados({ pedidos: muchos })
+    const primera = await api.listar({ estado: 'borrador' })
+    expect(primera.items).toHaveLength(50)
+    expect(primera.siguiente).not.toBeNull()
+    const segunda = await api.listar(
+      { estado: 'borrador' },
+      primera.siguiente ?? undefined,
+    )
+    expect(segunda.items.map((p) => p.id)).toEqual(
+      Array.from({ length: 10 }, (_, n) => `p${50 + n}`),
+    )
+    expect(segunda.siguiente).toBeNull()
   })
 })

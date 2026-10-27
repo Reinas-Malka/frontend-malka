@@ -52,6 +52,12 @@ export const rutas: RouteObject[] = [
           { path: 'produccion/materiales', lazy: catalogo('MaterialesPage') },
           { path: 'ventas/clientes', lazy: catalogo('ClientesPage') },
           {
+            path: 'ventas/pedidos',
+            lazy: async () => ({
+              Component: (await import('@/pages/PedidosPage')).default,
+            }),
+          },
+          {
             path: 'ventas/items-vendibles',
             lazy: catalogo('ItemsVendiblesPage'),
           },
