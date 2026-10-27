@@ -64,8 +64,10 @@ async function enlacesDelMenu(): Promise<string[]> {
 const MENU_POR_ROL: Record<Rol, string[]> = {
   admin: [
     'Estado del sistema',
+    'Tandas',
     'Razas',
     'Parques',
+    'Núcleos',
     'Bancos',
     'Materiales',
     'Clientes',
@@ -76,8 +78,10 @@ const MENU_POR_ROL: Record<Rol, string[]> = {
   ],
   produccion: [
     'Estado del sistema',
+    'Tandas',
     'Razas',
     'Parques',
+    'Núcleos',
     'Bancos',
     'Materiales',
     'Ítems vendibles',
@@ -91,8 +95,10 @@ const MENU_POR_ROL: Record<Rol, string[]> = {
   ],
   lectura: [
     'Estado del sistema',
+    'Tandas',
     'Razas',
     'Parques',
+    'Núcleos',
     'Bancos',
     'Materiales',
     'Clientes',
