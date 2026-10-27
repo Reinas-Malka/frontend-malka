@@ -1,9 +1,24 @@
 /** Catálogos de producción (backend #30). Cada uno es solo configuración:
  *  la pantalla es components/catalogo/PaginaCatalogo. */
+import { Link } from 'react-router'
 import type { components } from '@/api/esquema'
-import { bancos, madres, materiales, parques, razas } from '@/api/recursos'
+import {
+  bancos,
+  madres,
+  materiales,
+  nucleos,
+  parques,
+  razas,
+} from '@/api/recursos'
 import type { ConfigCatalogo } from '@/components/catalogo/PaginaCatalogo'
-import type { Banco, Madre, Material, Parque, Raza } from '@/tipos/dominio'
+import type {
+  Banco,
+  Madre,
+  Material,
+  Nucleo,
+  Parque,
+  Raza,
+} from '@/tipos/dominio'
 
 type Esquemas = components['schemas']
 
@@ -246,6 +261,15 @@ export const catalogoMateriales: ConfigCatalogo<
     {
       clave: 'nombre',
       titulo: 'Nombre',
+      // Lleva a sus movimientos: compras, consumos y ajustes.
+      render: (m) => (
+        <Link
+          to={`/produccion/materiales/${m.id}`}
+          className="font-medium text-miel-300 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-acento"
+        >
+          {m.nombre}
+        </Link>
+      ),
       orden: (a, b) => a.nombre.localeCompare(b.nombre),
     },
     {
@@ -271,4 +295,97 @@ export const catalogoMateriales: ConfigCatalogo<
   aActualizar: (v) => ({ nombre: v.nombre.trim(), unidad: v.unidad.trim() }),
   reactivacion: { activo: true },
   rolesEscritura: ['admin', 'produccion'],
+}
+
+// Tope de fila y posición de app/schemas/produccion.py (MAXIMO_UBICACION).
+const MAX_UBICACION = 1000
+
+/** Núcleos (baby nucs) de los parques (backend #29). La configuración se arma
+ *  con los parques ya cargados, para el selector. Un núcleo es un baby nuc
+ *  (dominio, 23/10): la introducción reparte entre los activos del parque. */
+export function catalogoNucleos(
+  listaDeParques: readonly Parque[],
+): ConfigCatalogo<
+  Nucleo,
+  Esquemas['NucleoCrear'],
+  Esquemas['NucleoActualizar']
+> {
+  const nombreDeParque = (id: string) =>
+    listaDeParques.find((p) => p.id === id)?.nombre ?? 'Parque dado de baja'
+  const ubicacion = (n: Nucleo) =>
+    `${nombreDeParque(n.parque_id)} · fila ${n.fila}, posición ${n.posicion}`
+  return {
+    clave: 'nucleos',
+    titulo: 'Núcleos',
+    descripcion:
+      'Los baby nucs de cada parque, por fila y posición. Al introducir celdas, el sistema reparte entre los activos.',
+    singular: 'núcleo',
+    recurso: nucleos,
+    columnas: [
+      {
+        clave: 'parque_id',
+        titulo: 'Parque',
+        render: (n) => nombreDeParque(n.parque_id),
+        orden: (a, b) =>
+          nombreDeParque(a.parque_id).localeCompare(
+            nombreDeParque(b.parque_id),
+          ),
+      },
+      {
+        clave: 'fila',
+        titulo: 'Fila',
+        orden: (a, b) => a.fila - b.fila || a.posicion - b.posicion,
+      },
+      { clave: 'posicion', titulo: 'Posición' },
+    ],
+    campos: [
+      {
+        nombre: 'parque_id',
+        etiqueta: 'Parque',
+        tipo: 'seleccion',
+        requerido: true,
+        opciones: () =>
+          listaDeParques
+            .filter((p) => p.activo)
+            .map((p) => ({ valor: p.id, etiqueta: p.nombre })),
+        // El parque se elige al crear: el backend no deja cambiarlo.
+        visible: (v) => v.modo !== 'edicion',
+      },
+      {
+        nombre: 'fila',
+        etiqueta: 'Fila',
+        tipo: 'numero',
+        requerido: true,
+        min: 1,
+        max: MAX_UBICACION,
+      },
+      {
+        nombre: 'posicion',
+        etiqueta: 'Posición',
+        tipo: 'numero',
+        requerido: true,
+        min: 1,
+        max: MAX_UBICACION,
+      },
+    ],
+    nombreDeFila: ubicacion,
+    textoDeBusqueda: ubicacion,
+    valoresDeFila: (n) => ({
+      modo: 'edicion',
+      parque_id: n.parque_id,
+      fila: String(n.fila),
+      posicion: String(n.posicion),
+    }),
+    aCrear: (v) => ({
+      parque_id: v.parque_id,
+      fila: Number(v.fila),
+      posicion: Number(v.posicion),
+    }),
+    aActualizar: (v) => ({
+      fila: Number(v.fila),
+      posicion: Number(v.posicion),
+    }),
+    reactivacion: { activo: true },
+    rolesEscritura: ['admin', 'produccion'],
+  }
 }

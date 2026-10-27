@@ -36,7 +36,25 @@ export const rutas: RouteObject[] = [
           { path: 'produccion/razas', lazy: catalogo('RazasPage') },
           { path: 'produccion/madres', lazy: catalogo('MadresPage') },
           { path: 'produccion/parques', lazy: catalogo('ParquesPage') },
+          {
+            path: 'produccion/nucleos',
+            lazy: async () => ({
+              Component: (await import('@/pages/NucleosPage')).default,
+            }),
+          },
           { path: 'produccion/bancos', lazy: catalogo('BancosPage') },
+          {
+            path: 'produccion/tandas',
+            lazy: async () => ({
+              Component: (await import('@/pages/TandasPage')).default,
+            }),
+          },
+          {
+            path: 'produccion/materiales/:id',
+            lazy: async () => ({
+              Component: (await import('@/pages/MaterialPage')).default,
+            }),
+          },
           { path: 'produccion/materiales', lazy: catalogo('MaterialesPage') },
           { path: 'ventas/clientes', lazy: catalogo('ClientesPage') },
           {

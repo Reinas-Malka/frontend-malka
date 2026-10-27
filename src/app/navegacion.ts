@@ -1,6 +1,8 @@
 import {
   Dna,
   Gauge,
+  Grid3x3,
+  Layers,
   Package,
   Palette,
   Plane,
@@ -59,8 +61,10 @@ export const NAVEGACION: Grupo[] = [
   {
     titulo: 'Producción',
     enlaces: [
+      { a: '/produccion/tandas', texto: 'Tandas', icono: Layers },
       { a: '/produccion/razas', texto: 'Razas', icono: Dna },
       { a: '/produccion/parques', texto: 'Parques', icono: Trees },
+      { a: '/produccion/nucleos', texto: 'Núcleos', icono: Grid3x3 },
       { a: '/produccion/bancos', texto: 'Bancos', icono: Warehouse },
       { a: '/produccion/materiales', texto: 'Materiales', icono: Package },
     ],

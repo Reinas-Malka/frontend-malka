@@ -4,7 +4,7 @@
  *  Las entidades que YA tienen endpoint son alias de src/api/esquema.d.ts,
  *  generado del OpenAPI del backend (npm run contrato:tipos): si el backend
  *  cambia un campo, el build lo marca. Las que todavía no tienen endpoint
- *  (tanda, celda, comprobante) se escriben a mano desde dominio.md. */
+ *  (celda, comprobante) se escriben a mano desde dominio.md. */
 import type { components } from '@/api/esquema'
 
 type Esquemas = components['schemas']
@@ -34,17 +34,17 @@ export type Nucleo = Esquemas['NucleoRespuesta']
 /** Banco: reinas enjauladas listas para despacho (dominio del 16/10). */
 export type Banco = Esquemas['BancoRespuesta']
 
-export type Tanda = {
-  id: string
-  tenant_id: string
-  fecha_traslarve: string // ISO date — ancla del eje A (D0)
-  madre_id: string | null // madres fuera de alcance (16/10): opcional
-  raza_id: string
-  retroactivo: boolean
-  // Ubicación en la continuadora los primeros 10 días: las dos o ninguna.
-  fila_continuadora: number | null
-  posicion_continuadora: number | null
-}
+/** Tanda (backend #27): la identifica la raza y la madre es opcional
+ *  (dominio del 16/10). Trae sus celdas contadas al leer: el total y
+ *  cuántas hay en cada estado, nunca una columna. */
+export type Tanda = Esquemas['TandaRespuesta']
+
+/** POST /api/v1/tandas: cuadros (1, 2 o 3), nunca un número de cúpulas. */
+export type TandaCrear = Esquemas['TandaCrear']
+
+/** Respuesta del alta: la tanda, el consumo de cúpulas, el stock que queda
+ *  y la advertencia stock_negativo si quedó bajo cero (no bloquea). */
+export type TandaCreada = Esquemas['TandaCreada']
 
 export type Celda = {
   id: string
@@ -129,6 +129,8 @@ export type EmbarqueActualizar = Esquemas['EmbarqueActualizar']
 export type DocumentoEmbarque = Esquemas['DocumentoRespuesta']
 export type DocumentoCrear = Esquemas['DocumentoCrear']
 export type Completitud = Esquemas['CompletitudRespuesta']
+/** URL prefirmada para bajar un documento (backend #102). */
+export type DescargaPreparada = Esquemas['DescargaPreparada']
 
 /** Los 6 documentos de un envío, en el orden de docs/dominio.md (el mismo
  *  que devuelve el backend). Completitud = los 6 presentes: la demo del 30/11. */
