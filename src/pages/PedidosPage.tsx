@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { describirError } from '@/api/client'
 import { pedidos } from '@/api/pedidos'
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
@@ -20,6 +20,7 @@ import {
   CLAVE_CLIENTES_CON_BAJAS,
   CLAVE_PEDIDOS,
   TODOS,
+  type DesdeElListado,
   clientesConBajas,
   leerFiltros,
   resumenDeLineas,
@@ -30,13 +31,22 @@ import {
   type Pedido,
 } from '@/tipos/dominio'
 
-function columnas(nombreDe: (id: string) => string): Columna<Pedido>[] {
+function columnas(
+  nombreDe: (id: string) => string,
+  desde: DesdeElListado,
+): Columna<Pedido>[] {
   return [
     {
       clave: 'cliente_id',
       titulo: 'Cliente',
       render: (p) => (
-        <span className="font-medium text-texto">{nombreDe(p.cliente_id)}</span>
+        <Link
+          to={`/ventas/pedidos/${p.id}`}
+          state={desde}
+          className="font-medium text-miel-300 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-acento"
+        >
+          {nombreDe(p.cliente_id)}
+        </Link>
       ),
       orden: (a, b) =>
         nombreDe(a.cliente_id).localeCompare(nombreDe(b.cliente_id)),
@@ -167,7 +177,10 @@ export default function PedidosPage() {
       ) : (
         <div className="space-y-3">
           <DataTable
-            columnas={columnas(nombreDe)}
+            // El detalle recibe los filtros para volver a esta misma vista.
+            columnas={columnas(nombreDe, {
+              filtros: params.size ? `?${params}` : undefined,
+            })}
             filas={filas}
             // Una sola página en pantalla: las siguientes llegan con "Cargar más".
             porPagina={Math.max(filas.length, 1)}

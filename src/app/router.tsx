@@ -58,6 +58,12 @@ export const rutas: RouteObject[] = [
             }),
           },
           {
+            path: 'ventas/pedidos/:id',
+            lazy: async () => ({
+              Component: (await import('@/pages/PedidoPage')).default,
+            }),
+          },
+          {
             path: 'ventas/items-vendibles',
             lazy: catalogo('ItemsVendiblesPage'),
           },

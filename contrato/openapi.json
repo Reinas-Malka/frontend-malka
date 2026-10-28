@@ -105,6 +105,31 @@
     "title": "BancoCrear",
     "type": "object"
    },
+   "BancoDeTanda": {
+    "description": "Un banco con reinas cosechadas de la tanda.",
+    "properties": {
+     "banco_id": {
+      "format": "uuid",
+      "title": "Banco Id",
+      "type": "string"
+     },
+     "identificador": {
+      "title": "Identificador",
+      "type": "string"
+     },
+     "reinas": {
+      "title": "Reinas",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "banco_id",
+     "identificador",
+     "reinas"
+    ],
+    "title": "BancoDeTanda",
+    "type": "object"
+   },
    "BancoRespuesta": {
     "properties": {
      "activo": {
@@ -376,6 +401,57 @@
      "expira_en_segundos"
     ],
     "title": "DescargaPreparada",
+    "type": "object"
+   },
+   "DespachoDeLinea": {
+    "description": "Respuesta de GET /api/v1/pedidos/{id}/despachos: lo que salio.\n\nCuantas reinas de una linea salieron de un banco y que dia, contadas\ndesde las celdas despachadas (migracion 0013). Es la misma forma que la\nSalidaDeBanco del cuerpo de entregar, con el identificador del banco\npara mostrarlo sin otro request.",
+    "properties": {
+     "banco_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Banco Id"
+     },
+     "cantidad": {
+      "title": "Cantidad",
+      "type": "integer"
+     },
+     "fecha_despacho": {
+      "format": "date",
+      "title": "Fecha Despacho",
+      "type": "string"
+     },
+     "identificador": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Identificador"
+     },
+     "pedido_item_id": {
+      "format": "uuid",
+      "title": "Pedido Item Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "pedido_item_id",
+     "banco_id",
+     "identificador",
+     "fecha_despacho",
+     "cantidad"
+    ],
+    "title": "DespachoDeLinea",
     "type": "object"
    },
    "Disponibilidad": {
@@ -1357,6 +1433,42 @@
      "posicion"
     ],
     "title": "NucleoCrear",
+    "type": "object"
+   },
+   "NucleoDeTanda": {
+    "description": "Un nucleo con celdas de la tanda que siguen en el parque.",
+    "properties": {
+     "celdas": {
+      "title": "Celdas",
+      "type": "integer"
+     },
+     "fila": {
+      "title": "Fila",
+      "type": "integer"
+     },
+     "nucleo_id": {
+      "format": "uuid",
+      "title": "Nucleo Id",
+      "type": "string"
+     },
+     "parque_id": {
+      "format": "uuid",
+      "title": "Parque Id",
+      "type": "string"
+     },
+     "posicion": {
+      "title": "Posicion",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "nucleo_id",
+     "parque_id",
+     "fila",
+     "posicion",
+     "celdas"
+    ],
+    "title": "NucleoDeTanda",
     "type": "object"
    },
    "NucleoGuardado": {
@@ -2763,6 +2875,104 @@
      "cuadros"
     ],
     "title": "TandaCrear",
+    "type": "object"
+   },
+   "TandaDetalle": {
+    "description": "GET de una tanda: ademas de las celdas por estado, donde estan.\n\nSolo el detalle: el listado sigue con TandaRespuesta. Los nucleos son los\nque tienen celdas de la tanda en el parque; despues de la cosecha quedan\nlibres y la lista viene vacia. Las cosechadas sin banco son\nceldas_por_estado[\"enjaulada\"] menos la suma de bancos.",
+    "properties": {
+     "bancos": {
+      "items": {
+       "$ref": "#/components/schemas/BancoDeTanda"
+      },
+      "title": "Bancos",
+      "type": "array"
+     },
+     "celdas": {
+      "title": "Celdas",
+      "type": "integer"
+     },
+     "celdas_por_estado": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Celdas Por Estado",
+      "type": "object"
+     },
+     "fecha_traslarve": {
+      "format": "date",
+      "title": "Fecha Traslarve",
+      "type": "string"
+     },
+     "fila_continuadora": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fila Continuadora"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "madre_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Madre Id"
+     },
+     "nucleos": {
+      "items": {
+       "$ref": "#/components/schemas/NucleoDeTanda"
+      },
+      "title": "Nucleos",
+      "type": "array"
+     },
+     "posicion_continuadora": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Posicion Continuadora"
+     },
+     "raza_id": {
+      "format": "uuid",
+      "title": "Raza Id",
+      "type": "string"
+     },
+     "retroactivo": {
+      "title": "Retroactivo",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "id",
+     "raza_id",
+     "madre_id",
+     "fecha_traslarve",
+     "retroactivo",
+     "fila_continuadora",
+     "posicion_continuadora",
+     "celdas",
+     "celdas_por_estado",
+     "nucleos",
+     "bancos"
+    ],
+    "title": "TandaDetalle",
     "type": "object"
    },
    "TandaRespuesta": {
@@ -5927,6 +6137,58 @@
     ]
    }
   },
+  "/api/v1/pedidos/{pedido_id}/despachos": {
+   "get": {
+    "operationId": "listar_despachos_pedido_api_v1_pedidos__pedido_id__despachos_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "pedido_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Pedido Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/DespachoDeLinea"
+         },
+         "title": "Response Listar Despachos Pedido Api V1 Pedidos  Pedido Id  Despachos Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Listar Despachos Pedido",
+    "tags": [
+     "pedidos"
+    ]
+   }
+  },
   "/api/v1/pedidos/{pedido_id}/estado": {
    "post": {
     "operationId": "cambiar_estado_pedido_api_v1_pedidos__pedido_id__estado_post",
@@ -6019,6 +6281,56 @@
    }
   },
   "/api/v1/pedidos/{pedido_id}/reservas": {
+   "get": {
+    "operationId": "listar_reservas_pedido_api_v1_pedidos__pedido_id__reservas_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "pedido_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Pedido Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ReservaRespuesta"
+         },
+         "title": "Response Listar Reservas Pedido Api V1 Pedidos  Pedido Id  Reservas Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Listar Reservas Pedido",
+    "tags": [
+     "pedidos"
+    ]
+   },
    "post": {
     "operationId": "reservar_pedido_api_v1_pedidos__pedido_id__reservas_post",
     "parameters": [
@@ -6546,6 +6858,7 @@
   },
   "/api/v1/tandas/{tanda_id}": {
    "get": {
+    "description": "La tanda con sus celdas por estado, sus nucleos ocupados y sus bancos.",
     "operationId": "obtener_tanda_api_v1_tandas__tanda_id__get",
     "parameters": [
      {
@@ -6564,7 +6877,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/TandaRespuesta"
+         "$ref": "#/components/schemas/TandaDetalle"
         }
        }
       },
