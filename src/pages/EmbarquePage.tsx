@@ -14,13 +14,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorDePantalla } from '@/components/ui/estados'
 import { Modal, ModalContenido } from '@/components/ui/modal'
+import { nombreDePais } from '@/lib/paises'
 import { CargaDeDocumento } from '@/modulos/exportacion/CargaDeDocumento'
 import {
   CAMPOS_EDICION,
   CLAVE_EMBARQUES,
   ROLES_EXPORTACION,
   aEmbarqueActualizar,
-  nombreDePais,
   valoresDeEmbarque,
 } from '@/modulos/exportacion/embarques'
 import { EstadoDeEmbarque } from '@/modulos/exportacion/insignias'

@@ -22,6 +22,9 @@ export type Campo = {
   /** Campos condicionales: p. ej. la condición de IVA según el tipo de cliente. */
   visible?: (valores: Valores) => boolean
   validar?: (valor: string, valores: Valores) => string | null
+  /** Códigos de error del backend que se muestran debajo de este campo y no
+   *  arriba del formulario: p. ej. el 409 cliente_con_pedidos va en el tipo. */
+  codigosDeError?: readonly string[]
 }
 
 export type Errores = Record<string, string>
@@ -78,14 +81,19 @@ export function validarValores(
 type CampoDelBackend = { campo?: unknown; mensaje?: unknown }
 
 /** Un 422 del backend trae details.campos = [{ campo: "body.nombre", mensaje }].
- *  Se asigna cada mensaje al campo del formulario por su último segmento. */
+ *  Se asigna cada mensaje al campo del formulario por su último segmento.
+ *  Un error con un código que un campo declara en codigosDeError (un 409 de
+ *  negocio, sin details.campos) va entero a ese campo. */
 export function erroresDelBackend(
   error: unknown,
   campos: readonly Campo[],
 ): Errores {
-  if (!esApiError(error) || !Array.isArray(error.detalles.campos)) return {}
-  const nombres = new Set(campos.map((c) => c.nombre))
+  if (!esApiError(error)) return {}
   const errores: Errores = {}
+  const delCodigo = campos.find((c) => c.codigosDeError?.includes(error.codigo))
+  if (delCodigo) errores[delCodigo.nombre] = error.mensaje
+  if (!Array.isArray(error.detalles.campos)) return errores
+  const nombres = new Set(campos.map((c) => c.nombre))
   for (const item of error.detalles.campos as CampoDelBackend[]) {
     const nombre =
       String(item.campo ?? '')

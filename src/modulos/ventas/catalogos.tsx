@@ -5,6 +5,7 @@ import type { Opcion, Valores } from '@/components/catalogo/campos'
 import type { ConfigCatalogo } from '@/components/catalogo/PaginaCatalogo'
 import { Badge } from '@/components/ui/badge'
 import { esCuitValido, normalizarCuit } from '@/lib/cuit'
+import { PAISES_EXTRANJEROS, PAIS_LOCAL, nombreDePais } from '@/lib/paises'
 import type {
   Alicuota,
   Cliente,
@@ -83,6 +84,11 @@ const CONDICIONES_NACIONALES: Opcion[] = [
   { valor: 'consumidor_final', etiqueta: 'Consumidor final (Factura B)' },
 ]
 
+const PAISES: Opcion[] = PAISES_EXTRANJEROS.map((p) => ({
+  valor: p.codigo,
+  etiqueta: p.nombre,
+}))
+
 const esExportacion = (v: Valores) => v.tipo === 'exportacion'
 
 /** Las reglas de ClienteCrear.validar_segun_tipo, del lado del formulario:
@@ -92,7 +98,7 @@ function aClienteCrear(v: Valores): Esquemas['ClienteCrear'] {
   return {
     nombre: v.nombre.trim(),
     tipo: exportacion ? 'exportacion' : 'nacional',
-    pais: exportacion ? v.pais.trim().toUpperCase() : 'AR',
+    pais: exportacion ? v.pais : PAIS_LOCAL,
     condicion_iva: (exportacion
       ? 'cliente_exterior'
       : v.condicion_iva) as CondicionIva,
@@ -130,7 +136,9 @@ export const catalogoClientes: ConfigCatalogo<
       titulo: 'Tipo',
       render: (c) => (
         <Badge tono={c.tipo === 'exportacion' ? 'miel' : 'neutro'}>
-          {c.tipo === 'exportacion' ? `Exportación · ${c.pais}` : 'Nacional'}
+          {c.tipo === 'exportacion'
+            ? `Exportación · ${nombreDePais(c.pais)}`
+            : 'Nacional'}
         </Badge>
       ),
     },
@@ -153,6 +161,9 @@ export const catalogoClientes: ConfigCatalogo<
       etiqueta: 'Tipo de cliente',
       tipo: 'seleccion',
       requerido: true,
+      ayuda: 'Si el cliente ya tiene pedidos, no puede cambiar de tipo.',
+      // El 409 del backend se muestra acá, no arriba del formulario.
+      codigosDeError: ['cliente_con_pedidos'],
       opciones: () => [
         { valor: 'nacional', etiqueta: 'Nacional' },
         { valor: 'exportacion', etiqueta: 'Exportación' },
@@ -160,18 +171,13 @@ export const catalogoClientes: ConfigCatalogo<
     },
     {
       nombre: 'pais',
-      etiqueta: 'País (ISO de 2 letras)',
+      etiqueta: 'País',
+      tipo: 'seleccion',
       requerido: true,
       visible: esExportacion,
-      placeholder: 'DE',
-      validar: (v) => {
-        const pais = v.toUpperCase()
-        if (!/^[A-Z]{2}$/.test(pais))
-          return 'Usá el código de 2 letras: DE, NZ, UY…'
-        return pais === 'AR'
-          ? 'Un cliente de exportación no puede ser de AR.'
-          : null
-      },
+      placeholder: 'Elegí el país',
+      // Las opciones no incluyen AR: no hace falta validarlo aparte.
+      opciones: () => PAISES,
     },
     {
       nombre: 'condicion_iva',
@@ -205,12 +211,14 @@ export const catalogoClientes: ConfigCatalogo<
   nombreDeFila: (c) => c.nombre,
   // El CUIT se guarda sin guiones: se busca en las dos formas.
   textoDeBusqueda: (c) =>
-    `${c.nombre} ${c.cuit_o_tax_id} ${c.cuit_o_tax_id.replace(/^(\d{2})(\d{8})(\d)$/, '$1-$2-$3')} ${c.pais}`,
+    `${c.nombre} ${c.cuit_o_tax_id} ${c.cuit_o_tax_id.replace(/^(\d{2})(\d{8})(\d)$/, '$1-$2-$3')} ${nombreDePais(c.pais)}`,
+  // Lo que no aplica al tipo guardado arranca vacío: si se cambia de tipo,
+  // se elige de nuevo en vez de heredar AR o cliente_exterior.
   valoresDeFila: (c) => ({
     nombre: c.nombre,
     tipo: c.tipo,
-    pais: c.pais,
-    condicion_iva: c.condicion_iva,
+    pais: c.tipo === 'exportacion' ? c.pais : '',
+    condicion_iva: c.tipo === 'nacional' ? c.condicion_iva : '',
     cuit_o_tax_id: c.cuit_o_tax_id,
   }),
   aCrear: aClienteCrear,

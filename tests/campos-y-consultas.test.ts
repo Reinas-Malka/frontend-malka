@@ -26,6 +26,7 @@ const CAMPOS: Campo[] = [
     nombre: 'tipo',
     etiqueta: 'Tipo',
     tipo: 'seleccion',
+    codigosDeError: ['cliente_con_pedidos'],
     opciones: () => [
       { valor: 'nacional', etiqueta: 'Nacional' },
       { valor: 'exportacion', etiqueta: 'Exportación' },
@@ -95,6 +96,18 @@ describe('erroresDelBackend', () => {
       ),
     ).toEqual({})
     expect(erroresDelBackend(new Error('otro'), CAMPOS)).toEqual({})
+  })
+
+  it('un código declarado en codigosDeError va a ese campo', () => {
+    const error = new ApiError({
+      status: 409,
+      codigo: 'cliente_con_pedidos',
+      mensaje: 'El cliente tiene pedidos: no puede cambiar de tipo.',
+    })
+
+    expect(erroresDelBackend(error, CAMPOS)).toEqual({
+      tipo: 'El cliente tiene pedidos: no puede cambiar de tipo.',
+    })
   })
 })
 

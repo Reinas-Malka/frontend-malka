@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { elegirCliente, usaDatosSimulados } from '../src/datos/cliente'
 import { DATOS_SIMULADOS } from '../src/datos/simulados'
 import { normalizarAwb } from '../src/lib/awb'
+import { esCuitValido } from '../src/lib/cuit'
 import { CONDICIONES_IVA } from '../src/tipos/dominio'
 
 describe('elección del cliente de datos', () => {
@@ -47,6 +48,22 @@ describe('datos simulados con el contrato del backend', () => {
     expect(exportacion.length).toBeGreaterThan(0)
     for (const c of exportacion)
       expect(c.tipo_documento_por_defecto).toBe('factura_e')
+  })
+
+  it('los clientes nacionales son de AR, con CUIT válido y sin guiones', () => {
+    const nacionales = DATOS_SIMULADOS.clientes.filter(
+      (c) => c.tipo === 'nacional',
+    )
+    expect(nacionales.length).toBeGreaterThan(0)
+    for (const c of nacionales) {
+      expect(c.pais).toBe('AR')
+      expect(c.cuit_o_tax_id).toMatch(/^\d{11}$/)
+      expect(esCuitValido(c.cuit_o_tax_id)).toBe(true)
+    }
+  })
+
+  it('hay un cliente dado de baja para mostrar la reactivación', () => {
+    expect(DATOS_SIMULADOS.clientes.some((c) => !c.activo)).toBe(true)
   })
 
   it('el destino del embarque es un código ISO alfa-2', () => {

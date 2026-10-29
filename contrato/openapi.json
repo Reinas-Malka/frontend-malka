@@ -139,6 +139,22 @@
     "title": "BancoRespuesta",
     "type": "object"
    },
+   "Cancelar": {
+    "additionalProperties": false,
+    "description": "Pasa un pedido en borrador o reservado a cancelado. Sin mas datos.",
+    "properties": {
+     "estado": {
+      "const": "cancelado",
+      "title": "Estado",
+      "type": "string"
+     }
+    },
+    "required": [
+     "estado"
+    ],
+    "title": "Cancelar",
+    "type": "object"
+   },
    "ClienteActualizar": {
     "additionalProperties": false,
     "description": "Cuerpo de PATCH /api/v1/clientes/{id}: solo los campos que cambian.\n\nLas reglas no se repiten aca: el repositorio aplica los cambios sobre el\ncliente guardado y valida el resultado completo con ClienteCrear.",
@@ -631,6 +647,44 @@
     "title": "EmbarqueRespuesta",
     "type": "object"
    },
+   "Entregar": {
+    "additionalProperties": false,
+    "description": "Pasa un pedido reservado a entregado, eligiendo los bancos por linea.\n\nQue esten todas las lineas y con la cantidad reservada lo revisa el\nrepositorio con validar_despacho: aca no se conocen las reservas.",
+    "properties": {
+     "estado": {
+      "const": "entregado",
+      "title": "Estado",
+      "type": "string"
+     },
+     "fecha": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha"
+     },
+     "lineas": {
+      "items": {
+       "$ref": "#/components/schemas/LineaDespacho"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "Lineas",
+      "type": "array"
+     }
+    },
+    "required": [
+     "estado",
+     "lineas"
+    ],
+    "title": "Entregar",
+    "type": "object"
+   },
    "EstadoEmbarque": {
     "enum": [
      "en_preparacion",
@@ -828,6 +882,32 @@
      "activo"
     ],
     "title": "ItemVendibleRespuesta",
+    "type": "object"
+   },
+   "LineaDespacho": {
+    "additionalProperties": false,
+    "description": "Una linea del pedido y de que bancos salen sus reinas.",
+    "properties": {
+     "bancos": {
+      "items": {
+       "$ref": "#/components/schemas/SalidaDeBanco"
+      },
+      "maxItems": 50,
+      "minItems": 1,
+      "title": "Bancos",
+      "type": "array"
+     },
+     "pedido_item_id": {
+      "format": "uuid",
+      "title": "Pedido Item Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "pedido_item_id",
+     "bancos"
+    ],
+    "title": "LineaDespacho",
     "type": "object"
    },
    "MadreActualizar": {
@@ -1358,6 +1438,175 @@
     "title": "NucleoRespuesta",
     "type": "object"
    },
+   "OperacionCosechar": {
+    "additionalProperties": false,
+    "description": "Cosechar la tanda: una sola vez, en un dia.\n\ncantidad son las reinas cosechadas; el resto de las celdas del parque\npasa solo a descartada. Puede ser 0 (se perdio todo).",
+    "properties": {
+     "accion": {
+      "const": "cosechar",
+      "title": "Accion",
+      "type": "string"
+     },
+     "cantidad": {
+      "maximum": 10000.0,
+      "minimum": 0.0,
+      "title": "Cantidad",
+      "type": "integer"
+     },
+     "fecha": {
+      "format": "date",
+      "title": "Fecha",
+      "type": "string"
+     }
+    },
+    "required": [
+     "fecha",
+     "accion",
+     "cantidad"
+    ],
+    "title": "OperacionCosechar",
+    "type": "object"
+   },
+   "OperacionDescartar": {
+    "additionalProperties": false,
+    "description": "Descartar celdas que todavia no se introdujeron (quedan sin nucleo).",
+    "properties": {
+     "accion": {
+      "const": "descartar",
+      "title": "Accion",
+      "type": "string"
+     },
+     "cantidad": {
+      "maximum": 10000.0,
+      "minimum": 1.0,
+      "title": "Cantidad",
+      "type": "integer"
+     },
+     "fecha": {
+      "format": "date",
+      "title": "Fecha",
+      "type": "string"
+     }
+    },
+    "required": [
+     "fecha",
+     "accion",
+     "cantidad"
+    ],
+    "title": "OperacionDescartar",
+    "type": "object"
+   },
+   "OperacionIntroducir": {
+    "additionalProperties": false,
+    "description": "Introducir en un parque: el sistema elige los nucleos, nunca el usuario.",
+    "properties": {
+     "accion": {
+      "const": "introducir",
+      "title": "Accion",
+      "type": "string"
+     },
+     "cantidad": {
+      "maximum": 10000.0,
+      "minimum": 1.0,
+      "title": "Cantidad",
+      "type": "integer"
+     },
+     "fecha": {
+      "format": "date",
+      "title": "Fecha",
+      "type": "string"
+     },
+     "parque_id": {
+      "format": "uuid",
+      "title": "Parque Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "fecha",
+     "accion",
+     "cantidad",
+     "parque_id"
+    ],
+    "title": "OperacionIntroducir",
+    "type": "object"
+   },
+   "OperacionPasarABanco": {
+    "additionalProperties": false,
+    "description": "Pasar reinas enjauladas que todavia no estan en un banco.",
+    "properties": {
+     "accion": {
+      "const": "pasar_a_banco",
+      "title": "Accion",
+      "type": "string"
+     },
+     "banco_id": {
+      "format": "uuid",
+      "title": "Banco Id",
+      "type": "string"
+     },
+     "cantidad": {
+      "maximum": 10000.0,
+      "minimum": 1.0,
+      "title": "Cantidad",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "accion",
+     "cantidad",
+     "banco_id"
+    ],
+    "title": "OperacionPasarABanco",
+    "type": "object"
+   },
+   "OperacionRealizada": {
+    "properties": {
+     "accion": {
+      "title": "Accion",
+      "type": "string"
+     },
+     "cantidad": {
+      "title": "Cantidad",
+      "type": "integer"
+     },
+     "descartadas_en_cosecha": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Descartadas En Cosecha"
+     },
+     "reparto": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/RepartoNucleo"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reparto"
+     },
+     "tanda": {
+      "$ref": "#/components/schemas/TandaRespuesta"
+     }
+    },
+    "required": [
+     "accion",
+     "cantidad",
+     "tanda"
+    ],
+    "title": "OperacionRealizada",
+    "type": "object"
+   },
    "Pagina_BancoRespuesta_": {
     "properties": {
      "items": {
@@ -1383,6 +1632,33 @@
      "items"
     ],
     "title": "Pagina[BancoRespuesta]",
+    "type": "object"
+   },
+   "Pagina_ClienteRespuesta_": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/ClienteRespuesta"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "siguiente": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Siguiente"
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "title": "Pagina[ClienteRespuesta]",
     "type": "object"
    },
    "Pagina_DocumentoRespuesta_": {
@@ -1810,7 +2086,7 @@
    },
    "PedidoCrear": {
     "additionalProperties": false,
-    "description": "Cuerpo de POST /api/v1/pedidos.\n\nSin estado: el alta crea siempre en borrador y las transiciones son de\n#36. Sin tenant_id: lo completa PostgreSQL (ADR 0009). extra=\"forbid\"\nrechaza cualquiera de los dos si llegan.",
+    "description": "Cuerpo de POST /api/v1/pedidos.\n\nSin estado: el alta crea siempre en borrador y el estado cambia con\n/reservas (#35) y /estado (#36). Sin tenant_id: lo completa PostgreSQL\n(ADR 0009). extra=\"forbid\"\nrechaza cualquiera de los dos si llegan.",
     "properties": {
      "cliente_id": {
       "format": "uuid",
@@ -2163,6 +2439,36 @@
     "title": "RazaRespuesta",
     "type": "object"
    },
+   "RepartoNucleo": {
+    "description": "Cuantas celdas fueron a un nucleo en esta introduccion.",
+    "properties": {
+     "celdas": {
+      "title": "Celdas",
+      "type": "integer"
+     },
+     "fila": {
+      "title": "Fila",
+      "type": "integer"
+     },
+     "nucleo_id": {
+      "format": "uuid",
+      "title": "Nucleo Id",
+      "type": "string"
+     },
+     "posicion": {
+      "title": "Posicion",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "nucleo_id",
+     "fila",
+     "posicion",
+     "celdas"
+    ],
+    "title": "RepartoNucleo",
+    "type": "object"
+   },
    "ReservaRespuesta": {
     "properties": {
      "cantidad": {
@@ -2196,6 +2502,36 @@
      "estado"
     ],
     "title": "ReservaRespuesta",
+    "type": "object"
+   },
+   "SalidaDeBanco": {
+    "additionalProperties": false,
+    "description": "De que banco salen reinas para una linea, y cuantas.",
+    "properties": {
+     "banco_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Banco Id"
+     },
+     "cantidad": {
+      "exclusiveMinimum": 0.0,
+      "maximum": 2147483647.0,
+      "title": "Cantidad",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "banco_id",
+     "cantidad"
+    ],
+    "title": "SalidaDeBanco",
     "type": "object"
    },
    "Salud": {
@@ -2889,6 +3225,39 @@
        "title": "Incluir Inactivos",
        "type": "boolean"
       }
+     },
+     {
+      "description": "Cantidad maxima de items (1 a 100).",
+      "in": "query",
+      "name": "limite",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "description": "Cantidad maxima de items (1 a 100).",
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Limite",
+       "type": "integer"
+      }
+     },
+     {
+      "description": "El campo `siguiente` de la pagina anterior.",
+      "in": "query",
+      "name": "cursor",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "maxLength": 500,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "El campo `siguiente` de la pagina anterior.",
+       "title": "Cursor"
+      }
      }
     ],
     "responses": {
@@ -2896,11 +3265,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "items": {
-          "$ref": "#/components/schemas/ClienteRespuesta"
-         },
-         "title": "Response Listar Clientes Api V1 Clientes Get",
-         "type": "array"
+         "$ref": "#/components/schemas/Pagina_ClienteRespuesta_"
         }
        }
       },
@@ -5562,6 +5927,97 @@
     ]
    }
   },
+  "/api/v1/pedidos/{pedido_id}/estado": {
+   "post": {
+    "operationId": "cambiar_estado_pedido_api_v1_pedidos__pedido_id__estado_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "pedido_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Pedido Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "discriminator": {
+         "mapping": {
+          "cancelado": "#/components/schemas/Cancelar",
+          "entregado": "#/components/schemas/Entregar"
+         },
+         "propertyName": "estado"
+        },
+        "oneOf": [
+         {
+          "$ref": "#/components/schemas/Entregar"
+         },
+         {
+          "$ref": "#/components/schemas/Cancelar"
+         }
+        ],
+        "title": "Datos"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PedidoRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Cambiar Estado Pedido",
+    "tags": [
+     "pedidos"
+    ]
+   }
+  },
   "/api/v1/pedidos/{pedido_id}/reservas": {
    "post": {
     "operationId": "reservar_pedido_api_v1_pedidos__pedido_id__reservas_post",
@@ -6131,6 +6587,106 @@
      }
     ],
     "summary": "Obtener Tanda",
+    "tags": [
+     "tandas"
+    ]
+   }
+  },
+  "/api/v1/tandas/{tanda_id}/operaciones": {
+   "post": {
+    "description": "Descartar, introducir, cosechar o pasar a banco, por lote (#28).\n\nEl campo accion elige la operacion. Con Idempotency-Key, un reintento\ndevuelve lo ya hecho y no mueve celdas dos veces (#25).",
+    "operationId": "operar_tanda_api_v1_tandas__tanda_id__operaciones_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "tanda_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Tanda Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "discriminator": {
+         "mapping": {
+          "cosechar": "#/components/schemas/OperacionCosechar",
+          "descartar": "#/components/schemas/OperacionDescartar",
+          "introducir": "#/components/schemas/OperacionIntroducir",
+          "pasar_a_banco": "#/components/schemas/OperacionPasarABanco"
+         },
+         "propertyName": "accion"
+        },
+        "oneOf": [
+         {
+          "$ref": "#/components/schemas/OperacionDescartar"
+         },
+         {
+          "$ref": "#/components/schemas/OperacionIntroducir"
+         },
+         {
+          "$ref": "#/components/schemas/OperacionCosechar"
+         },
+         {
+          "$ref": "#/components/schemas/OperacionPasarABanco"
+         }
+        ],
+        "title": "Datos"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OperacionRealizada"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Operar Tanda",
     "tags": [
      "tandas"
     ]
