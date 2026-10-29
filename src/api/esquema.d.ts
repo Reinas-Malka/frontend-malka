@@ -1606,6 +1606,8 @@ export interface components {
        * Format: uuid
        */
       item_vendible_id: string
+      /** Neto */
+      neto: string
       /** Numero Linea */
       numero_linea: number
       /** Precio Unitario */
@@ -1642,7 +1644,13 @@ export interface components {
       incoterm: components['schemas']['Incoterm'] | null
       /** Items */
       items: components['schemas']['PedidoItemRespuesta'][]
+      /** Iva */
+      iva: string
       moneda: components['schemas']['Moneda']
+      /** Neto */
+      neto: string
+      /** Total */
+      total: string
     }
     /** RazaActualizar */
     RazaActualizar: {

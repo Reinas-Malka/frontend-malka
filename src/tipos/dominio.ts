@@ -122,6 +122,21 @@ export type LineaDespacho = Esquemas['LineaDespacho']
 export type SalidaDeBanco = Esquemas['SalidaDeBanco']
 /** Lo que elige quien despacha: la fecha y los bancos de cada línea. */
 export type Despacho = Omit<Entregar, 'estado'>
+/** Lo que salió para el pedido: por línea, cuántas de cada banco y qué día
+ *  (GET /pedidos/{id}/despachos). */
+export type DespachoDeLinea = Esquemas['DespachoDeLinea']
+
+export const NOMBRE_DE_ESTADO_RESERVA: Record<EstadoReserva, string> = {
+  activa: 'Activa',
+  consumida: 'Consumida',
+  liberada: 'Liberada',
+}
+
+// --- disponibilidad de reinas por raza (backend #33, ADR 0014) ---
+export type DisponibilidadReinas = Esquemas['DisponibilidadReinas']
+/** Dónde están las enjauladas de una raza. banco_id null: todavía no
+ *  pasaron a ningún banco. Es ubicación, no "disponible por banco". */
+export type ExistenciaEnBanco = Esquemas['ExistenciaEnBanco']
 
 export const ESTADOS_PEDIDO = [
   'borrador',

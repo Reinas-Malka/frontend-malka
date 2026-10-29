@@ -5,8 +5,12 @@
 import { ApiError, esApiError, request } from '@/api/client'
 import type { Pagina } from '@/api/recurso'
 import { clientes, itemsVendibles, razas } from '@/api/recursos'
+import type { ApiDisponibilidad } from '@/api/disponibilidad'
 import { usaDatosSimulados } from '@/datos/cliente'
 import { DATOS_SIMULADOS } from '@/datos/simulados'
+import { calcularDisponibilidad } from '@/lib/disponibilidad'
+import { hoyEnArgentina } from '@/lib/fechas'
+import { conTotales } from '@/lib/importes'
 import {
   errorDeDespacho,
   errorDeFormatoDeDespacho,
@@ -19,6 +23,7 @@ import type {
   Celda,
   Cliente,
   Despacho,
+  DespachoDeLinea,
   Entregar,
   EstadoPedido,
   ItemVendible,
@@ -47,6 +52,13 @@ export interface ApiPedidos {
     claveIdempotencia?: string,
   ): Promise<Pedido>
   cancelar(id: string, claveIdempotencia?: string): Promise<Pedido>
+  /** Trazabilidad: las reservas del pedido en cualquier estado (activa,
+   *  consumida o liberada), en el orden de sus líneas. Vacía si nunca se
+   *  reservó. */
+  listarReservas(id: string): Promise<Reserva[]>
+  /** Trazabilidad: por línea, cuántas reinas salieron de cada banco y qué
+   *  día. Vacía hasta que se entrega. */
+  listarDespachos(id: string): Promise<DespachoDeLinea[]>
 }
 
 const RUTA = '/api/v1/pedidos'
@@ -87,6 +99,9 @@ export function pedidosHttp(): ApiPedidos {
       ),
     cancelar: (id, claveIdempotencia) =>
       cambiarEstado(id, { estado: 'cancelado' }, claveIdempotencia),
+    // Listas, no páginas: una fila por línea (y banco) como mucho.
+    listarReservas: (id) => request<Reserva[]>(`${de(id)}/reservas`),
+    listarDespachos: (id) => request<DespachoDeLinea[]>(`${de(id)}/despachos`),
   }
 }
 
@@ -133,7 +148,14 @@ type Semilla = {
   celdas?: readonly Celda[]
   tandas?: readonly Tanda[]
   bancos?: readonly Banco[]
+  razas?: readonly Raza[]
   catalogos?: Catalogos
+}
+
+/** La API simulada más la disponibilidad, que sale de sus mismas celdas y
+ *  reservas: api/disponibilidad.ts la usa con datos simulados. */
+export type PedidosSimulados = ApiPedidos & {
+  disponibilidad: ApiDisponibilidad['listar']
 }
 
 /** En memoria para la demo sin backend. Repite las reglas de los
@@ -146,13 +168,18 @@ export function pedidosSimulados({
   celdas: celdasSemilla = DATOS_SIMULADOS.celdas,
   tandas = DATOS_SIMULADOS.tandas,
   bancos = DATOS_SIMULADOS.bancos,
+  razas: razasDelStock = DATOS_SIMULADOS.razas,
   catalogos = catalogosDe(),
-}: Semilla = {}): ApiPedidos {
+}: Semilla = {}): PedidosSimulados {
   let pedidos = semilla.map((p) => ({ ...p, items: [...p.items] }))
   let reservas = reservasSemilla.map((r) => ({ ...r }))
   let celdas = celdasSemilla.map((c) => ({ ...c }))
   const razaDeTanda = new Map(tandas.map((t) => [t.id, t.raza_id]))
   const bancosExistentes = new Set(bancos.map((b) => b.id))
+  const identificadores = new Map(bancos.map((b) => [b.id, b.identificador]))
+  // Lo que salió en cada entrega: las celdas despachadas, contadas por línea,
+  // banco y día (LISTAR_DESPACHOS del backend).
+  let despachos: DespachoDeLinea[] = []
   const porClave = new Map<string, Pedido>()
 
   const buscar = (id: string): Pedido => {
@@ -210,12 +237,19 @@ export function pedidosSimulados({
       (r) => r.estado === 'activa' && lineas.has(r.pedido_item_id),
     )
   }
+  const numerosDeLinea = (pedido: Pedido) =>
+    new Map(pedido.items.map((l) => [l.id, l.numero_linea]))
   const cerrarReservas = (pedido: Pedido, estado: Reserva['estado']) => {
     const activas = new Set(activasDe(pedido).map((r) => r.id))
     reservas = reservas.map((r) => (activas.has(r.id) ? { ...r, estado } : r))
   }
 
   return {
+    disponibilidad: async (razaId) =>
+      calcularDisponibilidad(
+        { razas: razasDelStock, tandas, celdas, reservas, bancos },
+        razaId,
+      ),
     listar: async ({ estado, cliente_id } = {}, cursor) => {
       // pedidos va del más nuevo al más viejo, como el ORDER BY del backend.
       const filtrados = pedidos.filter(
@@ -274,7 +308,8 @@ export function pedidosSimulados({
             { ids: [...new Set(sinRaza)].sort() },
           )
 
-        const nuevo: Pedido = {
+        // Con el neto de cada línea y los totales, como los calcula el backend.
+        const nuevo = conTotales({
           id: crypto.randomUUID(),
           cliente_id: datos.cliente_id,
           estado: 'borrador',
@@ -292,7 +327,7 @@ export function pedidosSimulados({
             // La alícuota no se recibe: se copia del ítem vendible.
             alicuota: items[n]!.alicuota,
           })),
-        }
+        })
         pedidos = [nuevo, ...pedidos]
         return nuevo
       }),
@@ -392,9 +427,49 @@ export function pedidosSimulados({
         celdas = celdas.map((c) =>
           elegidas.has(c.id) ? { ...c, estado: 'despachada' } : c,
         )
+        const fecha = despacho.fecha ?? hoyEnArgentina()
+        despachos = [
+          ...despachos,
+          ...despacho.lineas.flatMap((l) =>
+            l.bancos.map((b) => ({
+              pedido_item_id: l.pedido_item_id,
+              banco_id: b.banco_id,
+              identificador: b.banco_id
+                ? (identificadores.get(b.banco_id) ?? null)
+                : null,
+              fecha_despacho: fecha,
+              cantidad: b.cantidad,
+            })),
+          ),
+        ]
         cerrarReservas(pedido, 'consumida')
         return guardar({ ...pedido, estado: 'entregado' })
       }),
+    listarReservas: async (id) => {
+      const numero = numerosDeLinea(buscar(id))
+      return reservas
+        .filter((r) => numero.has(r.pedido_item_id))
+        .sort(
+          (a, b) =>
+            numero.get(a.pedido_item_id)! - numero.get(b.pedido_item_id)!,
+        )
+    },
+    listarDespachos: async (id) => {
+      const numero = numerosDeLinea(buscar(id))
+      // ORDER BY numero_linea, fecha_despacho, identificador NULLS LAST.
+      return despachos
+        .filter((d) => numero.has(d.pedido_item_id))
+        .sort(
+          (a, b) =>
+            numero.get(a.pedido_item_id)! - numero.get(b.pedido_item_id)! ||
+            a.fecha_despacho.localeCompare(b.fecha_despacho) ||
+            (a.identificador === null
+              ? 1
+              : b.identificador === null
+                ? -1
+                : a.identificador.localeCompare(b.identificador)),
+        )
+    },
     cancelar: (id, clave) =>
       unaVez(clave, `estado:${id}`, async () => {
         const pedido = buscar(id)
@@ -405,7 +480,8 @@ export function pedidosSimulados({
   }
 }
 
-export const pedidos: ApiPedidos = usaDatosSimulados(
+/** La simulación en uso, o null con la API real. */
+export const simulacion: PedidosSimulados | null = usaDatosSimulados(
   import.meta.env.VITE_DATOS_SIMULADOS,
 )
   ? // Los mismos catálogos que las pantallas: un cliente dado de alta en
@@ -417,4 +493,6 @@ export const pedidos: ApiPedidos = usaDatosSimulados(
         raza: desdeRecurso(razas),
       },
     })
-  : pedidosHttp()
+  : null
+
+export const pedidos: ApiPedidos = simulacion ?? pedidosHttp()

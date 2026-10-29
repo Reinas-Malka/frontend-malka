@@ -2,6 +2,7 @@
  *  Tandas de 270/405 celdas (2-3 cuadros de 135), razas reales, parques en
  *  predios distintos y fechas que respetan el ciclo: traslarve D0, introducción
  *  ~D10, nacimiento D11, fecundación nac+10, enjaulado I0+16. */
+import { conTotales, type PedidoSinTotales } from '@/lib/importes'
 import {
   CUPULAS_POR_CUADRO,
   type Banco,
@@ -300,7 +301,7 @@ export const clientes: Cliente[] = [
  *  entregar entre los dos bancos, uno de exportación ya reservado, uno que
  *  no alcanza (Buckfast todavía no tiene reinas enjauladas) y uno cancelado
  *  desde borrador, sin reservas. */
-export const pedidos: Pedido[] = [
+const pedidosSinTotales: PedidoSinTotales[] = [
   {
     id: id(201),
     cliente_id: id(61),
@@ -382,6 +383,9 @@ export const pedidos: Pedido[] = [
     ],
   },
 ]
+
+/** Con neto, IVA y total, como los devuelve el backend (#113). */
+export const pedidos: Pedido[] = pedidosSinTotales.map(conTotales)
 
 /** La reserva del pedido de exportación: una por línea, con su cantidad. */
 export const reservas: Reserva[] = [

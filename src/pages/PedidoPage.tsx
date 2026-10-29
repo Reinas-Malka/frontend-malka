@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Ban, PackageCheck } from 'lucide-react'
+import { ArrowLeft, Ban, PackageCheck, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { describirError } from '@/api/client'
@@ -11,12 +11,15 @@ import { Button } from '@/components/ui/button'
 import { Cargando, ErrorDePantalla } from '@/components/ui/estados'
 import { Modal, ModalContenido } from '@/components/ui/modal'
 import { DataTable, type Columna } from '@/components/ui/table'
-import { formatearImporte, importeDeLinea, sumarImportes } from '@/lib/importes'
+import { formatearImporte } from '@/lib/importes'
 import { nombreDePais } from '@/lib/paises'
 import { puedePasar } from '@/lib/pedidos'
+import { DespachoDePedido } from '@/modulos/ventas/DespachoDePedido'
 import { EstadoDePedido } from '@/modulos/ventas/insignias'
+import { TrazabilidadDePedido } from '@/modulos/ventas/TrazabilidadDePedido'
 import {
   CLAVE_CLIENTES_CON_BAJAS,
+  CLAVE_DISPONIBILIDAD,
   CLAVE_ITEMS_CON_BAJAS,
   CLAVE_PEDIDOS,
   CLAVE_RAZAS_CON_BAJAS,
@@ -28,7 +31,7 @@ import {
   razasConBajas,
   resumenDeLineas,
 } from '@/modulos/ventas/pedidos'
-import type { Moneda, Pedido, PedidoItem } from '@/tipos/dominio'
+import type { Despacho, Moneda, Pedido, PedidoItem } from '@/tipos/dominio'
 
 const ALERTA =
   'rounded-control border border-peligro/40 bg-peligro/10 p-3 text-sm text-texto'
@@ -65,11 +68,10 @@ function columnas(
       render: (l) => formatearImporte(l.precio_unitario),
     },
     {
-      clave: 'id',
-      titulo: 'Subtotal',
+      clave: 'neto',
+      titulo: 'Neto',
       className: 'text-right font-mono tabular-nums',
-      render: (l) =>
-        formatearImporte(importeDeLinea(l.precio_unitario, l.cantidad)),
+      render: (l) => formatearImporte(l.neto),
     },
   ]
 }
@@ -113,6 +115,8 @@ export default function PedidoPage() {
   // La clave de idempotencia de la cancelación en curso, o null si no se
   // está confirmando. Se fija al abrir, como en las altas.
   const [cancelacion, setCancelacion] = useState<string | null>(null)
+  // Lo mismo para la entrega: la clave del despacho en curso, o null.
+  const [entrega, setEntrega] = useState<string | null>(null)
   const [aviso, setAviso] = useState('')
 
   const pedido = useQuery({
@@ -132,9 +136,13 @@ export default function PedidoPage() {
     queryFn: razasConBajas,
   })
 
-  // Un cambio de estado refresca el detalle y todas las vistas del listado.
+  // Un cambio de estado refresca el detalle, todas las vistas del listado y
+  // la disponibilidad (reservar, entregar y cancelar la cambian).
   const alCambiar = () =>
-    consultas.invalidateQueries({ queryKey: [CLAVE_PEDIDOS] })
+    Promise.all([
+      consultas.invalidateQueries({ queryKey: [CLAVE_PEDIDOS] }),
+      consultas.invalidateQueries({ queryKey: [CLAVE_DISPONIBILIDAD] }),
+    ])
   const reservar = useMutation({
     mutationFn: () => pedidos.reservar(id),
     onSuccess: async (reservas) => {
@@ -151,6 +159,18 @@ export default function PedidoPage() {
       setAviso('Pedido cancelado.')
     },
   })
+  const entregar = useMutation({
+    mutationFn: ({ despacho, clave }: { despacho: Despacho; clave: string }) =>
+      pedidos.entregar(id, despacho, clave),
+    onSuccess: async (entregado) => {
+      await alCambiar()
+      setEntrega(null)
+      const reinas = entregado.items.reduce((total, l) => total + l.cantidad, 0)
+      setAviso(`Pedido entregado: ${reinas} reinas despachadas.`)
+    },
+  })
+  const cerrarEntrega = () => !entregar.isPending && setEntrega(null)
+
   const abrirCancelacion = () => {
     // Que no queden a la vista errores de intentos anteriores.
     cancelar.reset()
@@ -202,17 +222,34 @@ export default function PedidoPage() {
   const nombreDeRaza = nombre(razas.data, 'Raza desconocida')
 
   const escribe = puede(identidad, ROLES_VENTAS)
-  const ocupado = reservar.isPending || cancelar.isPending
-  const total = sumarImportes(
-    p.items.map((l) => importeDeLinea(l.precio_unitario, l.cantidad)),
-  )
+  const ocupado = reservar.isPending || entregar.isPending || cancelar.isPending
+  const lineas = [...p.items].sort((a, b) => a.numero_linea - b.numero_linea)
+  const nombreDeLinea = (pedidoItemId: string) => {
+    const linea = lineas.find((l) => l.id === pedidoItemId)
+    return linea
+      ? `Línea ${linea.numero_linea} · ${nombreDeItem(linea.item_vendible_id)} · ${nombreDeRaza(linea.raza_id)}`
+      : 'Línea desconocida'
+  }
+  // Los calcula el backend en cada lectura (#113): acá solo se muestran.
+  const importes = [
+    { nombre: 'Neto', valor: p.neto },
+    { nombre: 'IVA', valor: p.iva },
+    { nombre: 'Total', valor: p.total },
+  ]
   const destino = p.destino_pais
     ? `${nombreDePais(p.destino_pais)}${p.incoterm ? ` · ${p.incoterm}` : ''}`
     : 'Nacional'
 
-  // Entregar (con los bancos de cada línea) llega con DespachoDePedido.
   const acciones = escribe ? (
     <>
+      {puedePasar(p.estado, 'entregado') ? (
+        <Button
+          disabled={ocupado}
+          onClick={() => setEntrega(crypto.randomUUID())}
+        >
+          <Truck className="size-4" aria-hidden /> Entregar
+        </Button>
+      ) : null}
       {puedePasar(p.estado, 'reservado') ? (
         <Button
           cargando={reservar.isPending}
@@ -259,18 +296,63 @@ export default function PedidoPage() {
         <DataTable
           columnas={columnas(nombreDeItem, nombreDeRaza, p.moneda)}
           // En el orden en que se cargaron.
-          filas={[...p.items].sort((a, b) => a.numero_linea - b.numero_linea)}
+          filas={lineas}
           porPagina={Math.max(p.items.length, 1)}
           // Un pedido tiene al menos una línea (min_length=1 del backend).
           vacio={null}
         />
-        <p className="text-right text-sm text-texto">
-          Total sin IVA:{' '}
-          <span className="font-mono font-semibold tabular-nums">
-            {p.moneda} {formatearImporte(total)}
-          </span>
-        </p>
+        <dl className="ml-auto grid w-fit grid-cols-[auto_auto] gap-x-4 gap-y-1 text-sm">
+          {importes.map(({ nombre, valor }) => (
+            <div key={nombre} className="contents">
+              <dt
+                className={
+                  nombre === 'Total'
+                    ? 'font-semibold text-texto'
+                    : 'text-texto-suave'
+                }
+              >
+                {nombre}
+              </dt>
+              <dd className="text-right font-mono tabular-nums text-texto">
+                {p.moneda} {formatearImporte(valor)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        {/* Como el backend: exportación si y solo si no es en pesos. */}
+        {p.moneda !== 'ARS' ? (
+          <p className="text-right text-xs text-texto-suave">
+            Exportación: sin IVA.
+          </p>
+        ) : null}
       </div>
+
+      <TrazabilidadDePedido pedido={p} nombreDeLinea={nombreDeLinea} />
+
+      <Modal
+        open={entrega !== null}
+        // Mientras guarda no se cierra: el resultado tiene que verse.
+        onOpenChange={(abierto) => !abierto && cerrarEntrega()}
+      >
+        {entrega ? (
+          <ModalContenido
+            titulo="Entregar el pedido"
+            descripcion="Por cada línea, de qué bancos salen las reinas. Sale todo lo reservado: no hay entrega parcial."
+            className="max-h-[calc(100dvh-2rem)] max-w-2xl overflow-y-auto"
+          >
+            <DespachoDePedido
+              key={entrega}
+              pedido={p}
+              nombreDeItem={nombreDeItem}
+              nombreDeRaza={nombreDeRaza}
+              alGuardar={(despacho) =>
+                entregar.mutateAsync({ despacho, clave: entrega })
+              }
+              alCancelar={cerrarEntrega}
+            />
+          </ModalContenido>
+        ) : null}
+      </Modal>
 
       <Modal
         open={cancelacion !== null}

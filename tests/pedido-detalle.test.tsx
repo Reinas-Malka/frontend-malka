@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentType } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -18,21 +24,29 @@ import { DATOS_SIMULADOS } from '../src/datos/simulados'
 
 const TENANT = '11111111-1111-4111-8111-111111111111'
 const [PARA_RESERVAR, RESERVADO, SIN_STOCK, CANCELADO] = DATOS_SIMULADOS.pedidos
+const [CARNIOLA] = DATOS_SIMULADOS.razas
 
 describe('detalle del pedido', () => {
   let PedidosPage: ComponentType
   let PedidoPage: ComponentType
   let ProveedorDeSesionFijo: typeof import('../src/auth/sesion').ProveedorDeSesionFijo
+  // La misma simulación que la pantalla: para ver qué quedó en los bancos.
+  let stock: typeof import('../src/api/disponibilidad').disponibilidad
 
   // Módulos nuevos en cada test: la API simulada arranca con la semilla y
   // una reserva o cancelación no se arrastra al test siguiente.
   beforeEach(async () => {
+    // El Select de Radix usa APIs de puntero y scroll que jsdom no implementa.
+    Element.prototype.hasPointerCapture = () => false
+    Element.prototype.releasePointerCapture = () => {}
+    Element.prototype.scrollIntoView = () => {}
     vi.stubEnv('VITE_DATOS_SIMULADOS', 'true')
     vi.resetModules()
     PedidosPage = (await import('../src/pages/PedidosPage')).default
     PedidoPage = (await import('../src/pages/PedidoPage')).default
     ProveedorDeSesionFijo = (await import('../src/auth/sesion'))
       .ProveedorDeSesionFijo
+    stock = (await import('../src/api/disponibilidad')).disponibilidad
   })
   afterAll(() => vi.unstubAllEnvs())
   afterEach(cleanup)
@@ -66,6 +80,57 @@ describe('detalle del pedido', () => {
 
   const titulo = () => screen.findByRole('heading', { level: 1 })
 
+  type Usuario = ReturnType<typeof userEvent.setup>
+  type Zona = ReturnType<typeof within>
+
+  async function elegir(
+    usuario: Usuario,
+    zona: Zona,
+    campo: string,
+    opcion: string | RegExp,
+  ) {
+    await usuario.click(zona.getByRole('combobox', { name: campo }))
+    await usuario.click(await screen.findByRole('option', { name: opcion }))
+  }
+
+  /** Espera la celda de una tabla y devuelve su fila. */
+  const waitForCell = async (texto: string) =>
+    (await screen.findByRole('cell', { name: texto })).closest(
+      'tr',
+    ) as HTMLElement
+
+  const acciones = () =>
+    ['Reservar', 'Entregar', 'Cancelar pedido'].filter((nombre) =>
+      screen.queryByRole('button', { name: nombre }),
+    )
+
+  /** Abre Entregar y espera la disponibilidad. */
+  async function abrirEntrega(usuario: Usuario): Promise<Zona> {
+    await usuario.click(screen.getByRole('button', { name: 'Entregar' }))
+    const zona = within(
+      await screen.findByRole('dialog', { name: 'Entregar el pedido' }),
+    )
+    await zona.findAllByRole('combobox', { name: 'Banco' })
+    return zona
+  }
+  const fila = (zona: Zona, n: number, linea = 1) =>
+    within(zona.getByRole('group', { name: `Banco ${n} de la línea ${linea}` }))
+
+  /** Reparte la línea 1 entre B-01 y B-02: la primera cantidad se escribe,
+   *  la segunda la completa el formulario con lo que falta. */
+  async function repartirEntreDosBancos(
+    usuario: Usuario,
+    zona: Zona,
+    enElPrimero: number,
+  ) {
+    await elegir(usuario, fila(zona, 1), 'Banco', /B-01/)
+    const cantidad = fila(zona, 1).getByLabelText('Reinas')
+    await usuario.clear(cantidad)
+    await usuario.type(cantidad, String(enElPrimero))
+    await usuario.click(zona.getByRole('button', { name: 'Agregar banco' }))
+    await elegir(usuario, fila(zona, 2), 'Banco', /B-02/)
+  }
+
   it('muestra la cabecera y las líneas con nombres e importes de acá', async () => {
     abrir(RESERVADO)
 
@@ -77,9 +142,39 @@ describe('detalle del pedido', () => {
     expect(within(linea).getByText('Reina fecundada')).toBeTruthy()
     expect(within(linea).getByText('Carniola')).toBeTruthy()
     expect(within(linea).getByText('38,50')).toBeTruthy()
-    // 50 × 38,50, sin pasar por float.
+    // El neto de la línea y los totales los manda el backend (#113).
     expect(within(linea).getByText('1.925,00')).toBeTruthy()
-    expect(screen.getByText('USD 1.925,00')).toBeTruthy()
+    // Exportación: neto y total iguales, IVA en cero.
+    expect(screen.getAllByText('USD 1.925,00')).toHaveLength(2)
+    expect(screen.getByText('USD 0,00')).toBeTruthy()
+    expect(screen.getByText('Exportación: sin IVA.')).toBeTruthy()
+  })
+
+  it('un pedido nacional muestra neto, IVA y total del backend', async () => {
+    abrir(PARA_RESERVAR)
+    await titulo()
+
+    expect(screen.getByText('ARS 900.000,00')).toBeTruthy()
+    expect(screen.getByText('ARS 189.000,00')).toBeTruthy()
+    expect(screen.getByText('ARS 1.089.000,00')).toBeTruthy()
+    expect(screen.queryByText('Exportación: sin IVA.')).toBeNull()
+  })
+
+  it('la trazabilidad muestra la reserva y, sin entregar, ningún despacho', async () => {
+    abrir(RESERVADO)
+    await titulo()
+
+    const reserva = (
+      await screen.findByText('Línea 1 · Reina fecundada · Carniola')
+    ).closest('tr') as HTMLElement
+    expect(within(reserva).getByText('50')).toBeTruthy()
+    expect(within(reserva).getByText('Activa')).toBeTruthy()
+    expect(screen.getByText('Todavía no se entregó.')).toBeTruthy()
+    cleanup()
+
+    abrir(PARA_RESERVAR)
+    await titulo()
+    expect(await screen.findByText('Todavía no se reservó.')).toBeTruthy()
   })
 
   it('con rol de lectura no hay acciones', async () => {
@@ -189,5 +284,109 @@ describe('detalle del pedido', () => {
     montar('/ventas/pedidos/no-existe')
 
     expect(await screen.findByText('No existe el pedido.')).toBeTruthy()
+  })
+
+  it('entrega un reservado repartido entre dos bancos', async () => {
+    const { usuario } = abrir(RESERVADO)
+    await titulo()
+    const zona = await abrirEntrega(usuario)
+
+    // Al elegir el banco se propone lo que falta: las 50 de la línea.
+    await elegir(usuario, fila(zona, 1), 'Banco', /B-01/)
+    expect(
+      (fila(zona, 1).getByLabelText('Reinas') as HTMLInputElement).value,
+    ).toBe('50')
+    await usuario.clear(fila(zona, 1).getByLabelText('Reinas'))
+    await usuario.type(fila(zona, 1).getByLabelText('Reinas'), '30')
+    expect(zona.getByText('30 de 50')).toBeTruthy()
+    await usuario.click(zona.getByRole('button', { name: 'Agregar banco' }))
+    // B-01 ya está en la línea: no se ofrece de nuevo.
+    await usuario.click(fila(zona, 2).getByRole('combobox', { name: 'Banco' }))
+    expect(screen.queryByRole('option', { name: /B-01/ })).toBeNull()
+    await usuario.click(screen.getByRole('option', { name: /B-02/ }))
+    expect(zona.getByText('50 de 50')).toBeTruthy()
+
+    await usuario.click(zona.getByRole('button', { name: 'Entregar pedido' }))
+
+    expect(
+      await screen.findByText('Pedido entregado: 50 reinas despachadas.'),
+    ).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByText('Entregado')).toBeTruthy()
+    expect(acciones()).toEqual([])
+    const [carniola] = await stock.listar(CARNIOLA.id)
+    expect(carniola.bancos.map((b) => b.reinas)).toEqual([90, 100])
+
+    // Trazabilidad: la reserva quedó consumida y se ve qué salió de cada banco.
+    expect(await screen.findByText('Consumida')).toBeTruthy()
+    const salida = (banco: string) =>
+      screen.getByRole('cell', { name: banco }).closest('tr') as HTMLElement
+    expect(within(await waitForCell('B-01')).getByText('30')).toBeTruthy()
+    expect(within(salida('B-02')).getByText('20')).toBeTruthy()
+  })
+
+  it('no entrega si a una línea le falta asignar', async () => {
+    const { usuario } = abrir(RESERVADO)
+    await titulo()
+    const zona = await abrirEntrega(usuario)
+    await elegir(usuario, fila(zona, 1), 'Banco', /B-01/)
+    await usuario.clear(fila(zona, 1).getByLabelText('Reinas'))
+    await usuario.type(fila(zona, 1).getByLabelText('Reinas'), '10')
+
+    await usuario.click(zona.getByRole('button', { name: 'Entregar pedido' }))
+
+    expect(zona.getByText('Faltan 40 por asignar.')).toBeTruthy()
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(screen.getByText('Reservado')).toBeTruthy()
+  })
+
+  // El DoD del issue: un pedido se crea, se reserva, se entrega repartido
+  // entre dos bancos y muestra solo las transiciones habilitadas.
+  it('criterio de terminado: crear, reservar y entregar entre dos bancos', async () => {
+    const { usuario } = montar('/ventas/pedidos')
+    await usuario.click(
+      await screen.findByRole('button', { name: 'Nuevo pedido' }),
+    )
+    const alta = within(
+      await screen.findByRole('dialog', { name: 'Nuevo pedido' }),
+    )
+    await alta.findByRole('combobox', { name: 'Cliente' })
+    await elegir(usuario, alta, 'Cliente', 'Apícola Don Emilio')
+    fireEvent.change(alta.getByLabelText('Fecha de entrega'), {
+      target: { value: '2026-12-01' },
+    })
+    const linea = within(alta.getByRole('group', { name: 'Línea 1' }))
+    await elegir(usuario, linea, 'Ítem', 'Reina fecundada')
+    await elegir(usuario, linea, 'Raza', 'Carniola')
+    await usuario.type(linea.getByLabelText('Cantidad'), '12')
+    await usuario.type(linea.getByLabelText('Precio (ARS)'), '45000')
+    await usuario.click(alta.getByRole('button', { name: 'Crear pedido' }))
+    await screen.findByText('Pedido creado en borrador.')
+
+    // El más nuevo va primero en el listado.
+    const [nuevo] = await screen.findAllByRole('link', {
+      name: 'Apícola Don Emilio',
+    })
+    await usuario.click(nuevo)
+    await titulo()
+    expect(screen.getByText('Borrador')).toBeTruthy()
+    expect(acciones()).toEqual(['Reservar', 'Cancelar pedido'])
+
+    await usuario.click(screen.getByRole('button', { name: 'Reservar' }))
+    await screen.findByText('Pedido reservado: 12 reinas apartadas.')
+    expect(screen.getByText('Reservado')).toBeTruthy()
+    expect(acciones()).toEqual(['Entregar', 'Cancelar pedido'])
+
+    const zona = await abrirEntrega(usuario)
+    await repartirEntreDosBancos(usuario, zona, 5)
+    expect(zona.getByText('12 de 12')).toBeTruthy()
+    await usuario.click(zona.getByRole('button', { name: 'Entregar pedido' }))
+
+    await screen.findByText('Pedido entregado: 12 reinas despachadas.')
+    expect(screen.getByText('Entregado')).toBeTruthy()
+    expect(acciones()).toEqual([])
+    // 5 de B-01 y 7 de B-02: salieron de los dos bancos.
+    const [carniola] = await stock.listar(CARNIOLA.id)
+    expect(carniola.bancos.map((b) => b.reinas)).toEqual([115, 113])
   })
 })

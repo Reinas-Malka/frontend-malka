@@ -2350,6 +2350,10 @@
       "title": "Item Vendible Id",
       "type": "string"
      },
+     "neto": {
+      "title": "Neto",
+      "type": "string"
+     },
      "numero_linea": {
       "title": "Numero Linea",
       "type": "integer"
@@ -2371,7 +2375,8 @@
      "raza_id",
      "cantidad",
      "precio_unitario",
-     "alicuota"
+     "alicuota",
+     "neto"
     ],
     "title": "PedidoItemRespuesta",
     "type": "object"
@@ -2425,8 +2430,20 @@
       "title": "Items",
       "type": "array"
      },
+     "iva": {
+      "title": "Iva",
+      "type": "string"
+     },
      "moneda": {
       "$ref": "#/components/schemas/Moneda"
+     },
+     "neto": {
+      "title": "Neto",
+      "type": "string"
+     },
+     "total": {
+      "title": "Total",
+      "type": "string"
      }
     },
     "required": [
@@ -2437,7 +2454,10 @@
      "destino_pais",
      "incoterm",
      "fecha_entrega_solicitada",
-     "items"
+     "items",
+     "neto",
+     "iva",
+     "total"
     ],
     "title": "PedidoRespuesta",
     "type": "object"
