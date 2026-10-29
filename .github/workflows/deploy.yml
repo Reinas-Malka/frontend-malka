@@ -42,10 +42,12 @@ jobs:
           VITE_COGNITO_REGION: ${{ vars.VITE_COGNITO_REGION }}
         run: npm run build
 
+      # Rol propio del frontend (backend infra/oidc.tf): solo publica en su
+      # bucket e invalida su distribución; no toca las Lambdas del backend.
       - name: Credenciales temporales por OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::961868442562:role/malka-suite-dev-github-actions
+          role-to-assume: arn:aws:iam::961868442562:role/malka-suite-dev-github-actions-frontend
           aws-region: us-east-1
 
       - name: Publicar en S3
