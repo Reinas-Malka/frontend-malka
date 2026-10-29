@@ -1,11 +1,21 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
+import { Plus } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { describirError } from '@/api/client'
 import { pedidos } from '@/api/pedidos'
+import { puede } from '@/auth/identidad'
+import { useSesion } from '@/auth/useSesion'
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorDePantalla, Vacio } from '@/components/ui/estados'
 import { Field } from '@/components/ui/label'
+import { Modal, ModalContenido } from '@/components/ui/modal'
 import {
   Select,
   SelectContenido,
@@ -15,10 +25,12 @@ import {
 } from '@/components/ui/select'
 import { DataTable, type Columna } from '@/components/ui/table'
 import { nombreDePais } from '@/lib/paises'
+import { FormularioDePedido } from '@/modulos/ventas/FormularioDePedido'
 import { EstadoDePedido } from '@/modulos/ventas/insignias'
 import {
   CLAVE_CLIENTES_CON_BAJAS,
   CLAVE_PEDIDOS,
+  ROLES_VENTAS,
   TODOS,
   type DesdeElListado,
   clientesConBajas,
@@ -29,6 +41,7 @@ import {
   ESTADOS_PEDIDO,
   NOMBRE_DE_ESTADO_PEDIDO,
   type Pedido,
+  type PedidoCrear,
 } from '@/tipos/dominio'
 
 function columnas(
@@ -88,6 +101,12 @@ export default function PedidosPage() {
   const [params, setParams] = useSearchParams()
   const filtros = leerFiltros(params)
   const hayFiltros = Boolean(filtros.estado || filtros.cliente_id)
+  const { identidad } = useSesion()
+  const escribe = puede(identidad, ROLES_VENTAS)
+  // La clave de idempotencia del alta en curso, o null si no hay modal. Se
+  // fija al abrir: si el guardado se reintenta, el backend no duplica.
+  const [alta, setAlta] = useState<string | null>(null)
+  const [aviso, setAviso] = useState('')
 
   const clientes = useQuery({
     queryKey: CLAVE_CLIENTES_CON_BAJAS,
@@ -100,6 +119,24 @@ export default function PedidosPage() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (ultima) => ultima.siguiente ?? undefined,
   })
+
+  const consultas = useQueryClient()
+  const crear = useMutation({
+    mutationFn: ({ datos, clave }: { datos: PedidoCrear; clave: string }) =>
+      pedidos.crear(datos, clave),
+    // Todas las combinaciones de filtros: el nuevo puede entrar en cualquiera.
+    onSuccess: () => consultas.invalidateQueries({ queryKey: [CLAVE_PEDIDOS] }),
+  })
+
+  async function guardar(datos: PedidoCrear) {
+    const enCurso = alta
+    if (!enCurso) return
+    await crear.mutateAsync({ datos, clave: enCurso })
+    setAviso('Pedido creado en borrador.')
+    // Solo cierra el modal que inició este guardado.
+    setAlta((actual) => (actual === enCurso ? null : actual))
+  }
+  const cerrarAlta = () => !crear.isPending && setAlta(null)
 
   const filtrar = (clave: 'estado' | 'cliente', valor: string) =>
     setParams(
@@ -123,6 +160,13 @@ export default function PedidosPage() {
       <EncabezadoDePagina
         titulo="Pedidos"
         descripcion="Del más nuevo al más viejo. Filtrá por estado o por cliente."
+        acciones={
+          escribe ? (
+            <Button onClick={() => setAlta(crypto.randomUUID())}>
+              <Plus aria-hidden className="size-4" /> Nuevo pedido
+            </Button>
+          ) : undefined
+        }
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:max-w-2xl">
@@ -163,6 +207,10 @@ export default function PedidosPage() {
           </Select>
         </Field>
       </div>
+
+      <p role="status" className="text-sm text-ok-texto">
+        {aviso}
+      </p>
 
       {listado.isPending || clientes.isPending ? (
         <Cargando columnas={6} />
@@ -221,6 +269,26 @@ export default function PedidosPage() {
           ) : null}
         </div>
       )}
+
+      <Modal
+        open={alta !== null}
+        // Mientras guarda no se cierra: el resultado tiene que verse.
+        onOpenChange={(abierto) => !abierto && cerrarAlta()}
+      >
+        {alta ? (
+          <ModalContenido
+            titulo="Nuevo pedido"
+            descripcion="Arranca en borrador. Después se reserva y se entrega."
+            className="max-h-[calc(100dvh-2rem)] max-w-3xl overflow-y-auto"
+          >
+            <FormularioDePedido
+              key={alta}
+              alGuardar={guardar}
+              alCancelar={cerrarAlta}
+            />
+          </ModalContenido>
+        ) : null}
+      </Modal>
     </section>
   )
 }

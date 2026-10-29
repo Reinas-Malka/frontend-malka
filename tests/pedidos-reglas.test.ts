@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ApiError } from '../src/api/client'
 import { catalogosDe, pedidosSimulados } from '../src/api/pedidos'
 import { DATOS_SIMULADOS } from '../src/datos/simulados'
 import { hoyEnArgentina } from '../src/lib/fechas'
@@ -10,7 +11,17 @@ import {
   normalizarPrecio,
   puedePasar,
 } from '../src/lib/pedidos'
-import { leerFiltros, resumenDeLineas } from '../src/modulos/ventas/pedidos'
+import {
+  CABECERA_VACIA,
+  aPedidoCrear,
+  cabeceraParaCliente,
+  erroresDelAlta,
+  leerFiltros,
+  lineaVacia,
+  resumenDeLineas,
+  validarAlta,
+  type LineaDePedido,
+} from '../src/modulos/ventas/pedidos'
 import type { PedidoCrear } from '../src/tipos/dominio'
 
 const [PARA_RESERVAR, RESERVADO, SIN_STOCK, CANCELADO] = DATOS_SIMULADOS.pedidos
@@ -350,5 +361,136 @@ describe('listado de pedidos: filtros, tamaño y páginas', () => {
       Array.from({ length: 10 }, (_, n) => `p${50 + n}`),
     )
     expect(segunda.siguiente).toBeNull()
+  })
+})
+
+describe('formulario de alta', () => {
+  const linea = (datos: Partial<LineaDePedido> = {}): LineaDePedido => ({
+    ...lineaVacia(),
+    item_vendible_id: FECUNDADA.id,
+    raza_id: CARNIOLA.id,
+    cantidad: '20',
+    precio_unitario: '1.500,50',
+    ...datos,
+  })
+
+  it('el cliente fija la moneda y el destino que admite su tipo', () => {
+    const exportacion = cabeceraParaCliente(CABECERA_VACIA, EXPORTACION)
+    expect(exportacion).toMatchObject({ moneda: 'USD', destino_pais: 'NZ' })
+
+    const conIncoterm = {
+      ...exportacion,
+      moneda: 'EUR' as const,
+      incoterm: 'CPT' as const,
+    }
+    // Pasar a un nacional borra lo que solo lleva la exportación.
+    expect(cabeceraParaCliente(conIncoterm, NACIONAL)).toMatchObject({
+      cliente_id: NACIONAL.id,
+      moneda: 'ARS',
+      destino_pais: '',
+      incoterm: '',
+    })
+  })
+
+  it('marca la cabecera y cada línea por su ruta', () => {
+    const errores = validarAlta(
+      CABECERA_VACIA,
+      [linea(), linea({ raza_id: '', cantidad: '1,5', precio_unitario: 'x' })],
+      undefined,
+    )
+    expect(Object.keys(errores).sort()).toEqual([
+      'cliente_id',
+      'fecha_entrega_solicitada',
+      'items.1.cantidad',
+      'items.1.precio_unitario',
+      'items.1.raza_id',
+    ])
+  })
+
+  it('una exportación sin destino lo pide en su campo', () => {
+    const cabecera = {
+      ...cabeceraParaCliente(CABECERA_VACIA, EXPORTACION),
+      destino_pais: '',
+      fecha_entrega_solicitada: '2026-12-01',
+    }
+    expect(validarAlta(cabecera, [linea()], EXPORTACION)).toEqual({
+      destino_pais: 'Elegí el país de destino.',
+    })
+  })
+
+  it('arma el cuerpo con el precio en texto y sin destino en un nacional', () => {
+    const cabecera = {
+      ...cabeceraParaCliente(CABECERA_VACIA, NACIONAL),
+      fecha_entrega_solicitada: '2026-12-01',
+    }
+    expect(aPedidoCrear(cabecera, [linea()])).toEqual({
+      cliente_id: NACIONAL.id,
+      fecha_entrega_solicitada: '2026-12-01',
+      moneda: 'ARS',
+      destino_pais: null,
+      incoterm: null,
+      items: [
+        {
+          item_vendible_id: FECUNDADA.id,
+          raza_id: CARNIOLA.id,
+          cantidad: 20,
+          precio_unitario: '1500.50',
+        },
+      ],
+    })
+  })
+
+  it('reparte el 422 de Pydantic por ruta y descarta lo que no se muestra', () => {
+    const error = new ApiError({
+      status: 422,
+      codigo: 'validacion',
+      mensaje: 'Los datos enviados no son validos.',
+      detalles: {
+        campos: [
+          { campo: 'body.items.1.cantidad', mensaje: 'Demasiado grande' },
+          { campo: 'body.fecha_entrega_solicitada', mensaje: 'Fecha inválida' },
+          // Una línea que ya no está y un campo que el formulario no tiene.
+          { campo: 'body.items.5.cantidad', mensaje: 'x' },
+          { campo: 'body.tenant_id', mensaje: 'x' },
+        ],
+      },
+    })
+    expect(erroresDelAlta(error, [linea(), linea()])).toEqual({
+      'items.1.cantidad': 'Demasiado grande',
+      fecha_entrega_solicitada: 'Fecha inválida',
+    })
+  })
+
+  it('una raza dada de baja se marca en cada línea que la usa', () => {
+    const error = new ApiError({
+      status: 422,
+      codigo: 'raza_inexistente',
+      mensaje: 'Alguna raza no existe o esta dada de baja.',
+      detalles: { ids: ['vieja'] },
+    })
+    expect(
+      erroresDelAlta(error, [
+        linea({ raza_id: 'vieja' }),
+        linea(),
+        linea({ raza_id: 'vieja' }),
+      ]),
+    ).toEqual({
+      'items.0.raza_id': 'Alguna raza no existe o esta dada de baja.',
+      'items.2.raza_id': 'Alguna raza no existe o esta dada de baja.',
+    })
+  })
+
+  it('el cliente dado de baja va en el cliente; lo demás, arriba', () => {
+    const inactivo = new ApiError({
+      status: 422,
+      codigo: 'cliente_inactivo',
+      mensaje: 'El cliente esta dado de baja.',
+    })
+    expect(erroresDelAlta(inactivo, [linea()])).toEqual({
+      cliente_id: 'El cliente esta dado de baja.',
+    })
+    const otro = new ApiError({ status: 500, codigo: 'interno', mensaje: 'x' })
+    expect(erroresDelAlta(otro, [linea()])).toEqual({})
+    expect(erroresDelAlta(new Error('red'), [linea()])).toEqual({})
   })
 })
