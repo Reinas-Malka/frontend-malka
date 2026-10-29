@@ -81,7 +81,7 @@ export type ItemVendible = Omit<
 
 // --- facturación y exportación (A|B|E transcripto, never calculado) ---
 export type TipoComprobante = 'A' | 'B' | 'E'
-export type Moneda = 'ARS' | 'USD' | 'EUR'
+export type Moneda = Esquemas['Moneda']
 
 /** Valores de CondicionIva en app/services/ventas/clientes.py. */
 export const CONDICIONES_IVA = [
@@ -101,6 +101,71 @@ export type ClienteCrear = Esquemas['ClienteCrear']
 
 /** PATCH /api/v1/clientes/{id} — todo opcional. */
 export type ClienteActualizar = Esquemas['ClienteActualizar']
+
+// --- ventas: pedidos (backend #34), reservas (#35) y estados (#36) ---
+export type EstadoPedido = Esquemas['EstadoPedido']
+export type Incoterm = Esquemas['Incoterm']
+
+/** Con sus líneas. destino_pais e incoterm solo en exportación. */
+export type Pedido = Esquemas['PedidoRespuesta']
+export type PedidoItem = Esquemas['PedidoItemRespuesta']
+/** Sin estado: el alta crea siempre en borrador. */
+export type PedidoCrear = Esquemas['PedidoCrear']
+export type PedidoItemCrear = Esquemas['PedidoItemCrear']
+/** Una por línea, con la raza y la cantidad de la línea (ADR 0014). */
+export type Reserva = Esquemas['ReservaRespuesta']
+export type EstadoReserva = Esquemas['EstadoReserva']
+/** Cuerpo de POST /pedidos/{id}/estado: entregar o cancelar. */
+export type Entregar = Esquemas['Entregar']
+export type Cancelar = Esquemas['Cancelar']
+export type LineaDespacho = Esquemas['LineaDespacho']
+export type SalidaDeBanco = Esquemas['SalidaDeBanco']
+/** Lo que elige quien despacha: la fecha y los bancos de cada línea. */
+export type Despacho = Omit<Entregar, 'estado'>
+/** Lo que salió para el pedido: por línea, cuántas de cada banco y qué día
+ *  (GET /pedidos/{id}/despachos). */
+export type DespachoDeLinea = Esquemas['DespachoDeLinea']
+
+export const NOMBRE_DE_ESTADO_RESERVA: Record<EstadoReserva, string> = {
+  activa: 'Activa',
+  consumida: 'Consumida',
+  liberada: 'Liberada',
+}
+
+// --- disponibilidad de reinas por raza (backend #33, ADR 0014) ---
+export type DisponibilidadReinas = Esquemas['DisponibilidadReinas']
+/** Dónde están las enjauladas de una raza. banco_id null: todavía no
+ *  pasaron a ningún banco. Es ubicación, no "disponible por banco". */
+export type ExistenciaEnBanco = Esquemas['ExistenciaEnBanco']
+
+export const ESTADOS_PEDIDO = [
+  'borrador',
+  'reservado',
+  'entregado',
+  'cancelado',
+] as const satisfies readonly EstadoPedido[]
+
+export const NOMBRE_DE_ESTADO_PEDIDO: Record<EstadoPedido, string> = {
+  borrador: 'Borrador',
+  reservado: 'Reservado',
+  entregado: 'Entregado',
+  cancelado: 'Cancelado',
+}
+
+/** Incoterms 2020, en el orden de app/services/ventas/pedidos.py. */
+export const INCOTERMS = [
+  'EXW',
+  'FCA',
+  'CPT',
+  'CIP',
+  'DAP',
+  'DPU',
+  'DDP',
+  'FAS',
+  'FOB',
+  'CFR',
+  'CIF',
+] as const satisfies readonly Incoterm[]
 
 export type Comprobante = {
   id: string

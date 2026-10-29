@@ -438,6 +438,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/pedidos/{pedido_id}/despachos': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Listar Despachos Pedido */
+    get: operations['listar_despachos_pedido_api_v1_pedidos__pedido_id__despachos_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/pedidos/{pedido_id}/estado': {
     parameters: {
       query?: never
@@ -462,7 +479,8 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get?: never
+    /** Listar Reservas Pedido */
+    get: operations['listar_reservas_pedido_api_v1_pedidos__pedido_id__reservas_get']
     put?: never
     /** Reservar Pedido */
     post: operations['reservar_pedido_api_v1_pedidos__pedido_id__reservas_post']
@@ -534,7 +552,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Obtener Tanda */
+    /**
+     * Obtener Tanda
+     * @description La tanda con sus celdas por estado, sus nucleos ocupados y sus bancos.
+     */
     get: operations['obtener_tanda_api_v1_tandas__tanda_id__get']
     put?: never
     post?: never
@@ -660,6 +681,21 @@ export interface components {
       /** Identificador */
       identificador: string
     }
+    /**
+     * BancoDeTanda
+     * @description Un banco con reinas cosechadas de la tanda.
+     */
+    BancoDeTanda: {
+      /**
+       * Banco Id
+       * Format: uuid
+       */
+      banco_id: string
+      /** Identificador */
+      identificador: string
+      /** Reinas */
+      reinas: number
+    }
     /** BancoRespuesta */
     BancoRespuesta: {
       /** Activo */
@@ -778,6 +814,33 @@ export interface components {
       expira_en_segundos: number
       /** Url Descarga */
       url_descarga: string
+    }
+    /**
+     * DespachoDeLinea
+     * @description Respuesta de GET /api/v1/pedidos/{id}/despachos: lo que salio.
+     *
+     *     Cuantas reinas de una linea salieron de un banco y que dia, contadas
+     *     desde las celdas despachadas (migracion 0013). Es la misma forma que la
+     *     SalidaDeBanco del cuerpo de entregar, con el identificador del banco
+     *     para mostrarlo sin otro request.
+     */
+    DespachoDeLinea: {
+      /** Banco Id */
+      banco_id: string | null
+      /** Cantidad */
+      cantidad: number
+      /**
+       * Fecha Despacho
+       * Format: date
+       */
+      fecha_despacho: string
+      /** Identificador */
+      identificador: string | null
+      /**
+       * Pedido Item Id
+       * Format: uuid
+       */
+      pedido_item_id: string
     }
     /**
      * Disponibilidad
@@ -1173,6 +1236,28 @@ export interface components {
       posicion: number
     }
     /**
+     * NucleoDeTanda
+     * @description Un nucleo con celdas de la tanda que siguen en el parque.
+     */
+    NucleoDeTanda: {
+      /** Celdas */
+      celdas: number
+      /** Fila */
+      fila: number
+      /**
+       * Nucleo Id
+       * Format: uuid
+       */
+      nucleo_id: string
+      /**
+       * Parque Id
+       * Format: uuid
+       */
+      parque_id: string
+      /** Posicion */
+      posicion: number
+    }
+    /**
      * NucleoGuardado
      * @description Respuesta del alta y de la edicion: suma las advertencias (#29).
      */
@@ -1521,6 +1606,8 @@ export interface components {
        * Format: uuid
        */
       item_vendible_id: string
+      /** Neto */
+      neto: string
       /** Numero Linea */
       numero_linea: number
       /** Precio Unitario */
@@ -1557,7 +1644,13 @@ export interface components {
       incoterm: components['schemas']['Incoterm'] | null
       /** Items */
       items: components['schemas']['PedidoItemRespuesta'][]
+      /** Iva */
+      iva: string
       moneda: components['schemas']['Moneda']
+      /** Neto */
+      neto: string
+      /** Total */
+      total: string
     }
     /** RazaActualizar */
     RazaActualizar: {
@@ -1750,6 +1843,50 @@ export interface components {
        * Retroactivo
        * @default false
        */
+      retroactivo: boolean
+    }
+    /**
+     * TandaDetalle
+     * @description GET de una tanda: ademas de las celdas por estado, donde estan.
+     *
+     *     Solo el detalle: el listado sigue con TandaRespuesta. Los nucleos son los
+     *     que tienen celdas de la tanda en el parque; despues de la cosecha quedan
+     *     libres y la lista viene vacia. Las cosechadas sin banco son
+     *     celdas_por_estado["enjaulada"] menos la suma de bancos.
+     */
+    TandaDetalle: {
+      /** Bancos */
+      bancos: components['schemas']['BancoDeTanda'][]
+      /** Celdas */
+      celdas: number
+      /** Celdas Por Estado */
+      celdas_por_estado: {
+        [key: string]: number
+      }
+      /**
+       * Fecha Traslarve
+       * Format: date
+       */
+      fecha_traslarve: string
+      /** Fila Continuadora */
+      fila_continuadora: number | null
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Madre Id */
+      madre_id: string | null
+      /** Nucleos */
+      nucleos: components['schemas']['NucleoDeTanda'][]
+      /** Posicion Continuadora */
+      posicion_continuadora: number | null
+      /**
+       * Raza Id
+       * Format: uuid
+       */
+      raza_id: string
+      /** Retroactivo */
       retroactivo: boolean
     }
     /** TandaRespuesta */
@@ -3499,6 +3636,37 @@ export interface operations {
       }
     }
   }
+  listar_despachos_pedido_api_v1_pedidos__pedido_id__despachos_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        pedido_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DespachoDeLinea'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   cambiar_estado_pedido_api_v1_pedidos__pedido_id__estado_post: {
     parameters: {
       query?: never
@@ -3525,6 +3693,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['PedidoRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  listar_reservas_pedido_api_v1_pedidos__pedido_id__reservas_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        pedido_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReservaRespuesta'][]
         }
       }
       /** @description Validation Error */
@@ -3825,7 +4024,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['TandaRespuesta']
+          'application/json': components['schemas']['TandaDetalle']
         }
       }
       /** @description Validation Error */

@@ -17,7 +17,6 @@ export function formatearFechaHora(
   }).format(new Date(fecha))
 }
 
-
 /** La cabaña opera en Argentina: "hoy" es el de Buenos Aires, aunque el
  *  navegador esté en otro huso (igual que app/fechas.py del backend). */
 export const ZONA_ARGENTINA = 'America/Argentina/Buenos_Aires'
