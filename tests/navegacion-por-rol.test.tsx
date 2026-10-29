@@ -63,7 +63,6 @@ async function enlacesDelMenu(): Promise<string[]> {
 // este es el test que hay que actualizar.
 const MENU_POR_ROL: Record<Rol, string[]> = {
   admin: [
-    'Estado del sistema',
     'Tandas',
     'Razas',
     'Parques',
@@ -74,11 +73,9 @@ const MENU_POR_ROL: Record<Rol, string[]> = {
     'Clientes',
     'Ítems vendibles',
     'Embarques',
-    'Subir documento',
-    'Guía de estilo',
+    'Estado del sistema',
   ],
   produccion: [
-    'Estado del sistema',
     'Tandas',
     'Razas',
     'Parques',
@@ -87,16 +84,8 @@ const MENU_POR_ROL: Record<Rol, string[]> = {
     'Materiales',
     'Ítems vendibles',
   ],
-  ventas: [
-    'Estado del sistema',
-    'Pedidos',
-    'Clientes',
-    'Ítems vendibles',
-    'Embarques',
-    'Subir documento',
-  ],
+  ventas: ['Pedidos', 'Clientes', 'Ítems vendibles', 'Embarques'],
   lectura: [
-    'Estado del sistema',
     'Tandas',
     'Razas',
     'Parques',
@@ -124,10 +113,35 @@ describe('menú por rol', () => {
     montarComo(['produccion'])
     const menu = await screen.findByRole('navigation', { name: 'Principal' })
 
-    for (const titulo of ['Exportación', 'Documentos', 'Equipo']) {
+    for (const titulo of ['Exportación', 'Equipo']) {
       expect(within(menu).queryByText(titulo), titulo).toBeNull()
     }
-    expect(within(menu).getByText('General')).toBeTruthy()
+    // Ítems vendibles, que también carga producción, vive en Ventas.
+    expect(within(menu).getByText('Ventas')).toBeTruthy()
+  })
+})
+
+// El inicio no es una pantalla técnica: lleva a la primera sección del rol.
+describe('inicio', () => {
+  it.each([
+    [['admin'], 'Tandas'],
+    [['produccion'], 'Tandas'],
+    [['ventas'], 'Pedidos'],
+    [['lectura'], 'Tandas'],
+  ] as [Rol[], string][])('%s entra a %s', async (roles, pantalla) => {
+    montarComo(roles, '/')
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: pantalla }),
+    ).toBeTruthy()
+  })
+
+  it('el estado del sistema queda solo para admin', async () => {
+    montarComo(['ventas'], '/estado')
+
+    expect(
+      await screen.findByText(/no está disponible para tu rol/i),
+    ).toBeTruthy()
   })
 })
 

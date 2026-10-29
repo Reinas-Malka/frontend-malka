@@ -17,6 +17,14 @@ export function formatearFechaHora(
   }).format(new Date(fecha))
 }
 
+/** Un date del backend (AAAA-MM-DD) para mostrar: dd/mm/aaaa, como se lee
+ *  en Argentina. Se arma del texto, sin Date: así no se corre de día por el
+ *  huso del navegador. */
+export function formatearFecha(fecha: string): string {
+  const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+  return `${dia}/${mes}/${anio}`
+}
+
 /** La cabaña opera en Argentina: "hoy" es el de Buenos Aires, aunque el
  *  navegador esté en otro huso (igual que app/fechas.py del backend). */
 export const ZONA_ARGENTINA = 'America/Argentina/Buenos_Aires'

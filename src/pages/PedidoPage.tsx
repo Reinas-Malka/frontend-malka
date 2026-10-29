@@ -32,6 +32,7 @@ import {
   resumenDeLineas,
 } from '@/modulos/ventas/pedidos'
 import type { Despacho, Moneda, Pedido, PedidoItem } from '@/tipos/dominio'
+import { formatearFecha } from '@/lib/fechas'
 
 const ALERTA =
   'rounded-control border border-peligro/40 bg-peligro/10 p-3 text-sm text-texto'
@@ -276,7 +277,7 @@ export default function PedidoPage() {
       {volver}
       <EncabezadoDePagina
         titulo={`Pedido de ${nombreDeCliente(p.cliente_id)}`}
-        descripcion={`Entrega solicitada: ${p.fecha_entrega_solicitada} · ${destino} · ${p.moneda}`}
+        descripcion={`Entrega solicitada: ${formatearFecha(p.fecha_entrega_solicitada)} · ${destino} · ${p.moneda}`}
         acciones={acciones}
       />
       <div className="flex flex-wrap items-center gap-2">

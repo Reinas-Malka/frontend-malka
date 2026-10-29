@@ -8,7 +8,7 @@ import {
   within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../src/api/client'
 import { recursoSimulado, type Recurso } from '../src/api/recurso'
 import { ProveedorDeSesionFijo } from '../src/auth/sesion'
@@ -231,6 +231,18 @@ describe('PaginaCatalogo — revisión del PR #30', () => {
     expect(
       await screen.findByRole('cell', { name: 'Carniola F1' }),
     ).toBeTruthy()
+  })
+
+  it('pide también las dadas de baja: si no, con la API real nunca se reactivan', async () => {
+    const recurso = recursoSimulado(semilla, construir)
+    const listar = vi.spyOn(recurso, 'listar')
+    montar(recurso)
+
+    await screen.findByText('Carniola')
+
+    expect(listar).toHaveBeenCalledWith(
+      expect.objectContaining({ filtros: { incluir_inactivos: 'true' } }),
+    )
   })
 
   it('reactiva una fila dada de baja', async () => {

@@ -12,11 +12,17 @@ const LIMITE_MAXIMO = 100
 /** Listado COMPLETO de un catálogo: pide páginas por cursor hasta el final.
  *  Los catálogos son chicos (decenas o cientos de filas) y así la búsqueda y
  *  el orden de la tabla ven todas las filas, no solo la primera página. */
-export function useListado<T, C, A>(clave: string, recurso: Recurso<T, C, A>) {
+export function useListado<T, C, A>(
+  clave: string,
+  recurso: Recurso<T, C, A>,
+  filtros?: Record<string, string>,
+) {
   const consulta = useInfiniteQuery({
-    queryKey: [clave],
+    // La clave empieza por el recurso: invalidar [clave] refresca todos sus
+    // listados, con y sin filtros.
+    queryKey: filtros ? [clave, filtros] : [clave],
     queryFn: ({ pageParam }) =>
-      recurso.listar({ cursor: pageParam, limite: LIMITE_MAXIMO }),
+      recurso.listar({ cursor: pageParam, limite: LIMITE_MAXIMO, filtros }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (ultima) => ultima.siguiente ?? undefined,
   })

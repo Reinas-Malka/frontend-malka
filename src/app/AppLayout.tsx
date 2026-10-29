@@ -77,7 +77,6 @@ export function AppLayout() {
                   <li key={a}>
                     <NavLink
                       to={a}
-                      end={a === '/'}
                       onClick={() => setMenuAbierto(false)}
                       className={({ isActive }) =>
                         cn(

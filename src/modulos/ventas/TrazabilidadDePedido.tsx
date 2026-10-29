@@ -6,6 +6,7 @@ import { DataTable, type Columna } from '@/components/ui/table'
 import { EstadoDeReserva } from '@/modulos/ventas/insignias'
 import { CLAVE_PEDIDOS } from '@/modulos/ventas/pedidos'
 import type { DespachoDeLinea, Pedido, Reserva } from '@/tipos/dominio'
+import { formatearFecha } from '@/lib/fechas'
 
 type FilaDeDespacho = DespachoDeLinea & { id: string }
 
@@ -61,7 +62,8 @@ export function TrazabilidadDePedido({
     {
       clave: 'fecha_despacho',
       titulo: 'Fecha',
-      className: 'font-mono tabular-nums',
+      className: 'tabular-nums',
+      render: (d) => formatearFecha(d.fecha_despacho),
     },
     {
       clave: 'cantidad',

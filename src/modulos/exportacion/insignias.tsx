@@ -24,7 +24,8 @@ export function EstadoDeEmbarque({ estado }: { estado: EstadoEmbarque }) {
   )
 }
 
-/** "4/6": cuántos de los 6 documentos tiene. Completo en verde. */
+/** "4 de 6": cuántos de los 6 documentos tiene. Completo en verde.
+ *  Nunca "4/6 faltan": se leía como "faltan 4". */
 export function IndicadorDeDocumentos({ cargados }: { cargados: number }) {
   const total = DOCUMENTOS_DEL_EMBARQUE.length
   const completo = cargados >= total
@@ -33,10 +34,8 @@ export function IndicadorDeDocumentos({ cargados }: { cargados: number }) {
       tono={completo ? 'ok' : 'aviso'}
       aria-label={`${cargados} de ${total} documentos`}
     >
-      <span className="font-mono tabular-nums">
-        {cargados}/{total}
-      </span>
-      {completo ? 'completo' : 'faltan'}
+      <span className="tabular-nums">{`${cargados} de ${total}`}</span>
+      {completo ? <span>· completo</span> : null}
     </Badge>
   )
 }

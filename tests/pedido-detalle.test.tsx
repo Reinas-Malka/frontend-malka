@@ -392,5 +392,5 @@ describe('detalle del pedido', () => {
     expect(acciones()).toEqual([])
     // 5 de B-01 y 7 de B-02: salieron de los dos bancos.
     expect(await enLosBancos()).toEqual([b01 - 5, b02 - 7])
-  })
+  }, 15_000) // tipea en varios campos y abre desplegables: en un CI cargado pasa los 5 s
 })

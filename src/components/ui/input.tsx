@@ -13,7 +13,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
       ref={ref}
       aria-invalid={invalido || undefined}
       className={cn(
-        'h-10 w-full rounded-control border bg-carbon-900/60 px-3 text-sm text-texto placeholder:text-texto-suave',
+        'h-10 w-full rounded-control border bg-carbon-900/60 px-3 text-base text-texto placeholder:text-texto-suave sm:text-sm',
         'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-acento',
         'disabled:cursor-not-allowed disabled:opacity-50',
         invalido ? 'border-peligro-texto' : 'border-borde-control',

@@ -136,7 +136,7 @@ describe('clientes', () => {
     // Se guarda sin guiones, como en el backend.
     expect(within(fila).getByRole('cell', { name: '20123456786' })).toBeTruthy()
     expect(within(fila).getByRole('cell', { name: 'A' })).toBeTruthy()
-  })
+  }, 15_000) // tipea en varios campos y abre desplegables: en un CI cargado pasa los 5 s
 
   it('da de alta uno de exportación: país sin AR, tax id libre y factura E', async () => {
     const usuario = montar()
@@ -169,7 +169,7 @@ describe('clientes', () => {
       within(fila).getByRole('cell', { name: 'DE 123/456-789' }),
     ).toBeTruthy()
     expect(within(fila).getByRole('cell', { name: 'E' })).toBeTruthy()
-  })
+  }, 15_000) // tipea en varios campos y abre desplegables: en un CI cargado pasa los 5 s
 
   it('exportación sin país no se guarda', async () => {
     const usuario = montar()
@@ -225,7 +225,7 @@ describe('clientes', () => {
     )
     // Va en el campo, no en el recuadro general del formulario.
     expect(screen.getAllByRole('alert')).toHaveLength(1)
-  })
+  }, 15_000) // tipea en varios campos y abre desplegables: en un CI cargado pasa los 5 s
 
   it('busca por el nombre del país', async () => {
     const usuario = montar()

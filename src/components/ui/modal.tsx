@@ -26,6 +26,8 @@ export function ModalContenido({
         {...(descripcion ? {} : { 'aria-describedby': undefined })}
         className={cn(
           'fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2',
+          // Con el teclado del teléfono abierto, Guardar sigue alcanzable.
+          'max-h-[calc(100dvh-2rem)] overflow-y-auto',
           'rounded-tarjeta border border-borde bg-panel p-5 shadow-2xl',
           'focus-visible:outline-2 focus-visible:outline-acento',
           className,

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { describirError } from '@/api/client'
 import { embarques } from '@/api/embarques'
 import { puede } from '@/auth/identidad'
@@ -25,6 +25,7 @@ import {
   IndicadorDeDocumentos,
 } from '@/modulos/exportacion/insignias'
 import type { Embarque } from '@/tipos/dominio'
+import { formatearFecha } from '@/lib/fechas'
 
 const columnas: Columna<Embarque>[] = [
   {
@@ -44,7 +45,7 @@ const columnas: Columna<Embarque>[] = [
     clave: 'fecha_vuelo',
     titulo: 'Vuelo',
     render: (e) => (
-      <span className="font-mono tabular-nums">{e.fecha_vuelo}</span>
+      <span className="tabular-nums">{formatearFecha(e.fecha_vuelo)}</span>
     ),
     orden: (a, b) => a.fecha_vuelo.localeCompare(b.fecha_vuelo),
   },
@@ -76,6 +77,7 @@ export default function EmbarquesPage() {
   const escribe = puede(identidad, ROLES_EXPORTACION)
   const cliente = useQueryClient()
   const [alta, setAlta] = useState<string | null>(null)
+  const navegar = useNavigate()
 
   const listado = useQuery({
     queryKey: [CLAVE_EMBARQUES],
@@ -84,9 +86,11 @@ export default function EmbarquesPage() {
   const crear = useMutation({
     mutationFn: ({ valores, clave }: { valores: Valores; clave: string }) =>
       embarques.crear(aEmbarqueCrear(valores), clave),
-    onSuccess: () => {
+    // Lo que sigue es cargar los 6 documentos: se va directo al detalle.
+    onSuccess: (embarque) => {
       void cliente.invalidateQueries({ queryKey: [CLAVE_EMBARQUES] })
       setAlta(null)
+      void navegar(`/exportacion/embarques/${embarque.id}`)
     },
   })
 

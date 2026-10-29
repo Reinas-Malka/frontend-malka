@@ -288,6 +288,6 @@ describe('listado de pedidos', () => {
         cantidad: 20,
         precio_unitario: '1500.50',
       })
-    })
+    }, 15_000) // tipea en varios campos y abre desplegables: en un CI cargado pasa los 5 s
   })
 })

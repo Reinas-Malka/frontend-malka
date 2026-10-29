@@ -68,7 +68,7 @@ describe('rutas', () => {
       expect(await screen.findByRole('heading', { level: 1 })).toBeTruthy()
       cleanup()
     }
-    }, 20_000) // recorre todas las pantallas: más que los 5 s por defecto
+  }, 20_000) // recorre todas las pantallas: más que los 5 s por defecto
 
   it('con datos simulados muestra el banner fijo', async () => {
     montar('/produccion/razas')
@@ -82,7 +82,8 @@ describe('rutas', () => {
   })
 
   it('el menú del teléfono se cierra al navegar', async () => {
-    montar('/')
+    // No desde '/': el inicio redirige y la navegación ya cerraría el menú.
+    montar('/produccion/tandas')
     const boton = await screen.findByRole('button', { name: 'Abrir menú' })
     await userEvent.setup().click(boton)
     expect(boton.getAttribute('aria-expanded')).toBe('true')
