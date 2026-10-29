@@ -35,12 +35,12 @@ describe('disponibilidad (repositorio_disponibilidad del backend)', () => {
       {
         raza_id: CARNIOLA.id,
         raza: 'Carniola',
-        enjauladas: 240,
+        enjauladas: 220,
         reservadas: 50,
-        disponible: 190,
+        disponible: 170,
         bancos: [
-          { banco_id: B01.id, identificador: 'B-01', reinas: 120 },
-          { banco_id: B02.id, identificador: 'B-02', reinas: 120 },
+          { banco_id: B01.id, identificador: 'B-01', reinas: 110 },
+          { banco_id: B02.id, identificador: 'B-02', reinas: 110 },
         ],
       },
     ])
@@ -51,7 +51,7 @@ describe('disponibilidad (repositorio_disponibilidad del backend)', () => {
       calcularDisponibilidad(semilla).map((d) => [d.raza, d.enjauladas]),
     ).toEqual([
       ['Buckfast', 0],
-      ['Carniola', 240],
+      ['Carniola', 220],
       ['Italiana', 0],
     ])
     const sinBuckfast = {
@@ -83,6 +83,7 @@ describe('disponibilidad (repositorio_disponibilidad del backend)', () => {
 
   it('la simulación la recalcula al entregar', async () => {
     const api = pedidosSimulados()
+    const [antes] = await api.disponibilidad(CARNIOLA.id)
     await api.entregar(RESERVADO.id, {
       lineas: [
         {
@@ -95,13 +96,17 @@ describe('disponibilidad (repositorio_disponibilidad del backend)', () => {
       ],
     })
     const [carniola] = await api.disponibilidad(CARNIOLA.id)
-    // La reserva se consumió: salen de las enjauladas y de las reservadas.
+    // La reserva se consumió: salen de las enjauladas y de las reservadas,
+    // así que lo disponible no cambia.
     expect(carniola).toMatchObject({
-      enjauladas: 190,
-      reservadas: 0,
-      disponible: 190,
+      enjauladas: antes.enjauladas - 50,
+      reservadas: antes.reservadas - 50,
+      disponible: antes.disponible,
     })
-    expect(carniola.bancos.map((b) => b.reinas)).toEqual([90, 100])
+    expect(carniola.bancos.map((b) => b.reinas)).toEqual([
+      antes.bancos[0].reinas - 30,
+      antes.bancos[1].reinas - 20,
+    ])
   })
 })
 

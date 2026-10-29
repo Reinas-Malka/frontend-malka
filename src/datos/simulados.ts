@@ -1,7 +1,7 @@
 /** Datos de ejemplo verosímiles del negocio (docs/dominio.md del backend).
- *  Tandas de 270/405 celdas (2-3 cuadros de 135), razas reales, parques en
- *  predios distintos y fechas que respetan el ciclo: traslarve D0, introducción
- *  ~D10, nacimiento D11, fecundación nac+10, enjaulado I0+16. */
+ *  Tandas de 135/270/405 celdas (1-3 cuadros de 135), razas reales, parques
+ *  en predios distintos y fechas que respetan el ciclo con las operaciones
+ *  del campo (23/10): traslarve D0, introducción ~D10, cosecha ≈ D26. */
 import { conTotales, type PedidoSinTotales } from '@/lib/importes'
 import {
   CUPULAS_POR_CUADRO,
@@ -12,7 +12,6 @@ import {
   type Comprobante,
   type DocumentoEmbarque,
   type Embarque,
-  type EstadoCelda,
   type ItemVendible,
   type Madre,
   type Material,
@@ -90,102 +89,167 @@ export const nucleos: Nucleo[] = Array.from({ length: 24 }, (_, i) => ({
   activo: true,
 }))
 
-/** Tres tandas en momentos distintos del ciclo (traslarve = 5/10 hacia atrás). */
-export const tandas: Tanda[] = [
+/** Dos bancos: las reinas cosechadas se reparten entre ellos (dominio 16/10). */
+const BANCOS_IDS = [id(95), id(96)]
+
+/** El backend devuelve las fechas como date (YYYY-MM-DD). */
+const diaAtras = (dias: number) => iso(dias).slice(0, 10)
+
+/** Cómo quedó cada tanda, con las operaciones del campo (dominio del 23/10):
+ *  descartar antes de introducir, introducir, cosechar (una vez) y pasar a
+ *  banco. Nacimiento, madurez y fecundación no se cargan. */
+type Historia = {
+  tanda: string
+  edad: number // días desde el traslarve
+  cupulas: number // cuadros × CUPULAS_POR_CUADRO
+  descartadasAntes: number
+  introducidas: number
+  cosechadas: number | null // null: todavía en el parque
+  parque: number // índice del primer núcleo del parque
+  nucleosDelParque: number
+  primerId: number
+}
+
+const HISTORIAS: Historia[] = [
+  // 2 cuadros, ya cosechada: 250 al parque, 220 enjauladas y 30 descartadas.
+  {
+    tanda: id(31),
+    edad: 40,
+    cupulas: 2 * CUPULAS_POR_CUADRO,
+    descartadasAntes: 20,
+    introducidas: 250,
+    cosechadas: 220,
+    parque: 0,
+    nucleosDelParque: 15,
+    primerId: 10_000,
+  },
+  // 3 cuadros, en el parque esperando la cosecha.
+  {
+    tanda: id(32),
+    edad: 18,
+    cupulas: 3 * CUPULAS_POR_CUADRO,
+    descartadasAntes: 5,
+    introducidas: 400,
+    cosechadas: null,
+    parque: 15,
+    nucleosDelParque: 9,
+    primerId: 11_000,
+  },
+  // 1 cuadro, recién traslarvada (carga retroactiva).
+  {
+    tanda: id(33),
+    edad: 6,
+    cupulas: CUPULAS_POR_CUADRO,
+    descartadasAntes: 1,
+    introducidas: 0,
+    cosechadas: null,
+    parque: 0,
+    nucleosDelParque: 15,
+    primerId: 12_000,
+  },
+]
+
+const INTRODUCCION = 10 // ~D10
+const COSECHA = 26 // ≈ D26 (I0+16)
+
+/** Una fila por cúpula, como la base real. */
+function celdasDe(h: Historia): Celda[] {
+  return Array.from({ length: h.cupulas }, (_, i): Celda => {
+    const base: Celda = {
+      id: id(h.primerId + i),
+      tenant_id: T,
+      tanda_id: h.tanda,
+      nucleo_id: null,
+      estado: 'trasladada',
+      fecha_introduccion: null,
+      fecha_nacimiento: null,
+      fecha_fecundacion: null,
+      fecha_enjaulado: null,
+      banco_id: null,
+      fecha_descarte: null,
+      fecha_extravio: null,
+    }
+    if (i < h.descartadasAntes)
+      // Sin núcleo: nunca se introdujo.
+      return {
+        ...base,
+        estado: 'descartada',
+        fecha_descarte: diaAtras(h.edad - 9),
+      }
+    const n = i - h.descartadasAntes
+    if (n >= h.introducidas) return base
+    const enParque = {
+      ...base,
+      estado: 'introducida' as const,
+      nucleo_id: nucleos[h.parque + (n % h.nucleosDelParque)].id,
+      fecha_introduccion: diaAtras(h.edad - INTRODUCCION),
+    }
+    if (h.cosechadas === null) return enParque
+    if (n < h.cosechadas)
+      return {
+        ...enParque,
+        estado: 'enjaulada',
+        fecha_enjaulado: diaAtras(h.edad - COSECHA),
+        banco_id: BANCOS_IDS[n % 2],
+      }
+    // El resto de la cosecha: descartada, conserva el núcleo.
+    return {
+      ...enParque,
+      estado: 'descartada',
+      fecha_descarte: diaAtras(h.edad - COSECHA),
+    }
+  })
+}
+
+export const celdas: Celda[] = HISTORIAS.flatMap(celdasDe)
+
+/** Celdas contadas por estado, como las devuelve el backend al leer. */
+function porEstado(tandaId: string): Record<string, number> {
+  const conteo: Record<string, number> = {}
+  for (const c of celdas)
+    if (c.tanda_id === tandaId) conteo[c.estado] = (conteo[c.estado] ?? 0) + 1
+  return conteo
+}
+
+const TANDAS_BASE: Omit<Tanda, 'celdas' | 'celdas_por_estado'>[] = [
   {
     id: id(31),
-    tenant_id: T,
-    fecha_traslarve: iso(40),
+    fecha_traslarve: diaAtras(40),
     madre_id: null,
     raza_id: id(1),
     retroactivo: false,
     fila_continuadora: 3,
     posicion_continuadora: 2,
-  }, // 2 cuadros → 270
+  },
   {
     id: id(32),
-    tenant_id: T,
-    fecha_traslarve: iso(18),
-    madre_id: null,
+    fecha_traslarve: diaAtras(18),
+    madre_id: id(11),
     raza_id: id(2),
     retroactivo: false,
     fila_continuadora: 3,
     posicion_continuadora: 3,
-  }, // 3 cuadros → 405
+  },
   {
     id: id(33),
-    tenant_id: T,
-    fecha_traslarve: iso(6),
+    fecha_traslarve: diaAtras(6),
     madre_id: null,
     raza_id: id(1),
     retroactivo: true,
     fila_continuadora: null,
     posicion_continuadora: null,
-  }, // 1 cuadro → 135
+  },
 ]
 
-const POR_TANDA: Record<string, number> = {
-  [id(31)]: 270,
-  [id(32)]: 405,
-  [id(33)]: 135,
-}
-/** Primer id de cada tanda: bloques de 1000, más que la tanda más grande. */
-const PRIMER_ID: Record<string, number> = {
-  [id(31)]: 10_000,
-  [id(32)]: 11_000,
-  [id(33)]: 12_000,
-}
-
-/** Dos bancos: las reinas enjauladas se reparten entre ellos (dominio 16/10). */
-const BANCOS_IDS = [id(95), id(96)]
-
-/** Estados coherentes con la antigüedad de cada tanda. */
-function celdasDe(tandaId: string, edadDias: number): Celda[] {
-  // Una fila por cúpula, como la base real (decenas por tanda, dominio D).
-  const total = POR_TANDA[tandaId]
-  return Array.from({ length: total }, (_, i) => {
-    const introducida = edadDias >= 10
-    const nacida = edadDias >= 11
-    const resuelta = edadDias >= 21 // nac+10
-    const enjaulada = edadDias >= 26 // I0+16
-    let estado: EstadoCelda = 'trasladada'
-    if (edadDias < 8 && i === 0)
-      estado = 'descartada' // no operculó
-    else if (enjaulada && i % 9 !== 0) estado = 'enjaulada'
-    else if (resuelta && i % 9 === 0 && i % 2 === 0) estado = 'fecundada'
-    else if (resuelta && i % 9 === 0)
-      estado = 'extraviada' // no volvió del vuelo nupcial
-    else if (nacida) estado = 'madura'
-    else if (introducida) estado = 'introducida'
-    const nucleo =
-      introducida && estado !== 'descartada'
-        ? nucleos[(i + 3) % nucleos.length].id
-        : null
-    return {
-      id: id(PRIMER_ID[tandaId] + i),
-      tenant_id: T,
-      tanda_id: tandaId,
-      nucleo_id: nucleo,
-      estado,
-      fecha_introduccion: introducida ? iso(edadDias - 10) : null,
-      fecha_nacimiento: nacida ? iso(edadDias - 11) : null,
-      fecha_fecundacion:
-        estado === 'fecundada' || estado === 'enjaulada'
-          ? iso(edadDias - 21)
-          : null,
-      fecha_enjaulado: estado === 'enjaulada' ? iso(edadDias - 26) : null,
-      banco_id: estado === 'enjaulada' ? BANCOS_IDS[i % 2] : null,
-      fecha_descarte: estado === 'descartada' ? iso(edadDias - 5) : null,
-      fecha_extravio: estado === 'extraviada' ? iso(edadDias - 21) : null,
-    }
-  })
-}
-
-export const celdas: Celda[] = [
-  ...celdasDe(id(31), 40),
-  ...celdasDe(id(32), 18),
-  ...celdasDe(id(33), 6),
-]
+/** Tres tandas en momentos distintos: cosechada, en el parque y recién hecha. */
+export const tandas: Tanda[] = TANDAS_BASE.map((t) => {
+  const celdas_por_estado = porEstado(t.id)
+  return {
+    ...t,
+    celdas_por_estado,
+    celdas: Object.values(celdas_por_estado).reduce((a, b) => a + b, 0),
+  }
+})
 
 /** Las reinas de cada banco se cuentan desde las celdas, como en el backend. */
 export const bancos: Banco[] = BANCOS_IDS.map((bancoId, n) => ({
@@ -203,7 +267,7 @@ export const materiales: Material[] = [
     id: id(41),
     nombre: 'Cúpula de cera',
     unidad: 'cúpulas',
-    stock: '1365',
+    stock: '1230',
     activo: true,
   }, // el material es la cúpula suelta
   {
@@ -254,6 +318,15 @@ export const movimientos: MovimientoMaterial[] = [
     tanda_id: null,
     motivo: 'Reconteo de stock físico',
     fecha: dia(10),
+  },
+  {
+    id: id(55),
+    material_id: id(41),
+    tipo: 'consumo',
+    cantidad: String(-CUPULAS_POR_CUADRO),
+    tanda_id: id(33),
+    motivo: null,
+    fecha: dia(6),
   },
 ]
 

@@ -17,11 +17,29 @@ export function formatearFechaHora(
   }).format(new Date(fecha))
 }
 
-/** Hoy como `date` del backend (AAAA-MM-DD), con la hora de Argentina como
- *  hoy() de app/fechas.py: a las 22 h del 31 en AR ya es el 1 en UTC. */
+/** La cabaña opera en Argentina: "hoy" es el de Buenos Aires, aunque el
+ *  navegador esté en otro huso (igual que app/fechas.py del backend). */
+export const ZONA_ARGENTINA = 'America/Argentina/Buenos_Aires'
+
+/** Fecha de hoy en Argentina como AAAA-MM-DD, el `date` del backend. */
 export function hoyEnArgentina(ahora: Date = new Date()): string {
   // en-CA formatea como AAAA-MM-DD.
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Argentina/Buenos_Aires',
+    timeZone: ZONA_ARGENTINA,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(ahora)
+}
+
+/** Días entre dos fechas AAAA-MM-DD (hasta − desde). Sin horas ni husos:
+ *  las dos se toman como medianoche UTC. */
+export function diasEntre(desde: string, hasta: string): number {
+  const dia = (fecha: string) => Date.parse(`${fecha.slice(0, 10)}T00:00:00Z`)
+  return Math.round((dia(hasta) - dia(desde)) / 86_400_000)
+}
+
+/** Domingo para una fecha AAAA-MM-DD (sin depender del huso del navegador). */
+export function esDomingo(fecha: string): boolean {
+  return new Date(`${fecha}T12:00:00Z`).getUTCDay() === 0
 }

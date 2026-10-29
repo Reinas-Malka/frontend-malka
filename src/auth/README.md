@@ -40,6 +40,31 @@ Usuario          App (React)                 Cognito (hosted UI)          Backen
 - **Salir**, en este orden: revoca el refresh token en Cognito (`/oauth2/revoke`; si no, serviría 30 días más), borra la sesión local (así el ID token no viaja como `id_token_hint` en la URL) y llama al `/logout` del hosted UI, que cierra también la sesión de Cognito.
 - **Modo demo:** con `VITE_DATOS_SIMULADOS=true` no hay login. Corre con un usuario de ejemplo `admin` y el banner fijo.
 
+## Qué ve cada rol (#4)
+
+El backend deja **leer** a todos los roles y solo restringe la escritura
+(`require_role`). Qué sección ve cada uno es una decisión de la UI, y vive en
+un solo lugar: `ACCESOS` en `src/app/navegacion.ts`.
+
+| Sección                                                 | admin | produccion | ventas | lectura |
+| ------------------------------------------------------- | :---: | :--------: | :----: | :-----: |
+| Estado del sistema                                      |   ✓   |     ✓      |   ✓    |    ✓    |
+| Producción (razas, parques, bancos, materiales, madres) |   ✓   |     ✓      |        |    ✓    |
+| Clientes                                                |   ✓   |            |   ✓    |    ✓    |
+| Ítems vendibles                                         |   ✓   |     ✓      |   ✓    |    ✓    |
+| Exportación (embarques y su detalle)                    |   ✓   |            |   ✓    |    ✓    |
+| Subir documento                                         |   ✓   |            |   ✓    |         |
+| Guía de estilo                                          |   ✓   |            |        |         |
+
+- **El menú** esconde las secciones que el rol no abre, y también el título de
+  un grupo que queda vacío.
+- **Escribir la URL** de una sección ajena muestra "no está disponible para tu
+  rol" dentro del layout, sin cargar la pantalla.
+- **Sin rol asignado**, no se abre ninguna sección y la app lo explica.
+- La regla va **por prefijo** (gana el más largo), así cubre también las rutas
+  que no están en el menú. Una sección nueva se suma a `ACCESOS`; si no, la
+  abre cualquier rol. `tests/navegacion-por-rol.test.tsx` fija qué ve cada rol.
+
 ## Probarlo en local
 
 `.env.local` con las `VITE_COGNITO_*` (son públicas: están en las variables del repo) y la app en **localhost:5173**, que es el origen registrado en Cognito y en el CORS. Los usuarios de prueba están en `docs/cognito.md` del backend. La contraseña se pide al equipo y no se versiona.

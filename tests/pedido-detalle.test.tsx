@@ -93,6 +93,10 @@ describe('detalle del pedido', () => {
     await usuario.click(await screen.findByRole('option', { name: opcion }))
   }
 
+  /** Las reinas de Carniola en B-01 y B-02, en ese orden. */
+  const enLosBancos = async () =>
+    (await stock.listar(CARNIOLA.id))[0].bancos.map((b) => b.reinas)
+
   /** Espera la celda de una tabla y devuelve su fila. */
   const waitForCell = async (texto: string) =>
     (await screen.findByRole('cell', { name: texto })).closest(
@@ -287,6 +291,7 @@ describe('detalle del pedido', () => {
   })
 
   it('entrega un reservado repartido entre dos bancos', async () => {
+    const [b01, b02] = await enLosBancos()
     const { usuario } = abrir(RESERVADO)
     await titulo()
     const zona = await abrirEntrega(usuario)
@@ -314,8 +319,7 @@ describe('detalle del pedido', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByText('Entregado')).toBeTruthy()
     expect(acciones()).toEqual([])
-    const [carniola] = await stock.listar(CARNIOLA.id)
-    expect(carniola.bancos.map((b) => b.reinas)).toEqual([90, 100])
+    expect(await enLosBancos()).toEqual([b01 - 30, b02 - 20])
 
     // Trazabilidad: la reserva quedó consumida y se ve qué salió de cada banco.
     expect(await screen.findByText('Consumida')).toBeTruthy()
@@ -343,6 +347,7 @@ describe('detalle del pedido', () => {
   // El DoD del issue: un pedido se crea, se reserva, se entrega repartido
   // entre dos bancos y muestra solo las transiciones habilitadas.
   it('criterio de terminado: crear, reservar y entregar entre dos bancos', async () => {
+    const [b01, b02] = await enLosBancos()
     const { usuario } = montar('/ventas/pedidos')
     await usuario.click(
       await screen.findByRole('button', { name: 'Nuevo pedido' }),
@@ -386,7 +391,6 @@ describe('detalle del pedido', () => {
     expect(screen.getByText('Entregado')).toBeTruthy()
     expect(acciones()).toEqual([])
     // 5 de B-01 y 7 de B-02: salieron de los dos bancos.
-    const [carniola] = await stock.listar(CARNIOLA.id)
-    expect(carniola.bancos.map((b) => b.reinas)).toEqual([115, 113])
+    expect(await enLosBancos()).toEqual([b01 - 5, b02 - 7])
   })
 })
