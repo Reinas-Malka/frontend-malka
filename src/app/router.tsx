@@ -70,6 +70,12 @@ export const rutas: RouteObject[] = [
             }),
           },
           {
+            path: 'ventas/disponibilidad',
+            lazy: async () => ({
+              Component: (await import('@/pages/DisponibilidadPage')).default,
+            }),
+          },
+          {
             path: 'ventas/items-vendibles',
             lazy: catalogo('ItemsVendiblesPage'),
           },

@@ -1,4 +1,5 @@
 import {
+  Boxes,
   ClipboardList,
   Dna,
   Gauge,
@@ -31,6 +32,8 @@ export const ACCESOS: readonly { prefijo: string; roles: readonly Rol[] }[] = [
   { prefijo: '/ventas', roles: ['admin', 'ventas', 'lectura'] },
   // Los carga producción y los usa ventas para cotizar.
   { prefijo: '/ventas/items-vendibles', roles: ROLES },
+  // La lee cualquier rol (routers/disponibilidad.py): producción también.
+  { prefijo: '/ventas/disponibilidad', roles: ROLES },
   { prefijo: '/exportacion', roles: ['admin', 'ventas', 'lectura'] },
   // Solo quien puede pedir la subida (POST /documentos/subidas).
   { prefijo: '/documentos', roles: ['admin', 'ventas'] },
@@ -74,6 +77,7 @@ export const NAVEGACION: Grupo[] = [
     titulo: 'Ventas',
     enlaces: [
       { a: '/ventas/pedidos', texto: 'Pedidos', icono: ClipboardList },
+      { a: '/ventas/disponibilidad', texto: 'Disponibilidad', icono: Boxes },
       { a: '/ventas/clientes', texto: 'Clientes', icono: Users },
       { a: '/ventas/items-vendibles', texto: 'Ítems vendibles', icono: Tag },
     ],
