@@ -265,6 +265,104 @@ describe('detalle del pedido', () => {
     expect(screen.getByText('Borrador')).toBeTruthy()
   })
 
+  // DoD del #14: otra reserva se adelanta entre que se abre el pedido y se
+  // reserva. La pantalla dice qué pasó, actualiza el disponible y deja
+  // reintentar con la misma Idempotency-Key.
+  it('si otra reserva se adelanta, explica el conflicto y reintenta con la misma clave', async () => {
+    const { pedidos: api } = await import('../src/api/pedidos')
+    const [{ disponible }] = await stock.listar(CARNIOLA.id)
+    const { usuario } = abrir(PARA_RESERVAR)
+    await titulo()
+    await waitFor(() => expect(disponibleDeLaLinea()).toBe(String(disponible)))
+
+    // Otra persona se lleva todas las de Carniola menos 5.
+    const [linea] = PARA_RESERVAR.items
+    const otro = await api.crear({
+      cliente_id: PARA_RESERVAR.cliente_id,
+      moneda: 'ARS',
+      fecha_entrega_solicitada: PARA_RESERVAR.fecha_entrega_solicitada,
+      items: [
+        {
+          item_vendible_id: linea.item_vendible_id,
+          raza_id: CARNIOLA.id,
+          cantidad: disponible - 5,
+          precio_unitario: '45000.00',
+        },
+      ],
+    })
+    await api.reservar(otro.id)
+    const reservar = vi.spyOn(api, 'reservar')
+
+    await usuario.click(screen.getByRole('button', { name: 'Reservar' }))
+
+    const alerta = await screen.findByRole('alert')
+    expect(alerta.textContent).toContain(
+      'Carniola: pide 20, hay 5 (faltan 15).',
+    )
+    // El disponible de la línea ya es el nuevo y no se reservó nada.
+    await waitFor(() => expect(disponibleDeLaLinea()).toBe('5Faltan 15'))
+    expect(screen.getByText('Borrador')).toBeTruthy()
+
+    // La otra persona cancela: vuelven a alcanzar.
+    await api.cancelar(otro.id)
+    await usuario.click(
+      within(alerta).getByRole('button', { name: 'Reintentar' }),
+    )
+
+    expect(
+      await screen.findByText('Pedido reservado: 20 reinas apartadas.'),
+    ).toBeTruthy()
+    const [[, primera], [, segunda]] = reservar.mock.calls
+    expect(primera).toBeTruthy()
+    expect(segunda).toBe(primera)
+  })
+
+  it('si la respuesta se pierde, Reintentar con la misma clave no reserva dos veces', async () => {
+    const { pedidos: api } = await import('../src/api/pedidos')
+    const { ApiError } = await import('../src/api/client')
+    const [antes] = await stock.listar(CARNIOLA.id)
+    // La reserva se hace, pero la respuesta no llega.
+    const original = api.reservar
+    vi.spyOn(api, 'reservar').mockImplementationOnce(async (id, clave) => {
+      await original(id, clave)
+      throw new ApiError({
+        codigo: 'tiempo_agotado',
+        mensaje: 'La API tardó demasiado en responder.',
+      })
+    })
+    const { usuario } = abrir(PARA_RESERVAR)
+    await titulo()
+
+    await usuario.click(screen.getByRole('button', { name: 'Reservar' }))
+    const alerta = await screen.findByRole('alert')
+    expect(alerta.textContent).toContain('La API tardó demasiado')
+    await usuario.click(
+      within(alerta).getByRole('button', { name: 'Reintentar' }),
+    )
+
+    expect(
+      await screen.findByText('Pedido reservado: 20 reinas apartadas.'),
+    ).toBeTruthy()
+    const [despues] = await stock.listar(CARNIOLA.id)
+    expect(despues.reservadas).toBe(antes.reservadas + 20)
+  })
+
+  it('si el pedido ya se reservó en otra pestaña, no ofrece reintentar', async () => {
+    const { pedidos: api } = await import('../src/api/pedidos')
+    const { usuario } = abrir(PARA_RESERVAR)
+    await titulo()
+    await api.reservar(PARA_RESERVAR.id)
+
+    await usuario.click(screen.getByRole('button', { name: 'Reservar' }))
+
+    // El 409 refresca el pedido: ya está reservado y no hay nada que reintentar.
+    expect(await screen.findByText('Reservado')).toBeTruthy()
+    const alerta = screen.getByRole('alert')
+    expect(alerta.textContent).toContain('Solo se puede reservar un pedido')
+    expect(within(alerta).queryByRole('button')).toBeNull()
+    expect(acciones()).toEqual(['Entregar', 'Cancelar pedido'])
+  })
+
   it('cancela solo después de confirmar', async () => {
     const { usuario } = abrir(RESERVADO)
     await titulo()

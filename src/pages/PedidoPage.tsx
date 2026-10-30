@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Ban, PackageCheck, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
-import { describirError } from '@/api/client'
+import { describirError, esApiError } from '@/api/client'
 import { disponibilidad } from '@/api/disponibilidad'
 import { pedidos } from '@/api/pedidos'
 import { puede } from '@/auth/identidad'
@@ -109,16 +109,23 @@ function columnas(
 }
 
 /** El 409 stock_insuficiente, raza por raza. El flujo para resolverlo
- *  (ver la disponibilidad, achicar el pedido) es del #14. */
+ *  (ver la disponibilidad, achicar el pedido) es del #14. Con reintentar,
+ *  ofrece volver a intentar con la misma Idempotency-Key. */
 function ErrorDeReserva({
   error,
   nombreDeRaza,
+  reintentar,
 }: {
   error: unknown
   nombreDeRaza: (id: string) => string
+  /** Solo si el pedido sigue en borrador y quien mira puede reservar. */
+  reintentar?: () => void
 }) {
   const faltantes = faltantesDeStock(error)
-  if (!faltantes) return <ErrorDePantalla error={describirError(error)} />
+  if (!faltantes)
+    return (
+      <ErrorDePantalla error={describirError(error)} reintentar={reintentar} />
+    )
   return (
     <div role="alert" className={ALERTA}>
       <p className="font-medium">
@@ -135,6 +142,17 @@ function ErrorDeReserva({
       <p className="mt-1 text-texto-suave">
         No se reservó nada: se reserva todo el pedido o nada.
       </p>
+      {reintentar ? (
+        <>
+          <p className="mt-1 text-texto-suave">
+            Otra reserva pudo haberse adelantado: el disponible de cada línea ya
+            está actualizado.
+          </p>
+          <Button variante="secundario" className="mt-2" onClick={reintentar}>
+            Reintentar
+          </Button>
+        </>
+      ) : null}
     </div>
   )
 }
@@ -149,6 +167,10 @@ export default function PedidoPage() {
   const [cancelacion, setCancelacion] = useState<string | null>(null)
   // Lo mismo para la entrega: la clave del despacho en curso, o null.
   const [entrega, setEntrega] = useState<string | null>(null)
+  // Y para la reserva: se fija en el primer intento y se repite en cada
+  // reintento hasta que reserva. Si la respuesta se perdió, el backend
+  // devuelve las reservas ya hechas en lugar de un 409.
+  const [intentoDeReserva, setIntentoDeReserva] = useState<string | null>(null)
   const [aviso, setAviso] = useState('')
 
   const pedido = useQuery({
@@ -183,13 +205,24 @@ export default function PedidoPage() {
       consultas.invalidateQueries({ queryKey: [CLAVE_DISPONIBILIDAD] }),
     ])
   const reservar = useMutation({
-    mutationFn: () => pedidos.reservar(id),
+    mutationFn: (clave: string) => pedidos.reservar(id, clave),
+    // Un 409 dice que el pedido o el stock ya no están como se ven (otra
+    // reserva se adelantó): se refrescan para reintentar con lo nuevo.
+    onError: (error) => {
+      if (esApiError(error) && error.status === 409) void alCambiar()
+    },
     onSuccess: async (reservas) => {
       await alCambiar()
+      setIntentoDeReserva(null)
       const reinas = reservas.reduce((total, r) => total + r.cantidad, 0)
       setAviso(`Pedido reservado: ${reinas} reinas apartadas.`)
     },
   })
+  const intentarReserva = () => {
+    const clave = intentoDeReserva ?? crypto.randomUUID()
+    setIntentoDeReserva(clave)
+    reservar.mutate(clave)
+  }
   const cancelar = useMutation({
     mutationFn: (clave: string) => pedidos.cancelar(id, clave),
     onSuccess: async () => {
@@ -300,7 +333,7 @@ export default function PedidoPage() {
         <Button
           cargando={reservar.isPending}
           disabled={ocupado}
-          onClick={() => reservar.mutate()}
+          onClick={intentarReserva}
         >
           <PackageCheck className="size-4" aria-hidden /> Reservar
         </Button>
@@ -334,7 +367,15 @@ export default function PedidoPage() {
       </div>
 
       {reservar.isError ? (
-        <ErrorDeReserva error={reservar.error} nombreDeRaza={nombreDeRaza} />
+        <ErrorDeReserva
+          error={reservar.error}
+          nombreDeRaza={nombreDeRaza}
+          reintentar={
+            escribe && puedePasar(p.estado, 'reservado')
+              ? intentarReserva
+              : undefined
+          }
+        />
       ) : null}
 
       <div className="space-y-3">

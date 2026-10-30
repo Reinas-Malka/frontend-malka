@@ -234,6 +234,38 @@ describe('API de pedidos simulada (mismas respuestas que el backend)', () => {
     })
   })
 
+  it('con la misma clave, reservar de nuevo devuelve las mismas reservas', async () => {
+    const api = pedidosSimulados()
+    const reservadas = async () =>
+      (await api.disponibilidad(CARNIOLA.id))[0].reservadas
+    const antes = await reservadas()
+
+    const primera = await api.reservar(PARA_RESERVAR.id, 'clave-1')
+    const segunda = await api.reservar(PARA_RESERVAR.id, 'clave-1')
+
+    expect(segunda).toEqual(primera)
+    expect(await reservadas()).toBe(antes + 20)
+  })
+
+  it('tras un stock_insuficiente, la misma clave vuelve a intentar', async () => {
+    const api = pedidosSimulados()
+    // Otro pedido se lleva todas las de Carniola menos 5.
+    const [{ disponible }] = await api.disponibilidad(CARNIOLA.id)
+    const otro = await api.crear(
+      alta({ items: [{ ...alta().items[0], cantidad: disponible - 5 }] }),
+    )
+    await api.reservar(otro.id)
+    await expect(
+      api.reservar(PARA_RESERVAR.id, 'clave-1'),
+    ).rejects.toMatchObject({ codigo: 'stock_insuficiente' })
+
+    await api.cancelar(otro.id)
+    const reservas = await api.reservar(PARA_RESERVAR.id, 'clave-1')
+
+    expect(reservas[0]).toMatchObject({ cantidad: 20, estado: 'activa' })
+    expect((await api.obtener(PARA_RESERVAR.id)).estado).toBe('reservado')
+  })
+
   it('DoD: se reserva y se entrega repartido entre dos bancos', async () => {
     const api = pedidosSimulados()
     const [linea] = PARA_RESERVAR.items
