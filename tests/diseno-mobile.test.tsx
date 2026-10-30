@@ -1,7 +1,16 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react'
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
+import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { EncabezadoDePagina } from '../src/components/pagina/EncabezadoDePagina'
+import { Button } from '../src/components/ui/button'
 import { Input } from '../src/components/ui/input'
 import { Modal, ModalContenido } from '../src/components/ui/modal'
 import { BarraDeProgreso } from '../src/components/ui/progreso'
@@ -139,5 +148,49 @@ describe('formularios en el teléfono', () => {
       expect(campo.className).toContain('text-base')
       expect(campo.className).toContain('sm:text-sm')
     }
+  })
+})
+
+// Accesibilidad (revisión 29/10).
+describe('accesibilidad de la base', () => {
+  it('el botón de peligro usa texto oscuro: 4,7:1 sobre el rojo', () => {
+    render(<Button variante="peligro">Dar de baja</Button>)
+    const clases = screen.getByRole('button', { name: 'Dar de baja' }).className
+    expect(clases).toContain('text-carbon-900')
+    expect(clases).not.toMatch(/\btext-texto\b/)
+  })
+
+  it('al cerrar el modal el foco vuelve al botón que lo abrió', async () => {
+    const usuario = userEvent.setup()
+    function ConModal() {
+      const [abierto, setAbierto] = useState(false)
+      return (
+        <>
+          <button type="button" onClick={() => setAbierto(true)}>
+            Abrir
+          </button>
+          <Modal open={abierto} onOpenChange={setAbierto}>
+            {abierto ? (
+              <ModalContenido titulo="Editar">contenido</ModalContenido>
+            ) : null}
+          </Modal>
+        </>
+      )
+    }
+    render(<ConModal />)
+
+    await usuario.click(screen.getByRole('button', { name: 'Abrir' }))
+    await usuario.keyboard('{Escape}')
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Abrir' }),
+      ),
+    )
+  })
+
+  it('cada pantalla pone su nombre en la pestaña del navegador', () => {
+    render(<EncabezadoDePagina titulo="Pedidos" />)
+    expect(document.title).toBe('Pedidos · Malka Suite')
   })
 })

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Ban, PackageCheck, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
-import { describirError } from '@/api/client'
+import { describirError, esApiError } from '@/api/client'
 import { pedidos } from '@/api/pedidos'
 import { puede } from '@/auth/identidad'
 import { useSesion } from '@/auth/useSesion'
@@ -33,6 +33,7 @@ import {
 } from '@/modulos/ventas/pedidos'
 import type { Despacho, Moneda, Pedido, PedidoItem } from '@/tipos/dominio'
 import { formatearFecha } from '@/lib/fechas'
+import { CLAVE_TANDAS } from '@/modulos/produccion/tandas'
 
 const ALERTA =
   'rounded-control border border-peligro/40 bg-peligro/10 p-3 text-sm text-texto'
@@ -138,14 +139,28 @@ export default function PedidoPage() {
   })
 
   // Un cambio de estado refresca el detalle, todas las vistas del listado y
-  // la disponibilidad (reservar, entregar y cancelar la cambian).
-  const alCambiar = () =>
+  // la disponibilidad (reservar, entregar y cancelar la cambian). Entregar
+  // además saca reinas de los bancos y de las tandas.
+  const alCambiar = (tambienBancos = false) =>
     Promise.all([
       consultas.invalidateQueries({ queryKey: [CLAVE_PEDIDOS] }),
       consultas.invalidateQueries({ queryKey: [CLAVE_DISPONIBILIDAD] }),
+      ...(tambienBancos
+        ? [
+            consultas.invalidateQueries({ queryKey: ['bancos'] }),
+            consultas.invalidateQueries({ queryKey: [CLAVE_TANDAS] }),
+          ]
+        : []),
     ])
+  // Un 409 dice que el pedido ya no está como se ve (otra pestaña, o una
+  // respuesta que se perdió por timeout): se refresca para mostrarlo como
+  // quedó, en lugar de dejar un botón que siempre va a fallar.
+  const siCambioAfuera = (error: unknown) => {
+    if (esApiError(error) && error.status === 409) void alCambiar()
+  }
   const reservar = useMutation({
     mutationFn: () => pedidos.reservar(id),
+    onError: siCambioAfuera,
     onSuccess: async (reservas) => {
       await alCambiar()
       const reinas = reservas.reduce((total, r) => total + r.cantidad, 0)
@@ -154,6 +169,7 @@ export default function PedidoPage() {
   })
   const cancelar = useMutation({
     mutationFn: (clave: string) => pedidos.cancelar(id, clave),
+    onError: siCambioAfuera,
     onSuccess: async () => {
       await alCambiar()
       setCancelacion(null)
@@ -163,8 +179,9 @@ export default function PedidoPage() {
   const entregar = useMutation({
     mutationFn: ({ despacho, clave }: { despacho: Despacho; clave: string }) =>
       pedidos.entregar(id, despacho, clave),
+    onError: siCambioAfuera,
     onSuccess: async (entregado) => {
-      await alCambiar()
+      await alCambiar(true)
       setEntrega(null)
       const reinas = entregado.items.reduce((total, l) => total + l.cantidad, 0)
       setAviso(`Pedido entregado: ${reinas} reinas despachadas.`)

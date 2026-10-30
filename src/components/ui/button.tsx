@@ -14,7 +14,8 @@ const variantes = cva(
         secundario:
           'bg-panel text-texto hover:bg-panel-alto border border-borde',
         fantasma: 'text-texto hover:bg-panel',
-        peligro: 'bg-peligro text-texto hover:opacity-90',
+        // Texto oscuro: 4,7:1 sobre el rojo (claro daba 3,3:1, menos que AA).
+        peligro: 'bg-peligro text-carbon-900 hover:opacity-90',
       },
       tamano: {
         chico: 'h-10 px-3 text-xs',
