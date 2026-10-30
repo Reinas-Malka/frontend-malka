@@ -6363,6 +6363,24 @@
        "title": "Pedido Id",
        "type": "string"
       }
+     },
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
      }
     ],
     "responses": {
