@@ -3,10 +3,12 @@ import { ArrowLeft, Ban, PackageCheck, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { describirError } from '@/api/client'
+import { disponibilidad } from '@/api/disponibilidad'
 import { pedidos } from '@/api/pedidos'
 import { puede } from '@/auth/identidad'
 import { useSesion } from '@/auth/useSesion'
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorDePantalla } from '@/components/ui/estados'
 import { Modal, ModalContenido } from '@/components/ui/modal'
@@ -26,6 +28,8 @@ import {
   ROLES_VENTAS,
   clientesConBajas,
   type DesdeElListado,
+  type DisponibleDeLinea,
+  disponiblePorLinea,
   faltantesDeStock,
   itemsConBajas,
   razasConBajas,
@@ -36,11 +40,38 @@ import type { Despacho, Moneda, Pedido, PedidoItem } from '@/tipos/dominio'
 const ALERTA =
   'rounded-control border border-peligro/40 bg-peligro/10 p-3 text-sm text-texto'
 
+/** Una línea con el disponible de su raza; undefined fuera de un borrador
+ *  o mientras se lee. */
+type FilaDeLinea = PedidoItem & { disponible?: DisponibleDeLinea }
+
+/** El disponible de la raza de la línea. Si no alcanza lo dice con texto,
+ *  no solo con color. */
+function Disponible({ de }: { de: DisponibleDeLinea | undefined }) {
+  if (!de) return <span className="text-texto-suave">—</span>
+  return (
+    <span className="inline-flex items-center gap-2">
+      {de.disponible}
+      {de.faltan > 0 ? <Badge tono="peligro">Faltan {de.faltan}</Badge> : null}
+    </span>
+  )
+}
+
 function columnas(
   nombreDeItem: (id: string) => string,
   nombreDeRaza: (id: string) => string,
   moneda: Moneda,
-): Columna<PedidoItem>[] {
+  conDisponible: boolean,
+): Columna<FilaDeLinea>[] {
+  const disponible: Columna<FilaDeLinea>[] = conDisponible
+    ? [
+        {
+          clave: 'disponible',
+          titulo: 'Disponible',
+          className: 'text-right font-mono tabular-nums',
+          render: (l) => <Disponible de={l.disponible} />,
+        },
+      ]
+    : []
   return [
     {
       clave: 'item_vendible_id',
@@ -61,6 +92,7 @@ function columnas(
       titulo: 'Cantidad',
       className: 'text-right font-mono tabular-nums',
     },
+    ...disponible,
     {
       clave: 'precio_unitario',
       titulo: `Precio (${moneda})`,
@@ -134,6 +166,13 @@ export default function PedidoPage() {
   const razas = useQuery({
     queryKey: CLAVE_RAZAS_CON_BAJAS,
     queryFn: razasConBajas,
+  })
+  // Al lado de cada línea de un borrador, el disponible de su raza (#14). Es
+  // la consulta del despacho: reservar, entregar y cancelar la refrescan.
+  const stock = useQuery({
+    queryKey: [CLAVE_DISPONIBILIDAD],
+    queryFn: () => disponibilidad.listar(),
+    enabled: pedido.data?.estado === 'borrador',
   })
 
   // Un cambio de estado refresca el detalle, todas las vistas del listado y
@@ -224,6 +263,13 @@ export default function PedidoPage() {
   const escribe = puede(identidad, ROLES_VENTAS)
   const ocupado = reservar.isPending || entregar.isPending || cancelar.isPending
   const lineas = [...p.items].sort((a, b) => a.numero_linea - b.numero_linea)
+  const borrador = p.estado === 'borrador'
+  const porLinea =
+    borrador && stock.data ? disponiblePorLinea(p, stock.data) : null
+  const filas: FilaDeLinea[] = lineas.map((l) => ({
+    ...l,
+    disponible: porLinea?.get(l.id),
+  }))
   const nombreDeLinea = (pedidoItemId: string) => {
     const linea = lineas.find((l) => l.id === pedidoItemId)
     return linea
@@ -293,10 +339,17 @@ export default function PedidoPage() {
 
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-texto">Líneas</h2>
+        {/* Falla por su cuenta: sin el disponible, el pedido se sigue viendo. */}
+        {borrador && stock.isError ? (
+          <ErrorDePantalla
+            error={describirError(stock.error)}
+            reintentar={() => void stock.refetch()}
+          />
+        ) : null}
         <DataTable
-          columnas={columnas(nombreDeItem, nombreDeRaza, p.moneda)}
+          columnas={columnas(nombreDeItem, nombreDeRaza, p.moneda, borrador)}
           // En el orden en que se cargaron.
-          filas={lineas}
+          filas={filas}
           porPagina={Math.max(p.items.length, 1)}
           // Un pedido tiene al menos una línea (min_length=1 del backend).
           vacio={null}

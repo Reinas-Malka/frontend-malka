@@ -5,6 +5,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -179,6 +180,41 @@ describe('detalle del pedido', () => {
     abrir(PARA_RESERVAR)
     await titulo()
     expect(await screen.findByText('Todavía no se reservó.')).toBeTruthy()
+  })
+
+  /** El texto de la columna Disponible en la fila de la línea, o null si
+   *  la tabla no la tiene. */
+  const disponibleDeLaLinea = () => {
+    const titulos = screen
+      .getAllByRole('columnheader')
+      .map((c) => c.textContent)
+    const columna = titulos.indexOf('Disponible')
+    if (columna === -1) return null
+    const [, linea] = screen.getAllByRole('row')
+    return within(linea).getAllByRole('cell')[columna].textContent
+  }
+
+  it('un borrador muestra al lado de la línea el disponible de su raza, el de la API', async () => {
+    const [{ disponible }] = await stock.listar(CARNIOLA.id)
+    abrir(PARA_RESERVAR)
+    await titulo()
+
+    await waitFor(() => expect(disponibleDeLaLinea()).toBe(String(disponible)))
+  })
+
+  it('si la raza no alcanza, la línea dice cuánto falta', async () => {
+    abrir(SIN_STOCK)
+    await titulo()
+
+    // Buckfast no tiene reinas enjauladas: hay 0 y el pedido pide 30.
+    await waitFor(() => expect(disponibleDeLaLinea()).toBe('0Faltan 30'))
+  })
+
+  it('fuera de un borrador no se muestra el disponible', async () => {
+    abrir(RESERVADO)
+    await titulo()
+
+    expect(disponibleDeLaLinea()).toBeNull()
   })
 
   it('con rol de lectura no hay acciones', async () => {
