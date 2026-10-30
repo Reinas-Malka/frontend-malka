@@ -1,9 +1,11 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-/** Modal accesible (Radix Dialog): foco atrapado, Esc cierra, tab ordenado. */
+/** Modal accesible (Radix Dialog): foco atrapado, Esc cierra, tab ordenado.
+ *  Al cerrar, el foco vuelve a lo que lo abrió: Radix solo lo hace con su
+ *  Trigger, y acá los modales se abren con estado propio. */
 export const Modal = Dialog.Root
 export const ModalTrigger = Dialog.Trigger
 
@@ -18,10 +20,21 @@ export function ModalContenido({
   children: ReactNode
   className?: string
 }) {
+  // Lo que tenía el foco cuando se abrió (el botón que abrió el modal).
+  const [previo] = useState(() =>
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
+  )
   return (
     <Dialog.Portal>
       <Dialog.Overlay className="fixed inset-0 z-40 bg-carbon-900/70 backdrop-blur-sm" />
       <Dialog.Content
+        onCloseAutoFocus={(evento) => {
+          if (!previo?.isConnected) return
+          evento.preventDefault()
+          previo.focus()
+        }}
         // Sin descripción, se indica explícitamente (si no, Radix advierte).
         {...(descripcion ? {} : { 'aria-describedby': undefined })}
         className={cn(
