@@ -14,7 +14,7 @@ export function SelectTrigger({
   return (
     <Radix.Trigger
       className={cn(
-        'flex h-10 w-full items-center justify-between rounded-control border border-borde-control bg-carbon-900/60 px-3 text-sm text-texto',
+        'flex h-10 w-full items-center justify-between rounded-control border border-borde-control bg-carbon-900/60 px-3 text-base text-texto sm:text-sm',
         'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-acento',
         'data-[placeholder]:text-texto-suave disabled:cursor-not-allowed disabled:opacity-50',
         className,

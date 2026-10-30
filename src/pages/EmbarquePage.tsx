@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Download, Pencil, Upload } from 'lucide-react'
+import { ArrowLeft, Ban, Download, Pencil, Upload } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { describirError } from '@/api/client'
@@ -20,7 +20,9 @@ import {
   CAMPOS_EDICION,
   CLAVE_EMBARQUES,
   ROLES_EXPORTACION,
+  SIGUIENTE_PASO,
   aEmbarqueActualizar,
+  sePuedeCancelar,
   valoresDeEmbarque,
 } from '@/modulos/exportacion/embarques'
 import { EstadoDeEmbarque } from '@/modulos/exportacion/insignias'
@@ -30,11 +32,14 @@ import {
   type Completitud,
   type DocumentoCrear,
   type DocumentoEmbarque,
+  type EstadoEmbarque,
   type TipoDocumentoEmbarque,
 } from '@/tipos/dominio'
+import { formatearFecha } from '@/lib/fechas'
 
 type Dialogo =
   | { tipo: 'edicion' }
+  | { tipo: 'cancelacion' }
   | { tipo: 'carga'; documento: TipoDocumentoEmbarque; clave: string }
 
 function ResumenDeCompletitud({ completitud }: { completitud: Completitud }) {
@@ -111,6 +116,12 @@ export default function EmbarquePage() {
       embarques.actualizar(id, aEmbarqueActualizar(valores)),
     onSuccess: alCambiar,
   })
+  // El estado avanza con botones, como el pedido: nunca desde el formulario.
+  const cambiarEstado = useMutation({
+    mutationFn: (estado: EstadoEmbarque) =>
+      embarques.actualizar(id, { estado }),
+    onSuccess: alCambiar,
+  })
   const cargar = useMutation({
     mutationFn: ({ datos, clave }: { datos: DocumentoCrear; clave: string }) =>
       embarques.agregarDocumento(id, datos, clave),
@@ -155,22 +166,47 @@ export default function EmbarquePage() {
   const porTipo = new Map<TipoDocumentoEmbarque, DocumentoEmbarque>(
     documentos.data.items.map((d) => [d.tipo, d]),
   )
-  const ocupado = editar.isPending || cargar.isPending
+  const ocupado =
+    editar.isPending || cargar.isPending || cambiarEstado.isPending
+  const siguiente = escribe ? SIGUIENTE_PASO[e.estado] : undefined
+  // Tránsito y entregado piden la guía aérea (CHECK de la 0010).
+  const faltaGuia = siguiente !== undefined && !e.awb
 
   return (
     <section className="space-y-seccion">
       {volver}
       <EncabezadoDePagina
         titulo={`Embarque a ${nombreDePais(e.destino_pais)}`}
-        descripcion={`Vuelo del ${e.fecha_vuelo} · Guía aérea ${e.awb ?? 'sin asignar'}`}
+        descripcion={`Vuelo del ${formatearFecha(e.fecha_vuelo)} · Guía aérea ${e.awb ?? 'sin asignar'}`}
         acciones={
           escribe ? (
-            <Button
-              variante="secundario"
-              onClick={() => setDialogo({ tipo: 'edicion' })}
-            >
-              <Pencil className="size-4" aria-hidden /> Editar embarque
-            </Button>
+            <>
+              {siguiente ? (
+                <Button
+                  disabled={ocupado || faltaGuia}
+                  cargando={cambiarEstado.isPending}
+                  onClick={() => cambiarEstado.mutate(siguiente.estado)}
+                >
+                  {siguiente.texto}
+                </Button>
+              ) : null}
+              <Button
+                variante="secundario"
+                disabled={ocupado}
+                onClick={() => setDialogo({ tipo: 'edicion' })}
+              >
+                <Pencil className="size-4" aria-hidden /> Editar embarque
+              </Button>
+              {sePuedeCancelar(e.estado) ? (
+                <Button
+                  variante="secundario"
+                  disabled={ocupado}
+                  onClick={() => setDialogo({ tipo: 'cancelacion' })}
+                >
+                  <Ban className="size-4" aria-hidden /> Cancelar embarque
+                </Button>
+              ) : null}
+            </>
           ) : undefined
         }
       />
@@ -180,8 +216,15 @@ export default function EmbarquePage() {
           <span className="text-sm text-texto-suave">
             Cancelado: ya no se edita ni recibe documentos.
           </span>
+        ) : faltaGuia ? (
+          <span className="text-sm text-texto-suave">
+            Cargá la guía aérea para pasar a tránsito.
+          </span>
         ) : null}
       </div>
+      {cambiarEstado.isError && dialogo === null ? (
+        <ErrorDePantalla error={describirError(cambiarEstado.error)} />
+      ) : null}
 
       <ResumenDeCompletitud completitud={completitud.data} />
 
@@ -201,7 +244,7 @@ export default function EmbarquePage() {
                   <p className="text-xs text-texto-suave">Lo emite: {emisor}</p>
                   {doc ? (
                     <p className="break-all font-mono text-xs text-texto-suave">
-                      N.º {doc.numero} · {doc.fecha}
+                      N.º {doc.numero} · {formatearFecha(doc.fecha)}
                     </p>
                   ) : null}
                 </div>
@@ -264,6 +307,31 @@ export default function EmbarquePage() {
               alGuardar={(valores) => editar.mutateAsync(valores)}
               alCancelar={() => !ocupado && setDialogo(null)}
             />
+          </ModalContenido>
+        ) : dialogo?.tipo === 'cancelacion' ? (
+          <ModalContenido
+            titulo="¿Cancelar el embarque?"
+            descripcion="Un embarque cancelado ya no se edita ni recibe documentos. No se puede deshacer."
+          >
+            {cambiarEstado.isError ? (
+              <ErrorDePantalla error={describirError(cambiarEstado.error)} />
+            ) : null}
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variante="secundario"
+                disabled={cambiarEstado.isPending}
+                onClick={() => setDialogo(null)}
+              >
+                Volver
+              </Button>
+              <Button
+                variante="peligro"
+                cargando={cambiarEstado.isPending}
+                onClick={() => cambiarEstado.mutate('cancelado')}
+              >
+                Cancelar embarque
+              </Button>
+            </div>
           </ModalContenido>
         ) : dialogo?.tipo === 'carga' ? (
           <ModalContenido

@@ -2,7 +2,10 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Input } from '../src/components/ui/input'
+import { Modal, ModalContenido } from '../src/components/ui/modal'
 import { BarraDeProgreso } from '../src/components/ui/progreso'
+import { Textarea } from '../src/components/ui/textarea'
 import { SelectorDeArchivo } from '../src/components/ui/selector-de-archivo'
 import { DataTable, type Columna } from '../src/components/ui/table'
 
@@ -104,5 +107,37 @@ describe('componentes nuevos de ui/', () => {
       screen.getByRole('button', { name: 'Quitar factura.pdf' }),
     )
     expect(alElegir).toHaveBeenLastCalledWith(null)
+  })
+})
+
+// En el teléfono: con el teclado abierto el modal tiene que poder
+// scrollear hasta Guardar, y un campo de menos de 16 px hace que iOS
+// haga zoom al enfocarlo.
+describe('formularios en el teléfono', () => {
+  it('el modal base nunca pasa el alto de la pantalla y scrollea', () => {
+    render(
+      <Modal open>
+        <ModalContenido titulo="Agregar cliente">contenido</ModalContenido>
+      </Modal>,
+    )
+    const clases = screen.getByRole('dialog').className
+    expect(clases).toContain('max-h-[calc(100dvh-2rem)]')
+    expect(clases).toContain('overflow-y-auto')
+  })
+
+  it('los campos usan 16 px en el teléfono y 14 px desde sm', () => {
+    render(
+      <>
+        <Input aria-label="Nombre" />
+        <Textarea aria-label="Notas" />
+      </>,
+    )
+    for (const campo of [
+      screen.getByLabelText('Nombre'),
+      screen.getByLabelText('Notas'),
+    ]) {
+      expect(campo.className).toContain('text-base')
+      expect(campo.className).toContain('sm:text-sm')
+    }
   })
 })
