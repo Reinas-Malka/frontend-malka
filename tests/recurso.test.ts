@@ -52,6 +52,19 @@ describe('recursoSimulado', () => {
     expect(semilla).toHaveLength(5)
   })
 
+  it('como el backend, lista solo las activas salvo incluir_inactivos', async () => {
+    const razas = nuevo()
+    await razas.desactivar('r1')
+
+    const activas = await razas.listar()
+    const todas = await razas.listar({
+      filtros: { incluir_inactivos: 'true' },
+    })
+
+    expect(activas.items.map((r) => r.id)).not.toContain('r1')
+    expect(todas.items.map((r) => r.id)).toContain('r1')
+  })
+
   it('un id inexistente responde como el backend: 404', async () => {
     await expect(nuevo().obtener('no-existe')).rejects.toMatchObject({
       status: 404,

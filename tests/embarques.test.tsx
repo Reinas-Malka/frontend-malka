@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentType } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -179,6 +179,9 @@ describe('pantallas de embarques', () => {
     expect(await screen.findByRole('link', { name: 'Chile (CL)' })).toBeTruthy()
     expect(screen.getByLabelText('6 de 6 documentos')).toBeTruthy()
     expect(screen.getByLabelText('2 de 6 documentos')).toBeTruthy()
+    // "2/6 faltan" se leía como "faltan 2": se dice cuántos tiene.
+    expect(screen.getAllByText('2 de 6').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/faltan/i)).toBeNull()
   })
 
   it('lectura ve los embarques pero no puede crear', async () => {
@@ -233,6 +236,26 @@ describe('pantallas de embarques', () => {
     expect(screen.queryByRole('button', { name: 'Cargar DTe' })).toBeNull()
   })
 
+  it('crear un embarque lleva a su detalle, donde se cargan los documentos', async () => {
+    const usuario = userEvent.setup()
+    montar('/exportacion/embarques', ['ventas'])
+
+    await usuario.click(
+      await screen.findByRole('button', { name: /nuevo embarque/i }),
+    )
+    await usuario.type(screen.getByLabelText(/país de destino/i), 'NZ')
+    await usuario.type(screen.getByLabelText(/fecha del vuelo/i), '2026-12-01')
+    await usuario.click(screen.getByRole('button', { name: 'Crear embarque' }))
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: /embarque a nueva zelanda/i,
+      }),
+    ).toBeTruthy()
+    expect(screen.getByText(/0 de 6/)).toBeTruthy()
+  }, 15_000) // tipea en varios campos: en un CI cargado pasa los 5 s
+
   it('sin número transcripto no deja cargar', async () => {
     const usuario = userEvent.setup()
     montar(`/exportacion/embarques/${CONSOLIDADO.id}`, ['ventas'])
@@ -245,5 +268,75 @@ describe('pantallas de embarques', () => {
     )
 
     expect(screen.getByText('Transcribí el número del documento.')).toBeTruthy()
+  })
+
+  // Estos cambian el estado del embarque en la API simulada (compartida
+  // entre los tests del archivo): van al final.
+  it('el estado no se edita en el formulario: avanza con botones', async () => {
+    const usuario = userEvent.setup()
+    montar(`/exportacion/embarques/${DIRECTO.id}`, ['ventas'])
+
+    await usuario.click(
+      await screen.findByRole('button', { name: /editar embarque/i }),
+    )
+    expect(screen.queryByLabelText('Estado')).toBeNull()
+    await usuario.click(screen.getByRole('button', { name: 'Cancelar' }))
+
+    // En tránsito, con guía aérea: el paso siguiente es entregado.
+    await usuario.click(
+      screen.getByRole('button', { name: /marcar entregado/i }),
+    )
+    expect(await screen.findByText('Entregado')).toBeTruthy()
+  })
+
+  it('sin guía aérea no ofrece pasar a tránsito y lo explica', async () => {
+    montar(`/exportacion/embarques/${CONSOLIDADO.id}`, ['ventas'])
+
+    const pasar = await screen.findByRole('button', {
+      name: /pasar a tránsito/i,
+    })
+    expect(pasar.hasAttribute('disabled')).toBe(true)
+    expect(
+      screen.getByText(/cargá la guía aérea para pasar a tránsito/i),
+    ).toBeTruthy()
+  })
+
+  it('cancelar pide confirmación y no se puede deshacer', async () => {
+    const usuario = userEvent.setup()
+    montar(`/exportacion/embarques/${CONSOLIDADO.id}`, ['ventas'])
+
+    await usuario.click(
+      await screen.findByRole('button', { name: /cancelar embarque/i }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: '¿Cancelar el embarque?' }),
+    ).toBeTruthy()
+    await usuario.click(screen.getByRole('button', { name: 'Volver' }))
+    expect(screen.queryByText('Cancelado')).toBeNull()
+
+    await usuario.click(
+      screen.getByRole('button', { name: /cancelar embarque/i }),
+    )
+    await usuario.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Cancelar embarque',
+      }),
+    )
+    expect(await screen.findByText('Cancelado')).toBeTruthy()
+    expect(
+      screen.queryByRole('button', { name: /editar embarque/i }),
+    ).toBeNull()
+  })
+
+  it('lectura no ve los botones de estado', async () => {
+    montar(`/exportacion/embarques/${DIRECTO.id}`, ['lectura'])
+
+    await screen.findByRole('heading', { level: 1 })
+    expect(
+      screen.queryByRole('button', { name: /marcar entregado/i }),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: /cancelar embarque/i }),
+    ).toBeNull()
   })
 })

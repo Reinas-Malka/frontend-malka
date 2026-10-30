@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router'
+import { Inicio } from '@/app/Inicio'
 import { AppLayout } from '@/app/AppLayout'
 import { RUTA_CALLBACK } from '@/auth/config'
 import { RutaPrivada } from '@/auth/RutaPrivada'
@@ -32,7 +33,8 @@ export const rutas: RouteObject[] = [
       {
         element: <AppLayout />,
         children: [
-          { index: true, element: <StatusPage /> },
+          { index: true, element: <Inicio /> },
+          { path: 'estado', element: <StatusPage /> },
           { path: 'produccion/razas', lazy: catalogo('RazasPage') },
           { path: 'produccion/madres', lazy: catalogo('MadresPage') },
           { path: 'produccion/parques', lazy: catalogo('ParquesPage') },

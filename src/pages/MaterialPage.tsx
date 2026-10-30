@@ -16,6 +16,7 @@ import { Cargando, ErrorDePantalla, Vacio } from '@/components/ui/estados'
 import { Modal, ModalContenido } from '@/components/ui/modal'
 import { DataTable, type Columna } from '@/components/ui/table'
 import type { MovimientoMaterial } from '@/tipos/dominio'
+import { formatearFecha } from '@/lib/fechas'
 
 const CANTIDAD = /^-?\d{1,9}(\.\d{1,3})?$/ // numeric(12, 3) de la 0004
 
@@ -25,7 +26,9 @@ const columnas: Columna<MovimientoMaterial>[] = [
   {
     clave: 'fecha',
     titulo: 'Fecha',
-    render: (m) => <span className="font-mono tabular-nums">{m.fecha}</span>,
+    render: (m) => (
+      <span className="tabular-nums">{formatearFecha(m.fecha)}</span>
+    ),
     orden: (a, b) => a.fecha.localeCompare(b.fecha),
   },
   {

@@ -26,6 +26,7 @@ import {
   valoresIniciales,
 } from '@/modulos/produccion/tandas'
 import type { Tanda, TandaCreada } from '@/tipos/dominio'
+import { formatearFecha } from '@/lib/fechas'
 
 function CeldasPorEtapa({ tanda }: { tanda: Tanda }) {
   return (
@@ -92,8 +93,8 @@ export default function TandasPage() {
       clave: 'fecha_traslarve',
       titulo: 'Traslarve',
       render: (t) => (
-        <span className="font-mono tabular-nums">
-          {t.fecha_traslarve}
+        <span className="tabular-nums">
+          {formatearFecha(t.fecha_traslarve)}
           {t.retroactivo ? (
             <span className="ml-2 font-sans text-xs text-texto-suave">
               (retroactiva)

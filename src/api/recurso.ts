@@ -79,11 +79,19 @@ export function recursoSimulado<T extends { id: string }, Crear, Actualizar>(
     ) as Partial<T>
 
   return {
-    listar: async ({ limite = LIMITE_POR_DEFECTO, cursor } = {}) => {
+    listar: async ({ limite = LIMITE_POR_DEFECTO, cursor, filtros } = {}) => {
+      // Como el backend: las dadas de baja solo con incluir_inactivos.
+      const visibles =
+        filtros?.incluir_inactivos === 'true'
+          ? filas
+          : filas.filter((f) => (f as { activo?: boolean }).activo !== false)
       const desde = cursor ? Number(cursor) : 0
-      const items = filas.slice(desde, desde + limite)
+      const items = visibles.slice(desde, desde + limite)
       const hasta = desde + items.length
-      return { items, siguiente: hasta < filas.length ? String(hasta) : null }
+      return {
+        items,
+        siguiente: hasta < visibles.length ? String(hasta) : null,
+      }
     },
     obtener: async (id) => buscar(id),
     crear: async (datos, claveIdempotencia) => {

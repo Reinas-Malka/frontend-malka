@@ -526,5 +526,22 @@ describe('detalle del pedido', () => {
     expect(acciones()).toEqual([])
     // 5 de B-01 y 7 de B-02: salieron de los dos bancos.
     expect(await enLosBancos()).toEqual([b01 - 5, b02 - 7])
+  }, 15_000) // tipea en varios campos y abre desplegables: en un CI cargado pasa los 5 s
+
+  // Revisión 29/10: si la reserva ya se hizo (otra pestaña, o una respuesta
+  // que se perdió por timeout), el 409 refresca el pedido en lugar de dejar
+  // el botón Reservar para siempre.
+  it('un 409 al reservar refresca el pedido y saca el botón', async () => {
+    const { usuario } = abrir(PARA_RESERVAR)
+    await titulo()
+    const { pedidos: api } = await import('../src/api/pedidos')
+    await api.reservar(PARA_RESERVAR.id)
+
+    await usuario.click(screen.getByRole('button', { name: 'Reservar' }))
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Reservar' })).toBeNull(),
+    )
+    expect(acciones()).toEqual(['Entregar', 'Cancelar pedido'])
   })
 })

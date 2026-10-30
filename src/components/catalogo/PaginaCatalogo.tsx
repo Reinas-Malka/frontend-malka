@@ -52,6 +52,10 @@ const normalizar = (texto: string) =>
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
 
+/** El catálogo muestra también las bajas, para poder reactivarlas: el
+ *  backend lista solo las activas salvo que se pida (los 8 catálogos). */
+const CON_BAJAS = { incluir_inactivos: 'true' }
+
 export function PaginaCatalogo<T extends Fila, C, A>({
   config,
 }: {
@@ -60,7 +64,7 @@ export function PaginaCatalogo<T extends Fila, C, A>({
   const { clave, recurso, singular } = config
   const { identidad } = useSesion()
   const escribe = puede(identidad, config.rolesEscritura)
-  const listado = useListado(clave, recurso)
+  const listado = useListado(clave, recurso, CON_BAJAS)
   const { crear, actualizar, desactivar } = useMutacionesDe(clave, recurso)
   const [busqueda, setBusqueda] = useState('')
   const [edicion, setEdicion] = useState<Edicion<T> | null>(null)

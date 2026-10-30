@@ -43,6 +43,7 @@ import {
   type Pedido,
   type PedidoCrear,
 } from '@/tipos/dominio'
+import { formatearFecha } from '@/lib/fechas'
 
 function columnas(
   nombreDe: (id: string) => string,
@@ -68,8 +69,8 @@ function columnas(
       clave: 'fecha_entrega_solicitada',
       titulo: 'Entrega',
       render: (p) => (
-        <span className="font-mono tabular-nums">
-          {p.fecha_entrega_solicitada}
+        <span className="tabular-nums">
+          {formatearFecha(p.fecha_entrega_solicitada)}
         </span>
       ),
       orden: (a, b) =>

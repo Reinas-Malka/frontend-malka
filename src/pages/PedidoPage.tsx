@@ -36,6 +36,8 @@ import {
   resumenDeLineas,
 } from '@/modulos/ventas/pedidos'
 import type { Despacho, Moneda, Pedido, PedidoItem } from '@/tipos/dominio'
+import { formatearFecha } from '@/lib/fechas'
+import { CLAVE_TANDAS } from '@/modulos/produccion/tandas'
 
 const ALERTA =
   'rounded-control border border-peligro/40 bg-peligro/10 p-3 text-sm text-texto'
@@ -198,19 +200,29 @@ export default function PedidoPage() {
   })
 
   // Un cambio de estado refresca el detalle, todas las vistas del listado y
-  // la disponibilidad (reservar, entregar y cancelar la cambian).
-  const alCambiar = () =>
+  // la disponibilidad (reservar, entregar y cancelar la cambian). Entregar
+  // además saca reinas de los bancos y de las tandas.
+  const alCambiar = (tambienBancos = false) =>
     Promise.all([
       consultas.invalidateQueries({ queryKey: [CLAVE_PEDIDOS] }),
       consultas.invalidateQueries({ queryKey: [CLAVE_DISPONIBILIDAD] }),
+      ...(tambienBancos
+        ? [
+            consultas.invalidateQueries({ queryKey: ['bancos'] }),
+            consultas.invalidateQueries({ queryKey: [CLAVE_TANDAS] }),
+          ]
+        : []),
     ])
+  // Un 409 dice que el pedido ya no está como se ve (otra pestaña, o una
+  // respuesta que se perdió por timeout): se refresca para mostrarlo como
+  // quedó, en lugar de dejar un botón que siempre va a fallar. Al reservar,
+  // también el disponible: otra reserva pudo adelantarse (#14).
+  const siCambioAfuera = (error: unknown) => {
+    if (esApiError(error) && error.status === 409) void alCambiar()
+  }
   const reservar = useMutation({
     mutationFn: (clave: string) => pedidos.reservar(id, clave),
-    // Un 409 dice que el pedido o el stock ya no están como se ven (otra
-    // reserva se adelantó): se refrescan para reintentar con lo nuevo.
-    onError: (error) => {
-      if (esApiError(error) && error.status === 409) void alCambiar()
-    },
+    onError: siCambioAfuera,
     onSuccess: async (reservas) => {
       await alCambiar()
       setIntentoDeReserva(null)
@@ -225,6 +237,7 @@ export default function PedidoPage() {
   }
   const cancelar = useMutation({
     mutationFn: (clave: string) => pedidos.cancelar(id, clave),
+    onError: siCambioAfuera,
     onSuccess: async () => {
       await alCambiar()
       setCancelacion(null)
@@ -234,8 +247,9 @@ export default function PedidoPage() {
   const entregar = useMutation({
     mutationFn: ({ despacho, clave }: { despacho: Despacho; clave: string }) =>
       pedidos.entregar(id, despacho, clave),
+    onError: siCambioAfuera,
     onSuccess: async (entregado) => {
-      await alCambiar()
+      await alCambiar(true)
       setEntrega(null)
       const reinas = entregado.items.reduce((total, l) => total + l.cantidad, 0)
       setAviso(`Pedido entregado: ${reinas} reinas despachadas.`)
@@ -355,7 +369,7 @@ export default function PedidoPage() {
       {volver}
       <EncabezadoDePagina
         titulo={`Pedido de ${nombreDeCliente(p.cliente_id)}`}
-        descripcion={`Entrega solicitada: ${p.fecha_entrega_solicitada} · ${destino} · ${p.moneda}`}
+        descripcion={`Entrega solicitada: ${formatearFecha(p.fecha_entrega_solicitada)} · ${destino} · ${p.moneda}`}
         acciones={acciones}
       />
       <div className="flex flex-wrap items-center gap-2">

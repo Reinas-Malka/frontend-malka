@@ -5,11 +5,9 @@ import {
   Grid3x3,
   Layers,
   Package,
-  Palette,
   Plane,
   Tag,
   Trees,
-  Upload,
   Users,
   Warehouse,
   type LucideIcon,
@@ -35,6 +33,7 @@ export const ACCESOS: readonly { prefijo: string; roles: readonly Rol[] }[] = [
   // Solo quien puede pedir la subida (POST /documentos/subidas).
   { prefijo: '/documentos', roles: ['admin', 'ventas'] },
   { prefijo: '/guia-de-estilo', roles: ['admin'] },
+  { prefijo: '/estado', roles: ['admin'] },
 ]
 
 function rolesPara(ruta: string): readonly Rol[] {
@@ -52,13 +51,10 @@ export function puedeAbrir(identidad: Identidad | null, ruta: string): boolean {
   return puede(identidad, rolesPara(ruta))
 }
 
-/** Menú lateral. Un solo lugar: el router y el layout leen de acá. */
-
+/** Menú lateral. Un solo lugar: el router y el layout leen de acá.
+ *  Solo lo que usa el criadero: la guía de estilo y la subida suelta de
+ *  documentos tienen ruta pero no enlace (la carga real va en cada embarque). */
 export const NAVEGACION: Grupo[] = [
-  {
-    titulo: 'General',
-    enlaces: [{ a: '/', texto: 'Estado del sistema', icono: Gauge }],
-  },
   {
     titulo: 'Producción',
     enlaces: [
@@ -85,15 +81,16 @@ export const NAVEGACION: Grupo[] = [
     ],
   },
   {
-    titulo: 'Documentos',
-    enlaces: [
-      { a: '/documentos/subir', texto: 'Subir documento', icono: Upload },
-    ],
-  },
-  {
     titulo: 'Equipo',
-    enlaces: [
-      { a: '/guia-de-estilo', texto: 'Guía de estilo', icono: Palette },
-    ],
+    enlaces: [{ a: '/estado', texto: 'Estado del sistema', icono: Gauge }],
   },
 ]
+
+/** Adónde lleva el inicio: la primera sección del menú que el rol abre.
+ *  null sin sesión o sin rol (el layout muestra el aviso). */
+export function primerDestino(identidad: Identidad | null): string | null {
+  const enlace = NAVEGACION.flatMap((grupo) => grupo.enlaces).find(({ a }) =>
+    puedeAbrir(identidad, a),
+  )
+  return enlace?.a ?? null
+}
