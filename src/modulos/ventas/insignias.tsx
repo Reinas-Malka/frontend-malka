@@ -40,3 +40,19 @@ export function EstadoDeReserva({ estado }: { estado: EstadoReserva }) {
     </Badge>
   )
 }
+
+/** Disponible de una raza. Negativo si se perdieron enjauladas ya
+ *  reservadas (una extraviada): se marca para que no pase como un número más. */
+export function Disponible({ valor }: { valor: number }) {
+  if (valor < 0)
+    return (
+      <Badge tono="peligro" title="Hay más reservadas que enjauladas">
+        <span className="font-mono tabular-nums">{valor}</span>
+      </Badge>
+    )
+  return (
+    <span className="font-mono font-medium tabular-nums text-miel-300">
+      {valor}
+    </span>
+  )
+}
