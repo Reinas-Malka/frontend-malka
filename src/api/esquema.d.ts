@@ -3740,7 +3740,10 @@ export interface operations {
   reservar_pedido_api_v1_pedidos__pedido_id__reservas_post: {
     parameters: {
       query?: never
-      header?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
       path: {
         pedido_id: string
       }

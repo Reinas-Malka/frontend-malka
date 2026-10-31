@@ -43,9 +43,10 @@ export interface ApiPedidos {
   listar(filtros?: FiltrosDePedidos, cursor?: string): Promise<Pagina<Pedido>>
   obtener(id: string): Promise<Pedido>
   crear(datos: PedidoCrear, claveIdempotencia?: string): Promise<Pedido>
-  /** Reserva todas las líneas o ninguna. Sin Idempotency-Key en el
-   *  backend: un reintento responde 409 pedido_no_reservable. */
-  reservar(id: string): Promise<Reserva[]>
+  /** Reserva todas las líneas o ninguna. Con la misma clave, un reintento
+   *  devuelve las reservas ya hechas; un 409 stock_insuficiente no se
+   *  guarda, así que la misma clave vuelve a intentar (backend #140). */
+  reservar(id: string, claveIdempotencia?: string): Promise<Reserva[]>
   entregar(
     id: string,
     despacho: Despacho,
@@ -89,8 +90,11 @@ export function pedidosHttp(): ApiPedidos {
         cuerpo: datos,
         claveIdempotencia,
       }),
-    reservar: (id) =>
-      request<Reserva[]>(`${de(id)}/reservas`, { metodo: 'POST' }),
+    reservar: (id, claveIdempotencia) =>
+      request<Reserva[]>(`${de(id)}/reservas`, {
+        metodo: 'POST',
+        claveIdempotencia,
+      }),
     entregar: (id, despacho, claveIdempotencia) =>
       cambiarEstado(
         id,
@@ -180,7 +184,7 @@ export function pedidosSimulados({
   // Lo que salió en cada entrega: las celdas despachadas, contadas por línea,
   // banco y día (LISTAR_DESPACHOS del backend).
   let despachos: DespachoDeLinea[] = []
-  const porClave = new Map<string, Pedido>()
+  const porClave = new Map<string, unknown>()
 
   const buscar = (id: string): Pedido => {
     const pedido = pedidos.find((p) => p.id === id)
@@ -197,13 +201,15 @@ export function pedidosSimulados({
     return pedido
   }
   // Como el backend: con Idempotency-Key, un reintento devuelve lo mismo.
-  const unaVez = async (
+  // Solo se guarda lo que salió bien: después de un error, la misma clave
+  // vuelve a intentar.
+  const unaVez = async <T>(
     clave: string | undefined,
     alcance: string,
-    cambio: () => Promise<Pedido>,
-  ): Promise<Pedido> => {
+    cambio: () => Promise<T>,
+  ): Promise<T> => {
     const previa = clave ? porClave.get(`${alcance}:${clave}`) : undefined
-    if (previa) return previa
+    if (previa) return previa as T
     const resultado = await cambio()
     if (clave) porClave.set(`${alcance}:${clave}`, resultado)
     return resultado
@@ -331,45 +337,46 @@ export function pedidosSimulados({
         pedidos = [nuevo, ...pedidos]
         return nuevo
       }),
-    reservar: async (id) => {
-      const pedido = buscar(id)
-      if (pedido.estado !== 'borrador')
-        throw conflicto(
-          'pedido_no_reservable',
-          'Solo se puede reservar un pedido en borrador.',
-          { estado: pedido.estado },
-        )
-      // Lo pedido se suma por raza: dos líneas de Carniola compiten juntas.
-      const pedidas = new Map<string, number>()
-      for (const l of pedido.items)
-        pedidas.set(l.raza_id, (pedidas.get(l.raza_id) ?? 0) + l.cantidad)
-      const faltan = [...pedidas]
-        .map(([raza_id, cantidad]) => ({
-          raza_id,
-          pedidas: cantidad,
-          disponible: disponible(raza_id),
-        }))
-        .filter((r) => r.pedidas > r.disponible)
-        .map((r) => ({ ...r, faltan: r.pedidas - r.disponible }))
-        .sort((a, b) => a.raza_id.localeCompare(b.raza_id))
-      if (faltan.length)
-        throw conflicto(
-          'stock_insuficiente',
-          'No hay reinas suficientes para reservar el pedido.',
-          { razas: faltan },
-        )
+    reservar: (id, clave) =>
+      unaVez(clave, `reservar:${id}`, async () => {
+        const pedido = buscar(id)
+        if (pedido.estado !== 'borrador')
+          throw conflicto(
+            'pedido_no_reservable',
+            'Solo se puede reservar un pedido en borrador.',
+            { estado: pedido.estado },
+          )
+        // Lo pedido se suma por raza: dos líneas de Carniola compiten juntas.
+        const pedidas = new Map<string, number>()
+        for (const l of pedido.items)
+          pedidas.set(l.raza_id, (pedidas.get(l.raza_id) ?? 0) + l.cantidad)
+        const faltan = [...pedidas]
+          .map(([raza_id, cantidad]) => ({
+            raza_id,
+            pedidas: cantidad,
+            disponible: disponible(raza_id),
+          }))
+          .filter((r) => r.pedidas > r.disponible)
+          .map((r) => ({ ...r, faltan: r.pedidas - r.disponible }))
+          .sort((a, b) => a.raza_id.localeCompare(b.raza_id))
+        if (faltan.length)
+          throw conflicto(
+            'stock_insuficiente',
+            'No hay reinas suficientes para reservar el pedido.',
+            { razas: faltan },
+          )
 
-      const nuevas: Reserva[] = pedido.items.map((l) => ({
-        id: crypto.randomUUID(),
-        pedido_item_id: l.id,
-        raza_id: l.raza_id,
-        cantidad: l.cantidad,
-        estado: 'activa',
-      }))
-      reservas = [...reservas, ...nuevas]
-      guardar({ ...pedido, estado: 'reservado' })
-      return nuevas
-    },
+        const nuevas: Reserva[] = pedido.items.map((l) => ({
+          id: crypto.randomUUID(),
+          pedido_item_id: l.id,
+          raza_id: l.raza_id,
+          cantidad: l.cantidad,
+          estado: 'activa',
+        }))
+        reservas = [...reservas, ...nuevas]
+        guardar({ ...pedido, estado: 'reservado' })
+        return nuevas
+      }),
     entregar: (id, despacho, clave) =>
       unaVez(clave, `estado:${id}`, async () => {
         // El schema corre antes que el repositorio: el formato va primero.

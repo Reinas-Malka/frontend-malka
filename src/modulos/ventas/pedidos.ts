@@ -19,6 +19,7 @@ import {
 import {
   ESTADOS_PEDIDO,
   type Cliente,
+  type DisponibilidadReinas,
   type EstadoPedido,
   type Incoterm,
   type ItemVendible,
@@ -293,6 +294,44 @@ export type FaltanteDeStock = {
   pedidas: number
   disponible: number
   faltan: number
+}
+
+/** Lo que se ve al lado de una línea de un borrador antes de reservar. */
+export type DisponibleDeLinea = {
+  /** El disponible de la raza de la línea (GET /disponibilidad). */
+  disponible: number
+  /** Lo que pide el pedido de esa raza, sumando todas sus líneas. */
+  pedidas: number
+  /** 0 si alcanza. */
+  faltan: number
+}
+
+/** Por línea, el disponible de su raza y si alcanza. Las líneas de una
+ *  misma raza compiten juntas, como en reservar del backend: dos líneas de
+ *  Carniola de 10 no entran si hay 15, aunque cada una sola sí. */
+export function disponiblePorLinea(
+  pedido: Pedido,
+  lista: readonly DisponibilidadReinas[],
+): Map<string, DisponibleDeLinea> {
+  const disponibles = new Map(lista.map((d) => [d.raza_id, d.disponible]))
+  const pedidas = new Map<string, number>()
+  for (const l of pedido.items)
+    pedidas.set(l.raza_id, (pedidas.get(l.raza_id) ?? 0) + l.cantidad)
+  return new Map(
+    pedido.items.map((l) => {
+      // Una raza que no viene en la lista no tiene reinas para vender.
+      const disponible = disponibles.get(l.raza_id) ?? 0
+      const deLaRaza = pedidas.get(l.raza_id)!
+      return [
+        l.id,
+        {
+          disponible,
+          pedidas: deLaRaza,
+          faltan: Math.max(deLaRaza - disponible, 0),
+        },
+      ]
+    }),
+  )
 }
 
 /** Las razas que no alcanzan, si el error es un 409 stock_insuficiente;

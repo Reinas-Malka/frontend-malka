@@ -15,6 +15,7 @@ import {
   CABECERA_VACIA,
   aPedidoCrear,
   cabeceraParaCliente,
+  disponiblePorLinea,
   erroresDelAlta,
   leerFiltros,
   lineaVacia,
@@ -22,7 +23,7 @@ import {
   validarAlta,
   type LineaDePedido,
 } from '../src/modulos/ventas/pedidos'
-import type { PedidoCrear } from '../src/tipos/dominio'
+import type { DisponibilidadReinas, PedidoCrear } from '../src/tipos/dominio'
 
 const [PARA_RESERVAR, RESERVADO, SIN_STOCK, CANCELADO] = DATOS_SIMULADOS.pedidos
 const [B01, B02] = DATOS_SIMULADOS.bancos
@@ -231,6 +232,38 @@ describe('API de pedidos simulada (mismas respuestas que el backend)', () => {
       status: 409,
       codigo: 'pedido_no_reservable',
     })
+  })
+
+  it('con la misma clave, reservar de nuevo devuelve las mismas reservas', async () => {
+    const api = pedidosSimulados()
+    const reservadas = async () =>
+      (await api.disponibilidad(CARNIOLA.id))[0].reservadas
+    const antes = await reservadas()
+
+    const primera = await api.reservar(PARA_RESERVAR.id, 'clave-1')
+    const segunda = await api.reservar(PARA_RESERVAR.id, 'clave-1')
+
+    expect(segunda).toEqual(primera)
+    expect(await reservadas()).toBe(antes + 20)
+  })
+
+  it('tras un stock_insuficiente, la misma clave vuelve a intentar', async () => {
+    const api = pedidosSimulados()
+    // Otro pedido se lleva todas las de Carniola menos 5.
+    const [{ disponible }] = await api.disponibilidad(CARNIOLA.id)
+    const otro = await api.crear(
+      alta({ items: [{ ...alta().items[0], cantidad: disponible - 5 }] }),
+    )
+    await api.reservar(otro.id)
+    await expect(
+      api.reservar(PARA_RESERVAR.id, 'clave-1'),
+    ).rejects.toMatchObject({ codigo: 'stock_insuficiente' })
+
+    await api.cancelar(otro.id)
+    const reservas = await api.reservar(PARA_RESERVAR.id, 'clave-1')
+
+    expect(reservas[0]).toMatchObject({ cantidad: 20, estado: 'activa' })
+    expect((await api.obtener(PARA_RESERVAR.id)).estado).toBe('reservado')
   })
 
   it('DoD: se reserva y se entrega repartido entre dos bancos', async () => {
@@ -492,5 +525,48 @@ describe('formulario de alta', () => {
     const otro = new ApiError({ status: 500, codigo: 'interno', mensaje: 'x' })
     expect(erroresDelAlta(otro, [linea()])).toEqual({})
     expect(erroresDelAlta(new Error('red'), [linea()])).toEqual({})
+  })
+})
+
+describe('disponible por línea (el detalle de un borrador)', () => {
+  const [LINEA] = PARA_RESERVAR.items
+  const deCarniola = (disponible: number): DisponibilidadReinas => ({
+    raza_id: CARNIOLA.id,
+    raza: CARNIOLA.nombre,
+    enjauladas: disponible,
+    reservadas: 0,
+    disponible,
+    bancos: [],
+  })
+
+  it('si alcanza, no falta nada', () => {
+    expect(
+      disponiblePorLinea(PARA_RESERVAR, [deCarniola(25)]).get(LINEA.id),
+    ).toEqual({ disponible: 25, pedidas: 20, faltan: 0 })
+  })
+
+  it('dos líneas de la misma raza compiten juntas, como al reservar', () => {
+    const pedido = {
+      ...PARA_RESERVAR,
+      items: [
+        { ...LINEA, cantidad: 10 },
+        { ...LINEA, id: 'otra', numero_linea: 2, cantidad: 10 },
+      ],
+    }
+
+    const porLinea = disponiblePorLinea(pedido, [deCarniola(15)])
+
+    // Cada una sola entraría; juntas faltan 5, y lo dicen las dos.
+    const esperado = { disponible: 15, pedidas: 20, faltan: 5 }
+    expect(porLinea.get(LINEA.id)).toEqual(esperado)
+    expect(porLinea.get('otra')).toEqual(esperado)
+  })
+
+  it('una raza que no viene en la disponibilidad tiene 0', () => {
+    expect(disponiblePorLinea(PARA_RESERVAR, []).get(LINEA.id)).toEqual({
+      disponible: 0,
+      pedidas: 20,
+      faltan: 20,
+    })
   })
 })

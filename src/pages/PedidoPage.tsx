@@ -3,10 +3,12 @@ import { ArrowLeft, Ban, PackageCheck, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { describirError, esApiError } from '@/api/client'
+import { disponibilidad } from '@/api/disponibilidad'
 import { pedidos } from '@/api/pedidos'
 import { puede } from '@/auth/identidad'
 import { useSesion } from '@/auth/useSesion'
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorDePantalla } from '@/components/ui/estados'
 import { Modal, ModalContenido } from '@/components/ui/modal'
@@ -26,6 +28,8 @@ import {
   ROLES_VENTAS,
   clientesConBajas,
   type DesdeElListado,
+  type DisponibleDeLinea,
+  disponiblePorLinea,
   faltantesDeStock,
   itemsConBajas,
   razasConBajas,
@@ -38,11 +42,38 @@ import { CLAVE_TANDAS } from '@/modulos/produccion/tandas'
 const ALERTA =
   'rounded-control border border-peligro/40 bg-peligro/10 p-3 text-sm text-texto'
 
+/** Una línea con el disponible de su raza; undefined fuera de un borrador
+ *  o mientras se lee. */
+type FilaDeLinea = PedidoItem & { disponible?: DisponibleDeLinea }
+
+/** El disponible de la raza de la línea. Si no alcanza lo dice con texto,
+ *  no solo con color. */
+function Disponible({ de }: { de: DisponibleDeLinea | undefined }) {
+  if (!de) return <span className="text-texto-suave">—</span>
+  return (
+    <span className="inline-flex items-center gap-2">
+      {de.disponible}
+      {de.faltan > 0 ? <Badge tono="peligro">Faltan {de.faltan}</Badge> : null}
+    </span>
+  )
+}
+
 function columnas(
   nombreDeItem: (id: string) => string,
   nombreDeRaza: (id: string) => string,
   moneda: Moneda,
-): Columna<PedidoItem>[] {
+  conDisponible: boolean,
+): Columna<FilaDeLinea>[] {
+  const disponible: Columna<FilaDeLinea>[] = conDisponible
+    ? [
+        {
+          clave: 'disponible',
+          titulo: 'Disponible',
+          className: 'text-right font-mono tabular-nums',
+          render: (l) => <Disponible de={l.disponible} />,
+        },
+      ]
+    : []
   return [
     {
       clave: 'item_vendible_id',
@@ -63,6 +94,7 @@ function columnas(
       titulo: 'Cantidad',
       className: 'text-right font-mono tabular-nums',
     },
+    ...disponible,
     {
       clave: 'precio_unitario',
       titulo: `Precio (${moneda})`,
@@ -79,16 +111,23 @@ function columnas(
 }
 
 /** El 409 stock_insuficiente, raza por raza. El flujo para resolverlo
- *  (ver la disponibilidad, achicar el pedido) es del #14. */
+ *  (ver la disponibilidad, achicar el pedido) es del #14. Con reintentar,
+ *  ofrece volver a intentar con la misma Idempotency-Key. */
 function ErrorDeReserva({
   error,
   nombreDeRaza,
+  reintentar,
 }: {
   error: unknown
   nombreDeRaza: (id: string) => string
+  /** Solo si el pedido sigue en borrador y quien mira puede reservar. */
+  reintentar?: () => void
 }) {
   const faltantes = faltantesDeStock(error)
-  if (!faltantes) return <ErrorDePantalla error={describirError(error)} />
+  if (!faltantes)
+    return (
+      <ErrorDePantalla error={describirError(error)} reintentar={reintentar} />
+    )
   return (
     <div role="alert" className={ALERTA}>
       <p className="font-medium">
@@ -105,6 +144,17 @@ function ErrorDeReserva({
       <p className="mt-1 text-texto-suave">
         No se reservó nada: se reserva todo el pedido o nada.
       </p>
+      {reintentar ? (
+        <>
+          <p className="mt-1 text-texto-suave">
+            Otra reserva pudo haberse adelantado: el disponible de cada línea ya
+            está actualizado.
+          </p>
+          <Button variante="secundario" className="mt-2" onClick={reintentar}>
+            Reintentar
+          </Button>
+        </>
+      ) : null}
     </div>
   )
 }
@@ -119,6 +169,10 @@ export default function PedidoPage() {
   const [cancelacion, setCancelacion] = useState<string | null>(null)
   // Lo mismo para la entrega: la clave del despacho en curso, o null.
   const [entrega, setEntrega] = useState<string | null>(null)
+  // Y para la reserva: se fija en el primer intento y se repite en cada
+  // reintento hasta que reserva. Si la respuesta se perdió, el backend
+  // devuelve las reservas ya hechas en lugar de un 409.
+  const [intentoDeReserva, setIntentoDeReserva] = useState<string | null>(null)
   const [aviso, setAviso] = useState('')
 
   const pedido = useQuery({
@@ -137,6 +191,13 @@ export default function PedidoPage() {
     queryKey: CLAVE_RAZAS_CON_BAJAS,
     queryFn: razasConBajas,
   })
+  // Al lado de cada línea de un borrador, el disponible de su raza (#14). Es
+  // la consulta del despacho: reservar, entregar y cancelar la refrescan.
+  const stock = useQuery({
+    queryKey: [CLAVE_DISPONIBILIDAD],
+    queryFn: () => disponibilidad.listar(),
+    enabled: pedido.data?.estado === 'borrador',
+  })
 
   // Un cambio de estado refresca el detalle, todas las vistas del listado y
   // la disponibilidad (reservar, entregar y cancelar la cambian). Entregar
@@ -154,19 +215,26 @@ export default function PedidoPage() {
     ])
   // Un 409 dice que el pedido ya no está como se ve (otra pestaña, o una
   // respuesta que se perdió por timeout): se refresca para mostrarlo como
-  // quedó, en lugar de dejar un botón que siempre va a fallar.
+  // quedó, en lugar de dejar un botón que siempre va a fallar. Al reservar,
+  // también el disponible: otra reserva pudo adelantarse (#14).
   const siCambioAfuera = (error: unknown) => {
     if (esApiError(error) && error.status === 409) void alCambiar()
   }
   const reservar = useMutation({
-    mutationFn: () => pedidos.reservar(id),
+    mutationFn: (clave: string) => pedidos.reservar(id, clave),
     onError: siCambioAfuera,
     onSuccess: async (reservas) => {
       await alCambiar()
+      setIntentoDeReserva(null)
       const reinas = reservas.reduce((total, r) => total + r.cantidad, 0)
       setAviso(`Pedido reservado: ${reinas} reinas apartadas.`)
     },
   })
+  const intentarReserva = () => {
+    const clave = intentoDeReserva ?? crypto.randomUUID()
+    setIntentoDeReserva(clave)
+    reservar.mutate(clave)
+  }
   const cancelar = useMutation({
     mutationFn: (clave: string) => pedidos.cancelar(id, clave),
     onError: siCambioAfuera,
@@ -242,6 +310,13 @@ export default function PedidoPage() {
   const escribe = puede(identidad, ROLES_VENTAS)
   const ocupado = reservar.isPending || entregar.isPending || cancelar.isPending
   const lineas = [...p.items].sort((a, b) => a.numero_linea - b.numero_linea)
+  const borrador = p.estado === 'borrador'
+  const porLinea =
+    borrador && stock.data ? disponiblePorLinea(p, stock.data) : null
+  const filas: FilaDeLinea[] = lineas.map((l) => ({
+    ...l,
+    disponible: porLinea?.get(l.id),
+  }))
   const nombreDeLinea = (pedidoItemId: string) => {
     const linea = lineas.find((l) => l.id === pedidoItemId)
     return linea
@@ -272,7 +347,7 @@ export default function PedidoPage() {
         <Button
           cargando={reservar.isPending}
           disabled={ocupado}
-          onClick={() => reservar.mutate()}
+          onClick={intentarReserva}
         >
           <PackageCheck className="size-4" aria-hidden /> Reservar
         </Button>
@@ -306,15 +381,30 @@ export default function PedidoPage() {
       </div>
 
       {reservar.isError ? (
-        <ErrorDeReserva error={reservar.error} nombreDeRaza={nombreDeRaza} />
+        <ErrorDeReserva
+          error={reservar.error}
+          nombreDeRaza={nombreDeRaza}
+          reintentar={
+            escribe && puedePasar(p.estado, 'reservado')
+              ? intentarReserva
+              : undefined
+          }
+        />
       ) : null}
 
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-texto">Líneas</h2>
+        {/* Falla por su cuenta: sin el disponible, el pedido se sigue viendo. */}
+        {borrador && stock.isError ? (
+          <ErrorDePantalla
+            error={describirError(stock.error)}
+            reintentar={() => void stock.refetch()}
+          />
+        ) : null}
         <DataTable
-          columnas={columnas(nombreDeItem, nombreDeRaza, p.moneda)}
+          columnas={columnas(nombreDeItem, nombreDeRaza, p.moneda, borrador)}
           // En el orden en que se cargaron.
-          filas={lineas}
+          filas={filas}
           porPagina={Math.max(p.items.length, 1)}
           // Un pedido tiene al menos una línea (min_length=1 del backend).
           vacio={null}
