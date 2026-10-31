@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NAVEGACION, puedeAbrir } from '../src/app/navegacion'
+import { NAVEGACION, primerDestino, puedeAbrir } from '../src/app/navegacion'
 import type { Identidad, Rol } from '../src/auth/identidad'
 
 const como = (...roles: Rol[]): Identidad => ({
@@ -49,5 +49,23 @@ describe('puedeAbrir', () => {
     expect(puedeAbrir(como('lectura', 'ventas'), '/documentos/subir')).toBe(
       true,
     )
+  })
+})
+
+describe('primerDestino', () => {
+  it('es la primera sección del menú que el rol abre', () => {
+    expect(primerDestino(como('admin'))).toBe('/produccion/tandas')
+    expect(primerDestino(como('ventas'))).toBe('/ventas/pedidos')
+  })
+
+  it('sin sesión o sin rol no hay destino', () => {
+    expect(primerDestino(null)).toBeNull()
+    expect(primerDestino(como())).toBeNull()
+  })
+
+  it('las páginas internas no están en el menú', () => {
+    const rutas = NAVEGACION.flatMap((g) => g.enlaces).map((e) => e.a)
+    expect(rutas).not.toContain('/guia-de-estilo')
+    expect(rutas).not.toContain('/documentos/subir')
   })
 })

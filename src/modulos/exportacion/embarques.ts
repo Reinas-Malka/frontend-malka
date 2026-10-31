@@ -4,8 +4,6 @@ import type { Rol } from '@/auth/identidad'
 import type { Campo, Valores } from '@/components/catalogo/campos'
 import { errorDeAwb } from '@/lib/awb'
 import {
-  ESTADOS_EMBARQUE,
-  NOMBRE_DE_ESTADO_EMBARQUE,
   type Embarque,
   type EmbarqueActualizar,
   type EmbarqueCrear,
@@ -53,27 +51,23 @@ const awb: Campo = {
 
 export const CAMPOS_ALTA: readonly Campo[] = [destino, fechaVuelo, awb]
 
-export const CAMPOS_EDICION: readonly Campo[] = [
-  destino,
-  fechaVuelo,
-  awb,
-  {
-    nombre: 'estado',
-    etiqueta: 'Estado',
-    tipo: 'seleccion',
-    requerido: true,
-    opciones: () =>
-      ESTADOS_EMBARQUE.map((e) => ({
-        valor: e,
-        etiqueta: NOMBRE_DE_ESTADO_EMBARQUE[e],
-      })),
-    validar: (estado, valores) =>
-      (estado === 'en_transito' || estado === 'entregado') &&
-      !valores.awb?.trim()
-        ? 'Para pasar a tránsito o entregado, cargá la guía aérea.'
-        : null,
-  },
-]
+/** El estado no se edita acá: avanza con botones (SIGUIENTE_PASO) y se
+ *  cancela con confirmación, como el pedido. */
+export const CAMPOS_EDICION: readonly Campo[] = [destino, fechaVuelo, awb]
+
+/** El paso que sigue a cada estado, con el texto del botón. Entregado y
+ *  cancelado son finales. Tránsito y entregado piden la guía aérea (el
+ *  CHECK ck_embarque_awb_al_despachar de la 0010). */
+export const SIGUIENTE_PASO: Partial<
+  Record<EstadoEmbarque, { estado: EstadoEmbarque; texto: string }>
+> = {
+  en_preparacion: { estado: 'en_transito', texto: 'Pasar a tránsito' },
+  en_transito: { estado: 'entregado', texto: 'Marcar entregado' },
+}
+
+/** Se cancela mientras el envío no llegó. */
+export const sePuedeCancelar = (estado: EstadoEmbarque): boolean =>
+  estado === 'en_preparacion' || estado === 'en_transito'
 
 export const aEmbarqueCrear = (v: Valores): EmbarqueCrear => ({
   destino_pais: v.destino_pais.trim().toUpperCase(),
@@ -85,10 +79,7 @@ export const valoresDeEmbarque = (e: Embarque): Valores => ({
   destino_pais: e.destino_pais,
   fecha_vuelo: e.fecha_vuelo,
   awb: e.awb ?? '',
-  estado: e.estado,
 })
 
-export const aEmbarqueActualizar = (v: Valores): EmbarqueActualizar => ({
-  ...aEmbarqueCrear(v),
-  estado: v.estado as EstadoEmbarque,
-})
+export const aEmbarqueActualizar = (v: Valores): EmbarqueActualizar =>
+  aEmbarqueCrear(v)
