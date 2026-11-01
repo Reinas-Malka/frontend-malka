@@ -1,6 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import { describirError } from '@/api/client'
 import { madres, materiales, razas } from '@/api/recursos'
 import { tandas } from '@/api/tandas'
@@ -60,9 +65,12 @@ export default function TandasPage() {
   const [alta, setAlta] = useState<string | null>(null)
   const [aviso, setAviso] = useState<{ texto: string; negativo: boolean }>()
 
-  const listado = useQuery({
-    queryKey: [CLAVE_TANDAS],
-    queryFn: () => tandas.listar(),
+  // De a una página: las siguientes llegan con "Cargar más".
+  const listado = useInfiniteQuery({
+    queryKey: [CLAVE_TANDAS, 'listado'],
+    queryFn: ({ pageParam }) => tandas.listar({}, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (ultima) => ultima.siguiente ?? undefined,
   })
   const listaRazas = useListado('razas', razas)
   const listaMateriales = useListado('materiales', materiales)
@@ -94,7 +102,12 @@ export default function TandasPage() {
       titulo: 'Traslarve',
       render: (t) => (
         <span className="tabular-nums">
-          {formatearFecha(t.fecha_traslarve)}
+          <Link
+            to={`/produccion/tandas/${t.id}`}
+            className="font-medium text-miel-300 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-acento"
+          >
+            {formatearFecha(t.fecha_traslarve)}
+          </Link>
           {t.retroactivo ? (
             <span className="ml-2 font-sans text-xs text-texto-suave">
               (retroactiva)
@@ -142,7 +155,11 @@ export default function TandasPage() {
 
   const listas = [listado, listaRazas, listaMateriales, listaMadres]
   const cargando = listas.some((l) => l.isPending)
-  const error = listas.find((l) => l.isError)?.error
+  // Si falla una página siguiente, las ya cargadas se siguen viendo.
+  const error =
+    (!listado.data && listado.error) ||
+    listas.slice(1).find((l) => l.isError)?.error
+  const filas = listado.data?.pages.flatMap((pagina) => pagina.items) ?? []
 
   const nuevo = (
     <Button onClick={() => setAlta(crypto.randomUUID())}>
@@ -179,19 +196,40 @@ export default function TandasPage() {
           reintentar={() => listas.forEach((l) => void l.refetch())}
         />
       ) : (
-        <DataTable
-          columnas={columnas}
-          filas={listado.data?.items ?? []}
-          vacio={
-            <Vacio
-              titulo="Todavía no hay tandas"
-              accion={escribe ? nuevo : undefined}
+        <div className="space-y-3">
+          <DataTable
+            columnas={columnas}
+            filas={filas}
+            // Una sola página en pantalla: las siguientes llegan con "Cargar más".
+            porPagina={Math.max(filas.length, 1)}
+            vacio={
+              <Vacio
+                titulo="Todavía no hay tandas"
+                accion={escribe ? nuevo : undefined}
+              >
+                Una tanda es un traslarve: se carga la raza, la fecha y cuántos
+                cuadros de madera se usaron.
+              </Vacio>
+            }
+          />
+          {listado.isFetchNextPageError ? (
+            <p
+              role="alert"
+              className="rounded-control border border-peligro/40 bg-peligro/10 p-3 text-sm text-texto"
             >
-              Una tanda es un traslarve: se carga la raza, la fecha y cuántos
-              cuadros de madera se usaron.
-            </Vacio>
-          }
-        />
+              {describirError(listado.error).mensaje}
+            </p>
+          ) : null}
+          {listado.hasNextPage ? (
+            <Button
+              variante="secundario"
+              cargando={listado.isFetchingNextPage}
+              onClick={() => void listado.fetchNextPage()}
+            >
+              Cargar más tandas
+            </Button>
+          ) : null}
+        </div>
       )}
 
       <Modal
