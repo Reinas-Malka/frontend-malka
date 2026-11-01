@@ -164,6 +164,123 @@
     "title": "BancoRespuesta",
     "type": "object"
    },
+   "BorradorPedido": {
+    "additionalProperties": false,
+    "description": "POST /api/v1/documentos/borradores: de que pedido redactar.",
+    "properties": {
+     "pedido_id": {
+      "format": "uuid",
+      "title": "Pedido Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "pedido_id"
+    ],
+    "title": "BorradorPedido",
+    "type": "object"
+   },
+   "BorradorRespuesta": {
+    "description": "Lo que la API devuelve de un borrador. Las metricas quedan adentro.",
+    "properties": {
+     "actualizado_en": {
+      "format": "date-time",
+      "title": "Actualizado En",
+      "type": "string"
+     },
+     "contenido": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/BorradorValidado"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "creado_en": {
+      "format": "date-time",
+      "title": "Creado En",
+      "type": "string"
+     },
+     "estado": {
+      "$ref": "#/components/schemas/EstadoBorrador"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "motivo_rechazo": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MotivoRechazo"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "pedido_id": {
+      "format": "uuid",
+      "title": "Pedido Id",
+      "type": "string"
+     },
+     "version_prompt": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version Prompt"
+     }
+    },
+    "required": [
+     "id",
+     "pedido_id",
+     "estado",
+     "contenido",
+     "motivo_rechazo",
+     "version_prompt",
+     "creado_en",
+     "actualizado_en"
+    ],
+    "title": "BorradorRespuesta",
+    "type": "object"
+   },
+   "BorradorValidado": {
+    "additionalProperties": false,
+    "description": "Esquema de la salida del modelo: solo prosa, nada de numeros.\n\nEstricto: un campo de mas (un \"total\", un \"cbu\") se rechaza, y nada viene\nvacio ni desbordado. El contrato definitivo sale del brief del #40.",
+    "properties": {
+     "cuerpo": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Cuerpo",
+      "type": "string"
+     },
+     "encabezado": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Encabezado",
+      "type": "string"
+     },
+     "notas": {
+      "default": "",
+      "maxLength": 1000,
+      "title": "Notas",
+      "type": "string"
+     }
+    },
+    "required": [
+     "encabezado",
+     "cuerpo"
+    ],
+    "title": "BorradorValidado",
+    "type": "object"
+   },
    "Cancelar": {
     "additionalProperties": false,
     "description": "Pasa un pedido en borrador o reservado a cancelado. Sin mas datos.",
@@ -372,6 +489,163 @@
      "faltantes"
     ],
     "title": "CompletitudRespuesta",
+    "type": "object"
+   },
+   "ComprobanteCrear": {
+    "additionalProperties": false,
+    "description": "POST /api/v1/comprobantes: lo transcripto del comprobante de ARCA.\n\nNingun campo fiscal tiene default: si falta, no hay comprobante. El\nsistema nunca calcula ni genera la letra, el numero ni el importe.",
+    "properties": {
+     "archivo_s3_key": {
+      "maxLength": 300,
+      "pattern": "^documentos/[0-9a-f-]{36}/[A-Za-z0-9._/-]+$",
+      "title": "Archivo S3 Key",
+      "type": "string"
+     },
+     "cliente_id": {
+      "format": "uuid",
+      "title": "Cliente Id",
+      "type": "string"
+     },
+     "fecha_emision": {
+      "format": "date",
+      "title": "Fecha Emision",
+      "type": "string"
+     },
+     "importe": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Importe"
+     },
+     "moneda": {
+      "$ref": "#/components/schemas/Moneda"
+     },
+     "numero": {
+      "maximum": 99999999.0,
+      "minimum": 1.0,
+      "title": "Numero",
+      "type": "integer"
+     },
+     "punto_venta": {
+      "maximum": 99999.0,
+      "minimum": 1.0,
+      "title": "Punto Venta",
+      "type": "integer"
+     },
+     "tipo": {
+      "$ref": "#/components/schemas/TipoComprobante"
+     },
+     "tipo_cambio": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tipo Cambio"
+     }
+    },
+    "required": [
+     "tipo",
+     "cliente_id",
+     "punto_venta",
+     "numero",
+     "fecha_emision",
+     "moneda",
+     "importe",
+     "archivo_s3_key"
+    ],
+    "title": "ComprobanteCrear",
+    "type": "object"
+   },
+   "ComprobanteRespuesta": {
+    "description": "Lo que la API devuelve de un comprobante, igual a como se transcribio.",
+    "properties": {
+     "archivo_s3_key": {
+      "title": "Archivo S3 Key",
+      "type": "string"
+     },
+     "cargado_por": {
+      "title": "Cargado Por",
+      "type": "string"
+     },
+     "cliente_id": {
+      "format": "uuid",
+      "title": "Cliente Id",
+      "type": "string"
+     },
+     "creado_en": {
+      "format": "date-time",
+      "title": "Creado En",
+      "type": "string"
+     },
+     "fecha_emision": {
+      "format": "date",
+      "title": "Fecha Emision",
+      "type": "string"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "importe": {
+      "title": "Importe",
+      "type": "string"
+     },
+     "moneda": {
+      "$ref": "#/components/schemas/Moneda"
+     },
+     "numero": {
+      "title": "Numero",
+      "type": "integer"
+     },
+     "punto_venta": {
+      "title": "Punto Venta",
+      "type": "integer"
+     },
+     "tipo": {
+      "$ref": "#/components/schemas/TipoComprobante"
+     },
+     "tipo_cambio": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tipo Cambio"
+     }
+    },
+    "required": [
+     "id",
+     "tipo",
+     "cliente_id",
+     "punto_venta",
+     "numero",
+     "fecha_emision",
+     "moneda",
+     "importe",
+     "tipo_cambio",
+     "archivo_s3_key",
+     "cargado_por",
+     "creado_en"
+    ],
+    "title": "ComprobanteRespuesta",
     "type": "object"
    },
    "CondicionIva": {
@@ -760,6 +1034,15 @@
     ],
     "title": "Entregar",
     "type": "object"
+   },
+   "EstadoBorrador": {
+    "enum": [
+     "generando",
+     "borrador",
+     "rechazado"
+    ],
+    "title": "EstadoBorrador",
+    "type": "string"
    },
    "EstadoEmbarque": {
     "enum": [
@@ -1165,6 +1448,15 @@
      "EUR"
     ],
     "title": "Moneda",
+    "type": "string"
+   },
+   "MotivoRechazo": {
+    "enum": [
+     "salida_invalida",
+     "error_modelo",
+     "cola_no_disponible"
+    ],
+    "title": "MotivoRechazo",
     "type": "string"
    },
    "MovimientoCrear": {
@@ -1746,6 +2038,33 @@
     "title": "Pagina[BancoRespuesta]",
     "type": "object"
    },
+   "Pagina_BorradorRespuesta_": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/BorradorRespuesta"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "siguiente": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Siguiente"
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "title": "Pagina[BorradorRespuesta]",
+    "type": "object"
+   },
    "Pagina_ClienteRespuesta_": {
     "properties": {
      "items": {
@@ -1771,6 +2090,33 @@
      "items"
     ],
     "title": "Pagina[ClienteRespuesta]",
+    "type": "object"
+   },
+   "Pagina_ComprobanteRespuesta_": {
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/ComprobanteRespuesta"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "siguiente": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Siguiente"
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "title": "Pagina[ComprobanteRespuesta]",
     "type": "object"
    },
    "Pagina_DocumentoRespuesta_": {
@@ -3084,6 +3430,16 @@
     "title": "TipoCliente",
     "type": "string"
    },
+   "TipoComprobante": {
+    "description": "La letra del comprobante, tal como la asigno ARCA.",
+    "enum": [
+     "A",
+     "B",
+     "E"
+    ],
+    "title": "TipoComprobante",
+    "type": "string"
+   },
    "TipoDocumento": {
     "enum": [
      "factura_a",
@@ -3730,6 +4086,206 @@
     ]
    }
   },
+  "/api/v1/comprobantes": {
+   "get": {
+    "operationId": "listar_comprobantes_api_v1_comprobantes_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "cliente_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "uuid",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Cliente Id"
+      }
+     },
+     {
+      "description": "Cantidad maxima de items (1 a 100).",
+      "in": "query",
+      "name": "limite",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "description": "Cantidad maxima de items (1 a 100).",
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Limite",
+       "type": "integer"
+      }
+     },
+     {
+      "description": "El campo `siguiente` de la pagina anterior.",
+      "in": "query",
+      "name": "cursor",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "maxLength": 500,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "El campo `siguiente` de la pagina anterior.",
+       "title": "Cursor"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Pagina_ComprobanteRespuesta_"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Listar Comprobantes",
+    "tags": [
+     "comprobantes"
+    ]
+   },
+   "post": {
+    "operationId": "registrar_comprobante_api_v1_comprobantes_post",
+    "parameters": [
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ComprobanteCrear"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ComprobanteRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Registrar Comprobante",
+    "tags": [
+     "comprobantes"
+    ]
+   }
+  },
+  "/api/v1/comprobantes/{comprobante_id}": {
+   "get": {
+    "operationId": "obtener_comprobante_api_v1_comprobantes__comprobante_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "comprobante_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Comprobante Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ComprobanteRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Obtener Comprobante",
+    "tags": [
+     "comprobantes"
+    ]
+   }
+  },
   "/api/v1/disponibilidad": {
    "get": {
     "operationId": "obtener_disponibilidad_api_v1_disponibilidad_get",
@@ -3786,6 +4342,206 @@
     "summary": "Obtener Disponibilidad",
     "tags": [
      "disponibilidad"
+    ]
+   }
+  },
+  "/api/v1/documentos/borradores": {
+   "get": {
+    "operationId": "listar_borradores_api_v1_documentos_borradores_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "pedido_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "uuid",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Pedido Id"
+      }
+     },
+     {
+      "description": "Cantidad maxima de items (1 a 100).",
+      "in": "query",
+      "name": "limite",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "description": "Cantidad maxima de items (1 a 100).",
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Limite",
+       "type": "integer"
+      }
+     },
+     {
+      "description": "El campo `siguiente` de la pagina anterior.",
+      "in": "query",
+      "name": "cursor",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "maxLength": 500,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "El campo `siguiente` de la pagina anterior.",
+       "title": "Cursor"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Pagina_BorradorRespuesta_"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Listar Borradores",
+    "tags": [
+     "borradores"
+    ]
+   },
+   "post": {
+    "operationId": "pedir_borrador_api_v1_documentos_borradores_post",
+    "parameters": [
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BorradorPedido"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BorradorRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Pedir Borrador",
+    "tags": [
+     "borradores"
+    ]
+   }
+  },
+  "/api/v1/documentos/borradores/{borrador_id}": {
+   "get": {
+    "operationId": "obtener_borrador_api_v1_documentos_borradores__borrador_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "borrador_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Borrador Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BorradorRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Obtener Borrador",
+    "tags": [
+     "borradores"
     ]
    }
   },
