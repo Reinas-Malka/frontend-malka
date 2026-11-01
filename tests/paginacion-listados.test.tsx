@@ -71,6 +71,9 @@ vi.mock('../src/api/movimientos', async (importOriginal) => {
   }
 })
 
+/** Más de 100 filas en jsdom: en un CI cargado pasan los 5 s por defecto. */
+const LENTO = 15_000
+
 describe('listados que pasan del límite de una página', () => {
   // Los módulos de api deciden simulado/real al cargarse: el flag va antes.
   let EmbarquesPage: ComponentType
@@ -119,94 +122,113 @@ describe('listados que pasan del límite de una página', () => {
     return consultas
   }
 
-  it('embarques: muestra la primera página y "Cargar más" suma las siguientes', async () => {
-    const usuario = userEvent.setup()
-    montar('/exportacion/embarques', ['lectura'])
+  it(
+    'embarques: muestra la primera página y "Cargar más" suma las siguientes',
+    async () => {
+      const usuario = userEvent.setup()
+      montar('/exportacion/embarques', ['lectura'])
 
-    const cargarMas = await screen.findByRole('button', {
-      name: 'Cargar más embarques',
-    })
-    expect(screen.getAllByRole('link', { name: 'Chile (CL)' }).length).toBe(
-      api.LIMITE_EMBARQUES,
-    )
-    expect(
-      screen.queryByRole('link', { name: 'Nueva Zelanda (NZ)' }),
-    ).toBeNull()
+      const cargarMas = await screen.findByRole('button', {
+        name: 'Cargar más embarques',
+      })
+      expect(screen.getAllByRole('link', { name: 'Chile (CL)' }).length).toBe(
+        api.LIMITE_EMBARQUES,
+      )
+      expect(
+        screen.queryByRole('link', { name: 'Nueva Zelanda (NZ)' }),
+      ).toBeNull()
 
-    await usuario.click(cargarMas)
+      await usuario.click(cargarMas)
 
-    expect(
-      await screen.findAllByRole('link', { name: 'Nueva Zelanda (NZ)' }),
-    ).toHaveLength(EXTRA)
-    // Se suman, no reemplazan: las de la primera página siguen ahí.
-    expect(screen.getAllByRole('link', { name: 'Chile (CL)' }).length).toBe(
-      api.LIMITE_EMBARQUES,
-    )
-    // Ya no hay más páginas: el botón se va.
-    expect(
-      screen.queryByRole('button', { name: 'Cargar más embarques' }),
-    ).toBeNull()
-  })
+      expect(
+        await screen.findAllByRole('link', { name: 'Nueva Zelanda (NZ)' }),
+      ).toHaveLength(EXTRA)
+      // Se suman, no reemplazan: las de la primera página siguen ahí.
+      expect(screen.getAllByRole('link', { name: 'Chile (CL)' }).length).toBe(
+        api.LIMITE_EMBARQUES,
+      )
+      // Ya no hay más páginas: el botón se va.
+      expect(
+        screen.queryByRole('button', { name: 'Cargar más embarques' }),
+      ).toBeNull()
+    },
+    LENTO,
+  )
 
-  it('embarques: invalidar [CLAVE_EMBARQUES] refresca todas las páginas cargadas', async () => {
-    const usuario = userEvent.setup()
-    const consultas = montar('/exportacion/embarques', ['lectura'])
-    const { CLAVE_EMBARQUES } =
-      await import('../src/modulos/exportacion/embarques')
+  it(
+    'embarques: invalidar [CLAVE_EMBARQUES] refresca todas las páginas cargadas',
+    async () => {
+      const usuario = userEvent.setup()
+      const consultas = montar('/exportacion/embarques', ['lectura'])
+      const { CLAVE_EMBARQUES } =
+        await import('../src/modulos/exportacion/embarques')
 
-    await usuario.click(
-      await screen.findByRole('button', { name: 'Cargar más embarques' }),
-    )
-    await screen.findAllByRole('link', { name: 'Nueva Zelanda (NZ)' })
+      await usuario.click(
+        await screen.findByRole('button', { name: 'Cargar más embarques' }),
+      )
+      await screen.findAllByRole('link', { name: 'Nueva Zelanda (NZ)' })
 
-    // El vuelo más nuevo de todos: entra primero en la página 1.
-    await api.embarques.crear({ destino_pais: 'UY', fecha_vuelo: '2027-01-15' })
-    await consultas.invalidateQueries({ queryKey: [CLAVE_EMBARQUES] })
+      // El vuelo más nuevo de todos: entra primero en la página 1.
+      await api.embarques.crear({
+        destino_pais: 'UY',
+        fecha_vuelo: '2027-01-15',
+      })
+      await consultas.invalidateQueries({ queryKey: [CLAVE_EMBARQUES] })
 
-    expect(
-      await screen.findByRole('link', { name: 'Uruguay (UY)' }),
-    ).toBeTruthy()
-    // Las páginas ya cargadas se vuelven a pedir, no se pierden.
-    expect(
-      screen.getAllByRole('link', { name: 'Nueva Zelanda (NZ)' }),
-    ).toHaveLength(EXTRA)
-  })
+      expect(
+        await screen.findByRole('link', { name: 'Uruguay (UY)' }),
+      ).toBeTruthy()
+      // Las páginas ya cargadas se vuelven a pedir, no se pierden.
+      expect(
+        screen.getAllByRole('link', { name: 'Nueva Zelanda (NZ)' }),
+      ).toHaveLength(EXTRA)
+    },
+    LENTO,
+  )
 
-  it('movimientos: "Cargar más" trae los más viejos del material', async () => {
-    const usuario = userEvent.setup()
-    montar(`/produccion/materiales/${materialId}`, ['lectura'])
+  it(
+    'movimientos: "Cargar más" trae los más viejos del material',
+    async () => {
+      const usuario = userEvent.setup()
+      montar(`/produccion/materiales/${materialId}`, ['lectura'])
 
-    const cargarMas = await screen.findByRole('button', {
-      name: 'Cargar más movimientos',
-    })
-    expect(screen.getAllByText('compra')).toHaveLength(limiteMovimientos)
-    expect(screen.queryByText(/Conteo viejo/)).toBeNull()
+      const cargarMas = await screen.findByRole('button', {
+        name: 'Cargar más movimientos',
+      })
+      expect(screen.getAllByText('compra')).toHaveLength(limiteMovimientos)
+      expect(screen.queryByText(/Conteo viejo/)).toBeNull()
 
-    await usuario.click(cargarMas)
+      await usuario.click(cargarMas)
 
-    expect(await screen.findAllByText(/Conteo viejo/)).toHaveLength(EXTRA)
-    expect(screen.getAllByText('compra')).toHaveLength(limiteMovimientos)
-    expect(
-      screen.queryByRole('button', { name: 'Cargar más movimientos' }),
-    ).toBeNull()
-  })
+      expect(await screen.findAllByText(/Conteo viejo/)).toHaveLength(EXTRA)
+      expect(screen.getAllByText('compra')).toHaveLength(limiteMovimientos)
+      expect(
+        screen.queryByRole('button', { name: 'Cargar más movimientos' }),
+      ).toBeNull()
+    },
+    LENTO,
+  )
 
-  it('movimientos: registrar una compra refresca el listado sin perder páginas', async () => {
-    const usuario = userEvent.setup()
-    montar(`/produccion/materiales/${materialId}`, ['produccion'])
+  it(
+    'movimientos: registrar una compra refresca el listado sin perder páginas',
+    async () => {
+      const usuario = userEvent.setup()
+      montar(`/produccion/materiales/${materialId}`, ['produccion'])
 
-    await usuario.click(
-      await screen.findByRole('button', { name: 'Cargar más movimientos' }),
-    )
-    await screen.findAllByText(/Conteo viejo/)
+      await usuario.click(
+        await screen.findByRole('button', { name: 'Cargar más movimientos' }),
+      )
+      await screen.findAllByText(/Conteo viejo/)
 
-    await usuario.click(
-      screen.getByRole('button', { name: /registrar compra o ajuste/i }),
-    )
-    await usuario.type(screen.getByLabelText('Cantidad'), '777')
-    await usuario.click(screen.getByRole('button', { name: 'Registrar' }))
+      await usuario.click(
+        screen.getByRole('button', { name: /registrar compra o ajuste/i }),
+      )
+      await usuario.type(screen.getByLabelText('Cantidad'), '777')
+      await usuario.click(screen.getByRole('button', { name: 'Registrar' }))
 
-    expect(await screen.findByText('+777')).toBeTruthy()
-    expect(screen.getAllByText(/Conteo viejo/)).toHaveLength(EXTRA)
-  }, 15_000) // tipea en el formulario: en un CI cargado pasa los 5 s
+      expect(await screen.findByText('+777')).toBeTruthy()
+      expect(screen.getAllByText(/Conteo viejo/)).toHaveLength(EXTRA)
+    },
+    LENTO,
+  )
 })
