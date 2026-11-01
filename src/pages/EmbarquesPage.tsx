@@ -1,4 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
@@ -8,6 +12,7 @@ import { puede } from '@/auth/identidad'
 import { useSesion } from '@/auth/useSesion'
 import type { Valores } from '@/components/catalogo/campos'
 import { FormularioRecurso } from '@/components/catalogo/FormularioRecurso'
+import { CargarMas } from '@/components/pagina/CargarMas'
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorDePantalla, Vacio } from '@/components/ui/estados'
@@ -79,9 +84,13 @@ export default function EmbarquesPage() {
   const [alta, setAlta] = useState<string | null>(null)
   const navegar = useNavigate()
 
-  const listado = useQuery({
+  // De a una página: las siguientes llegan con "Cargar más". Invalidar
+  // [CLAVE_EMBARQUES] vuelve a pedir todas las páginas ya cargadas.
+  const listado = useInfiniteQuery({
     queryKey: [CLAVE_EMBARQUES],
-    queryFn: () => embarques.listar(),
+    queryFn: ({ pageParam }) => embarques.listar(pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (ultima) => ultima.siguiente ?? undefined,
   })
   const crear = useMutation({
     mutationFn: ({ valores, clave }: { valores: Valores; clave: string }) =>
@@ -94,6 +103,7 @@ export default function EmbarquesPage() {
     },
   })
 
+  const filas = listado.data?.pages.flatMap((pagina) => pagina.items) ?? []
   const nuevo = (
     <Button onClick={() => setAlta(crypto.randomUUID())}>
       <Plus className="size-4" aria-hidden /> Nuevo embarque
@@ -110,26 +120,31 @@ export default function EmbarquesPage() {
 
       {listado.isPending ? (
         <Cargando columnas={5} />
-      ) : listado.isError ? (
+      ) : !listado.data ? (
         <ErrorDePantalla
           error={describirError(listado.error)}
           reintentar={() => void listado.refetch()}
         />
       ) : (
-        <DataTable
-          columnas={columnas}
-          filas={listado.data.items}
-          vacio={
-            <Vacio
-              titulo="Todavía no hay embarques"
-              accion={escribe ? nuevo : undefined}
-            >
-              Un embarque agrupa el envío y sus 6 documentos: factura E, permiso
-              de embarque, guía aérea, lista de empaque, DTe y shipper&apos;s
-              certificate.
-            </Vacio>
-          }
-        />
+        <div className="space-y-3">
+          <DataTable
+            columnas={columnas}
+            filas={filas}
+            // Una sola página en pantalla: las siguientes llegan con "Cargar más".
+            porPagina={Math.max(filas.length, 1)}
+            vacio={
+              <Vacio
+                titulo="Todavía no hay embarques"
+                accion={escribe ? nuevo : undefined}
+              >
+                Un embarque agrupa el envío y sus 6 documentos: factura E,
+                permiso de embarque, guía aérea, lista de empaque, DTe y
+                shipper&apos;s certificate.
+              </Vacio>
+            }
+          />
+          <CargarMas consulta={listado} texto="Cargar más embarques" />
+        </div>
       )}
 
       <Modal

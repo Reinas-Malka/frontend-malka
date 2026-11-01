@@ -13,7 +13,10 @@ import {
   it,
   vi,
 } from 'vitest'
-import { movimientosSimulados } from '../src/api/movimientos'
+import {
+  LIMITE_MOVIMIENTOS,
+  movimientosSimulados,
+} from '../src/api/movimientos'
 import type { Rol } from '../src/auth/identidad'
 import { camposVisibles } from '../src/components/catalogo/campos'
 import { DATOS_SIMULADOS } from '../src/datos/simulados'
@@ -75,6 +78,32 @@ describe('movimientos simulados (el stock es la suma)', () => {
     const fechas = items.map((m) => m.fecha)
     expect(fechas).toEqual([...fechas].sort().reverse())
   })
+
+  it('pagina por cursor como el backend: filtro y orden se mantienen entre páginas', async () => {
+    const delMaterial = Array.from(
+      { length: LIMITE_MOVIMIENTOS + 4 },
+      (_, i) => ({
+        ...DATOS_SIMULADOS.movimientos[0],
+        id: `m-${i}`,
+        material_id: CUPULAS.id,
+        fecha: `2026-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + (i % 28)).padStart(2, '0')}`,
+      }),
+    )
+    const deOtro = { ...delMaterial[0], id: 'otro', material_id: 'otro' }
+    const api = movimientosSimulados([...delMaterial, deOtro])
+
+    const primera = await api.listar(CUPULAS.id)
+    expect(primera.items).toHaveLength(LIMITE_MOVIMIENTOS)
+    const segunda = await api.listar(CUPULAS.id, primera.siguiente ?? undefined)
+    expect(segunda.items).toHaveLength(4)
+    expect(segunda.siguiente).toBeNull()
+
+    const todas = [...primera.items, ...segunda.items]
+    expect(todas.every((m) => m.material_id === CUPULAS.id)).toBe(true)
+    expect(new Set(todas.map((m) => m.id)).size).toBe(delMaterial.length)
+    const fechas = todas.map((m) => m.fecha)
+    expect(fechas).toEqual([...fechas].sort().reverse())
+  })
 })
 
 describe('pantallas', () => {
@@ -126,6 +155,10 @@ describe('pantallas', () => {
     expect(screen.getAllByText('compra').length).toBeGreaterThan(0)
     expect(
       screen.queryByRole('button', { name: /registrar compra o ajuste/i }),
+    ).toBeNull()
+    // Entran todos en una página: no hay nada más que cargar.
+    expect(
+      screen.queryByRole('button', { name: 'Cargar más movimientos' }),
     ).toBeNull()
   })
 

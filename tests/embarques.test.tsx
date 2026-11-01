@@ -13,7 +13,11 @@ import {
   it,
   vi,
 } from 'vitest'
-import { calcularCompletitud, embarquesSimulados } from '../src/api/embarques'
+import {
+  LIMITE_EMBARQUES,
+  calcularCompletitud,
+  embarquesSimulados,
+} from '../src/api/embarques'
 import type { Rol } from '../src/auth/identidad'
 import { DATOS_SIMULADOS } from '../src/datos/simulados'
 import { claveSimulada } from '../src/documentos/subirArchivo'
@@ -122,6 +126,39 @@ describe('embarques simulados con las reglas del backend', () => {
       embarquesSimulados().obtener('no-existe'),
     ).rejects.toMatchObject({ status: 404, codigo: 'embarque_no_encontrado' })
   })
+
+  it('pagina por cursor como el backend, sin perder el orden entre páginas', async () => {
+    const semilla = Array.from({ length: LIMITE_EMBARQUES + 2 }, (_, i) => ({
+      ...DIRECTO,
+      id: `e-${i}`,
+      awb: null,
+      fecha_vuelo: `2026-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + (i % 28)).padStart(2, '0')}`,
+    }))
+    const api = embarquesSimulados(semilla, [])
+
+    const primera = await api.listar()
+    expect(primera.items).toHaveLength(LIMITE_EMBARQUES)
+    expect(primera.siguiente).not.toBeNull()
+    const segunda = await api.listar(primera.siguiente ?? undefined)
+    expect(segunda.items).toHaveLength(2)
+    expect(segunda.siguiente).toBeNull()
+
+    const todas = [...primera.items, ...segunda.items]
+    expect(new Set(todas.map((e) => e.id)).size).toBe(semilla.length)
+    const vuelos = todas.map((e) => e.fecha_vuelo)
+    expect(vuelos).toEqual([...vuelos].sort().reverse())
+  })
+
+  it('con menos embarques que el límite no hay página siguiente', async () => {
+    expect((await embarquesSimulados().listar()).siguiente).toBeNull()
+  })
+
+  it('un cursor roto es 422 cursor_invalido, como en el backend', async () => {
+    await expect(embarquesSimulados().listar('basura')).rejects.toMatchObject({
+      status: 422,
+      codigo: 'cursor_invalido',
+    })
+  })
 })
 
 describe('key del archivo en la demo', () => {
@@ -189,6 +226,15 @@ describe('pantallas de embarques', () => {
 
     await screen.findByRole('link', { name: 'Chile (CL)' })
     expect(screen.queryByRole('button', { name: /nuevo embarque/i })).toBeNull()
+  })
+
+  it('con todos los embarques en una página no ofrece "Cargar más"', async () => {
+    montar('/exportacion/embarques', ['lectura'])
+
+    await screen.findByRole('link', { name: 'Chile (CL)' })
+    expect(
+      screen.queryByRole('button', { name: 'Cargar más embarques' }),
+    ).toBeNull()
   })
 
   it('ventas puede crear un embarque', async () => {

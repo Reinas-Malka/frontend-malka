@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
@@ -9,6 +14,7 @@ import { puede } from '@/auth/identidad'
 import { useSesion } from '@/auth/useSesion'
 import type { Campo, Valores } from '@/components/catalogo/campos'
 import { FormularioRecurso } from '@/components/catalogo/FormularioRecurso'
+import { CargarMas } from '@/components/pagina/CargarMas'
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -109,9 +115,13 @@ export default function MaterialPage() {
     queryKey: ['materiales', id],
     queryFn: () => materiales.obtener(id),
   })
-  const listado = useQuery({
+  // De a una página: las siguientes llegan con "Cargar más". Invalidar
+  // ['materiales'] vuelve a pedir todas las páginas ya cargadas.
+  const listado = useInfiniteQuery({
     queryKey: ['materiales', id, 'movimientos'],
-    queryFn: () => movimientos.listar(id),
+    queryFn: ({ pageParam }) => movimientos.listar(id, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (ultima) => ultima.siguiente ?? undefined,
   })
   const registrar = useMutation({
     mutationFn: ({ valores, clave }: { valores: Valores; clave: string }) =>
@@ -143,7 +153,8 @@ export default function MaterialPage() {
         <Cargando columnas={4} />
       </section>
     )
-  const error = material.error ?? listado.error
+  // Si falla "Cargar más", las filas ya cargadas siguen: lo avisa CargarMas.
+  const error = material.error ?? (listado.data ? null : listado.error)
   if (error || !material.data || !listado.data)
     return (
       <section className="space-y-seccion">
@@ -159,6 +170,7 @@ export default function MaterialPage() {
     )
 
   const m = material.data
+  const filas = listado.data.pages.flatMap((pagina) => pagina.items)
   const nuevo = (
     <Button onClick={() => setAlta(crypto.randomUUID())}>
       <Plus className="size-4" aria-hidden /> Registrar compra o ajuste
@@ -181,16 +193,21 @@ export default function MaterialPage() {
           {aviso}
         </p>
       ) : null}
-      <DataTable
-        columnas={columnas}
-        filas={listado.data.items}
-        vacio={
-          <Vacio titulo="Sin movimientos todavía">
-            La primera compra suma el stock; los consumos los registra el alta
-            de cada tanda.
-          </Vacio>
-        }
-      />
+      <div className="space-y-3">
+        <DataTable
+          columnas={columnas}
+          filas={filas}
+          // Una sola página en pantalla: las siguientes llegan con "Cargar más".
+          porPagina={Math.max(filas.length, 1)}
+          vacio={
+            <Vacio titulo="Sin movimientos todavía">
+              La primera compra suma el stock; los consumos los registra el alta
+              de cada tanda.
+            </Vacio>
+          }
+        />
+        <CargarMas consulta={listado} texto="Cargar más movimientos" />
+      </div>
       <Modal
         open={alta !== null}
         onOpenChange={(abierto) =>
