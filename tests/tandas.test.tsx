@@ -180,7 +180,7 @@ describe('tandas simuladas (mismas reglas que el backend)', () => {
   const datos = aTandaCrear(alta())
 
   it('2 cuadros crean 270 celdas trasladadas y descuentan las cúpulas', async () => {
-    const api = tandasSimuladas([])
+    const api = tandasSimuladas({ tandas: [] })
     const creada = await api.crear(datos)
 
     expect(creada.celdas).toBe(270)
@@ -191,7 +191,10 @@ describe('tandas simuladas (mismas reglas que el backend)', () => {
   })
 
   it('si no alcanzan las cúpulas avisa, pero crea igual', async () => {
-    const api = tandasSimuladas([], razas, [{ ...CUPULAS, stock: '100' }])
+    const api = tandasSimuladas({
+      tandas: [],
+      materiales: [{ ...CUPULAS, stock: '100' }],
+    })
     const creada = await api.crear(datos)
 
     expect(creada.stock).toBe('-170')
@@ -199,7 +202,7 @@ describe('tandas simuladas (mismas reglas que el backend)', () => {
   })
 
   it('rechaza el domingo sin retroactivo', async () => {
-    const api = tandasSimuladas([])
+    const api = tandasSimuladas({ tandas: [] })
     await expect(
       api.crear({ ...datos, fecha_traslarve: DOMINGO }),
     ).rejects.toMatchObject({ status: 422, codigo: 'fecha_no_laborable' })
@@ -209,7 +212,7 @@ describe('tandas simuladas (mismas reglas que el backend)', () => {
   })
 
   it('la misma clave de idempotencia no crea dos tandas', async () => {
-    const api = tandasSimuladas([])
+    const api = tandasSimuladas({ tandas: [] })
     const primera = await api.crear(datos, 'clave')
     const repetida = await api.crear(datos, 'clave')
 
