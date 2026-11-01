@@ -4,7 +4,7 @@
  *  Las entidades que YA tienen endpoint son alias de src/api/esquema.d.ts,
  *  generado del OpenAPI del backend (npm run contrato:tipos): si el backend
  *  cambia un campo, el build lo marca. Las que todavía no tienen endpoint
- *  (celda, comprobante) se escriben a mano desde dominio.md. */
+ *  (celda) se escriben a mano desde dominio.md. */
 import type { components } from '@/api/esquema'
 
 type Esquemas = components['schemas']
@@ -79,8 +79,9 @@ export type ItemVendible = Omit<
   'alicuota'
 > & { alicuota: Alicuota }
 
-// --- facturación y exportación (A|B|E transcripto, never calculado) ---
-export type TipoComprobante = 'A' | 'B' | 'E'
+// --- facturación y exportación (A|B|E transcripto, nunca calculado) ---
+/** La letra la asigna ARCA: se transcribe. */
+export type TipoComprobante = Esquemas['TipoComprobante']
 export type Moneda = Esquemas['Moneda']
 
 /** Valores de CondicionIva en app/services/ventas/clientes.py. */
@@ -167,20 +168,13 @@ export const INCOTERMS = [
   'CIF',
 ] as const satisfies readonly Incoterm[]
 
-export type Comprobante = {
-  id: string
-  tenant_id: string
-  tipo: TipoComprobante // la letra la asigna ARCA: se transcribe
-  cliente_id: string
-  punto_venta: number // DOS enteros separados, nunca el string impreso
-  numero: number
-  fecha_emision: string
-  moneda: Moneda
-  importe: string // Decimal como string (nunca float)
-  tipo_cambio: string | null // NULL si ARS
-  archivo_s3_key: string
-  cargado_por: string
-}
+/** Comprobante transcripto (backend #108): punto_venta y numero son DOS
+ *  enteros, nunca el texto impreso; importe y tipo_cambio, Decimal como
+ *  texto; tipo_cambio null si y solo si es en ARS. Inmutable: sin PATCH ni
+ *  baja. */
+export type Comprobante = Esquemas['ComprobanteRespuesta']
+/** POST /api/v1/comprobantes: lo que se transcribe del PDF de ARCA. */
+export type ComprobanteCrear = Esquemas['ComprobanteCrear']
 
 // --- exportación: el embarque y sus 6 documentos (backend #109) ---
 export type TipoDocumentoEmbarque = Esquemas['TipoDocumentoEmbarque']
