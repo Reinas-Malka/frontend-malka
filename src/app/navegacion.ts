@@ -7,6 +7,7 @@ import {
   Layers,
   Package,
   Plane,
+  Receipt,
   Tag,
   Trees,
   Users,
@@ -73,6 +74,7 @@ export const NAVEGACION: Grupo[] = [
     titulo: 'Ventas',
     enlaces: [
       { a: '/ventas/pedidos', texto: 'Pedidos', icono: ClipboardList },
+      { a: '/ventas/comprobantes', texto: 'Comprobantes', icono: Receipt },
       { a: '/ventas/disponibilidad', texto: 'Disponibilidad', icono: Boxes },
       { a: '/ventas/clientes', texto: 'Clientes', icono: Users },
       { a: '/ventas/items-vendibles', texto: 'Ítems vendibles', icono: Tag },
