@@ -78,6 +78,41 @@ export interface paths {
     patch: operations['actualizar_cliente_api_v1_clientes__cliente_id__patch']
     trace?: never
   }
+  '/api/v1/comprobantes': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Listar Comprobantes */
+    get: operations['listar_comprobantes_api_v1_comprobantes_get']
+    put?: never
+    /** Registrar Comprobante */
+    post: operations['registrar_comprobante_api_v1_comprobantes_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/comprobantes/{comprobante_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Obtener Comprobante */
+    get: operations['obtener_comprobante_api_v1_comprobantes__comprobante_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/disponibilidad': {
     parameters: {
       query?: never
@@ -87,6 +122,41 @@ export interface paths {
     }
     /** Obtener Disponibilidad */
     get: operations['obtener_disponibilidad_api_v1_disponibilidad_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/documentos/borradores': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Listar Borradores */
+    get: operations['listar_borradores_api_v1_documentos_borradores_get']
+    put?: never
+    /** Pedir Borrador */
+    post: operations['pedir_borrador_api_v1_documentos_borradores_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/documentos/borradores/{borrador_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Obtener Borrador */
+    get: operations['obtener_borrador_api_v1_documentos_borradores__borrador_id__get']
     put?: never
     post?: never
     delete?: never
@@ -713,6 +783,66 @@ export interface components {
       reinas_en_banco: number
     }
     /**
+     * BorradorPedido
+     * @description POST /api/v1/documentos/borradores: de que pedido redactar.
+     */
+    BorradorPedido: {
+      /**
+       * Pedido Id
+       * Format: uuid
+       */
+      pedido_id: string
+    }
+    /**
+     * BorradorRespuesta
+     * @description Lo que la API devuelve de un borrador. Las metricas quedan adentro.
+     */
+    BorradorRespuesta: {
+      /**
+       * Actualizado En
+       * Format: date-time
+       */
+      actualizado_en: string
+      contenido: components['schemas']['BorradorValidado'] | null
+      /**
+       * Creado En
+       * Format: date-time
+       */
+      creado_en: string
+      estado: components['schemas']['EstadoBorrador']
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      motivo_rechazo: components['schemas']['MotivoRechazo'] | null
+      /**
+       * Pedido Id
+       * Format: uuid
+       */
+      pedido_id: string
+      /** Version Prompt */
+      version_prompt: string | null
+    }
+    /**
+     * BorradorValidado
+     * @description Esquema de la salida del modelo: solo prosa, nada de numeros.
+     *
+     *     Estricto: un campo de mas (un "total", un "cbu") se rechaza, y nada viene
+     *     vacio ni desbordado. El contrato definitivo sale del brief del #40.
+     */
+    BorradorValidado: {
+      /** Cuerpo */
+      cuerpo: string
+      /** Encabezado */
+      encabezado: string
+      /**
+       * Notas
+       * @default
+       */
+      notas: string
+    }
+    /**
      * Cancelar
      * @description Pasa un pedido en borrador o reservado a cancelado. Sin mas datos.
      */
@@ -797,6 +927,77 @@ export interface components {
       faltantes: components['schemas']['TipoDocumentoEmbarque'][]
       /** Presentes */
       presentes: components['schemas']['TipoDocumentoEmbarque'][]
+    }
+    /**
+     * ComprobanteCrear
+     * @description POST /api/v1/comprobantes: lo transcripto del comprobante de ARCA.
+     *
+     *     Ningun campo fiscal tiene default: si falta, no hay comprobante. El
+     *     sistema nunca calcula ni genera la letra, el numero ni el importe.
+     */
+    ComprobanteCrear: {
+      /** Archivo S3 Key */
+      archivo_s3_key: string
+      /**
+       * Cliente Id
+       * Format: uuid
+       */
+      cliente_id: string
+      /**
+       * Fecha Emision
+       * Format: date
+       */
+      fecha_emision: string
+      /** Importe */
+      importe: number | string
+      moneda: components['schemas']['Moneda']
+      /** Numero */
+      numero: number
+      /** Punto Venta */
+      punto_venta: number
+      tipo: components['schemas']['TipoComprobante']
+      /** Tipo Cambio */
+      tipo_cambio?: number | string | null
+    }
+    /**
+     * ComprobanteRespuesta
+     * @description Lo que la API devuelve de un comprobante, igual a como se transcribio.
+     */
+    ComprobanteRespuesta: {
+      /** Archivo S3 Key */
+      archivo_s3_key: string
+      /** Cargado Por */
+      cargado_por: string
+      /**
+       * Cliente Id
+       * Format: uuid
+       */
+      cliente_id: string
+      /**
+       * Creado En
+       * Format: date-time
+       */
+      creado_en: string
+      /**
+       * Fecha Emision
+       * Format: date
+       */
+      fecha_emision: string
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /** Importe */
+      importe: string
+      moneda: components['schemas']['Moneda']
+      /** Numero */
+      numero: number
+      /** Punto Venta */
+      punto_venta: number
+      tipo: components['schemas']['TipoComprobante']
+      /** Tipo Cambio */
+      tipo_cambio: string | null
     }
     /**
      * CondicionIva
@@ -978,6 +1179,11 @@ export interface components {
       lineas: components['schemas']['LineaDespacho'][]
     }
     /**
+     * EstadoBorrador
+     * @enum {string}
+     */
+    EstadoBorrador: 'generando' | 'borrador' | 'rechazado'
+    /**
      * EstadoEmbarque
      * @enum {string}
      */
@@ -1129,6 +1335,11 @@ export interface components {
      * @enum {string}
      */
     Moneda: 'ARS' | 'USD' | 'EUR'
+    /**
+     * MotivoRechazo
+     * @enum {string}
+     */
+    MotivoRechazo: 'salida_invalida' | 'error_modelo' | 'cola_no_disponible'
     /**
      * MovimientoCrear
      * @description Compra o ajuste cargado a mano.
@@ -1402,10 +1613,24 @@ export interface components {
       /** Siguiente */
       siguiente?: string | null
     }
+    /** Pagina[BorradorRespuesta] */
+    Pagina_BorradorRespuesta_: {
+      /** Items */
+      items: components['schemas']['BorradorRespuesta'][]
+      /** Siguiente */
+      siguiente?: string | null
+    }
     /** Pagina[ClienteRespuesta] */
     Pagina_ClienteRespuesta_: {
       /** Items */
       items: components['schemas']['ClienteRespuesta'][]
+      /** Siguiente */
+      siguiente?: string | null
+    }
+    /** Pagina[ComprobanteRespuesta] */
+    Pagina_ComprobanteRespuesta_: {
+      /** Items */
+      items: components['schemas']['ComprobanteRespuesta'][]
       /** Siguiente */
       siguiente?: string | null
     }
@@ -1927,6 +2152,12 @@ export interface components {
      */
     TipoCliente: 'nacional' | 'exportacion'
     /**
+     * TipoComprobante
+     * @description La letra del comprobante, tal como la asigno ARCA.
+     * @enum {string}
+     */
+    TipoComprobante: 'A' | 'B' | 'E'
+    /**
      * TipoDocumento
      * @enum {string}
      */
@@ -2293,6 +2524,108 @@ export interface operations {
       }
     }
   }
+  listar_comprobantes_api_v1_comprobantes_get: {
+    parameters: {
+      query?: {
+        cliente_id?: string | null
+        /** @description Cantidad maxima de items (1 a 100). */
+        limite?: number
+        /** @description El campo `siguiente` de la pagina anterior. */
+        cursor?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Pagina_ComprobanteRespuesta_']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  registrar_comprobante_api_v1_comprobantes_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ComprobanteCrear']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ComprobanteRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  obtener_comprobante_api_v1_comprobantes__comprobante_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        comprobante_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ComprobanteRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   obtener_disponibilidad_api_v1_disponibilidad_get: {
     parameters: {
       query?: {
@@ -2311,6 +2644,108 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['DisponibilidadReinas'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  listar_borradores_api_v1_documentos_borradores_get: {
+    parameters: {
+      query?: {
+        pedido_id?: string | null
+        /** @description Cantidad maxima de items (1 a 100). */
+        limite?: number
+        /** @description El campo `siguiente` de la pagina anterior. */
+        cursor?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Pagina_BorradorRespuesta_']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  pedir_borrador_api_v1_documentos_borradores_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BorradorPedido']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BorradorRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  obtener_borrador_api_v1_documentos_borradores__borrador_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        borrador_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BorradorRespuesta']
         }
       }
       /** @description Validation Error */
