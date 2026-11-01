@@ -55,7 +55,7 @@ function columnas(
       clave: 'numero',
       titulo: 'Comprobante',
       render: (c) => (
-        <span className="font-medium tabular-nums">
+        <span className="whitespace-nowrap font-medium tabular-nums">
           {nombreDeComprobante(c)}
         </span>
       ),
