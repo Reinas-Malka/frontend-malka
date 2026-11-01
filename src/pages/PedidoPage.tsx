@@ -16,6 +16,7 @@ import { DataTable, type Columna } from '@/components/ui/table'
 import { formatearImporte } from '@/lib/importes'
 import { nombreDePais } from '@/lib/paises'
 import { puedePasar } from '@/lib/pedidos'
+import { BorradorConIA } from '@/modulos/ventas/BorradorConIA'
 import { DespachoDePedido } from '@/modulos/ventas/DespachoDePedido'
 import { EstadoDePedido } from '@/modulos/ventas/insignias'
 import { TrazabilidadDePedido } from '@/modulos/ventas/TrazabilidadDePedido'
@@ -436,6 +437,8 @@ export default function PedidoPage() {
       </div>
 
       <TrazabilidadDePedido pedido={p} nombreDeLinea={nombreDeLinea} />
+
+      <BorradorConIA pedido={p} />
 
       <Modal
         open={entrega !== null}

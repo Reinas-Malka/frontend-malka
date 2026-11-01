@@ -40,6 +40,25 @@ export function hoyEnArgentina(ahora: Date = new Date()): string {
   }).format(ahora)
 }
 
+/** Segundos que faltan para la medianoche de Argentina: cuando se renueva
+ *  el límite diario de la IA (limites.py del backend). Entre 1 y 86 400. */
+export function segundosHastaMedianocheEnArgentina(
+  ahora: Date = new Date(),
+): number {
+  const partes = new Intl.DateTimeFormat('en-GB', {
+    timeZone: ZONA_ARGENTINA,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(ahora)
+  const parte = (tipo: Intl.DateTimeFormatPartTypes) =>
+    Number(partes.find((p) => p.type === tipo)?.value ?? 0)
+  return (
+    86_400 - (parte('hour') * 3600 + parte('minute') * 60 + parte('second'))
+  )
+}
+
 /** Días entre dos fechas AAAA-MM-DD (hasta − desde). Sin horas ni husos:
  *  las dos se toman como medianoche UTC. */
 export function diasEntre(desde: string, hasta: string): number {

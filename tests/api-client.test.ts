@@ -65,6 +65,42 @@ describe('request', () => {
     })
   })
 
+  it('un 429 trae los segundos del Retry-After para esperar', async () => {
+    fetchMock.mockResolvedValue(
+      respuesta(
+        429,
+        {
+          error: {
+            code: 'limite_ia_por_minuto',
+            message: 'Demasiadas llamadas a la IA seguidas. Esperá un minuto.',
+            details: { tope: 10 },
+          },
+        },
+        { 'Retry-After': '60' },
+      ),
+    )
+
+    const error = await request('/api/v1/documentos/borradores', {
+      metodo: 'POST',
+    }).catch((e: unknown) => e)
+
+    expect(error).toMatchObject({
+      status: 429,
+      codigo: 'limite_ia_por_minuto',
+      reintentarEn: 60,
+    })
+  })
+
+  it('sin Retry-After, reintentarEn queda en null', async () => {
+    fetchMock.mockResolvedValue(
+      respuesta(422, { error: { code: 'validacion', message: 'x' } }),
+    )
+
+    const error = await request('/api/v1/razas').catch((e: unknown) => e)
+
+    expect(error).toMatchObject({ reintentarEn: null })
+  })
+
   it('toma el request_id del header si el cuerpo no es del backend', async () => {
     fetchMock.mockResolvedValue(
       new Response('Bad gateway', {

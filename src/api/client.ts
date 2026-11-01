@@ -12,6 +12,8 @@ export class ApiError extends Error {
   readonly mensaje: string
   readonly requestId: string | null
   readonly detalles: Detalles
+  /** Segundos del header Retry-After (un 429 del límite de IA), o null. */
+  readonly reintentarEn: number | null
 
   constructor({
     mensaje,
@@ -19,12 +21,14 @@ export class ApiError extends Error {
     status = null,
     requestId = null,
     detalles = {},
+    reintentarEn = null,
   }: {
     mensaje: string
     codigo: string
     status?: number | null
     requestId?: string | null
     detalles?: Detalles
+    reintentarEn?: number | null
   }) {
     super(mensaje)
     this.name = 'ApiError'
@@ -33,6 +37,7 @@ export class ApiError extends Error {
     this.status = status
     this.requestId = requestId
     this.detalles = detalles
+    this.reintentarEn = reintentarEn
   }
 }
 
@@ -135,6 +140,19 @@ type CuerpoDeError = {
   }
 }
 
+/** Retry-After en segundos o como fecha HTTP; null si falta o no se entiende. */
+export function leerRetryAfter(
+  valor: string | null,
+  ahora: number = Date.now(),
+): number | null {
+  if (!valor) return null
+  const texto = valor.trim()
+  if (/^\d+$/.test(texto)) return Number(texto)
+  const fecha = Date.parse(texto)
+  if (Number.isNaN(fecha)) return null
+  return Math.max(0, Math.ceil((fecha - ahora) / 1000))
+}
+
 async function errorDesdeRespuesta(respuesta: Response): Promise<ApiError> {
   const requestIdHeader = respuesta.headers.get('x-request-id')
   let cuerpo: CuerpoDeError = {}
@@ -151,6 +169,7 @@ async function errorDesdeRespuesta(respuesta: Response): Promise<ApiError> {
       error?.message ?? `La API respondió con el estado ${respuesta.status}.`,
     requestId: error?.request_id ?? requestIdHeader,
     detalles: error?.details ?? {},
+    reintentarEn: leerRetryAfter(respuesta.headers.get('retry-after')),
   })
 }
 
