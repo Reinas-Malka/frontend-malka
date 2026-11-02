@@ -307,6 +307,26 @@ export interface paths {
     patch: operations['actualizar_item_api_v1_items_vendibles__item_id__patch']
     trace?: never
   }
+  '/api/v1/kpis/produccion': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Obtener Kpis De Produccion
+     * @description % de cosecha y % de perdida en el parque, por tanda o por raza.
+     */
+    get: operations['obtener_kpis_de_produccion_api_v1_kpis_produccion_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/madres': {
     parameters: {
       query?: never
@@ -1260,6 +1280,34 @@ export interface components {
       id: string
       /** Nombre */
       nombre: string
+    }
+    /** KpiProduccion */
+    KpiProduccion: {
+      /** Cosechadas */
+      cosechadas: number
+      /** En Parque */
+      en_parque: number
+      /** Fecha Traslarve */
+      fecha_traslarve: string | null
+      /** Introducidas */
+      introducidas: number
+      /** Perdidas */
+      perdidas: number
+      /** Porcentaje Cosecha */
+      porcentaje_cosecha: string | null
+      /** Porcentaje Perdida */
+      porcentaje_perdida: string | null
+      /** Raza */
+      raza: string
+      /**
+       * Raza Id
+       * Format: uuid
+       */
+      raza_id: string
+      /** Tanda Id */
+      tanda_id: string | null
+      /** Tandas */
+      tandas: number
     }
     /**
      * LineaDespacho
@@ -2763,6 +2811,7 @@ export interface operations {
     parameters: {
       query: {
         clave: string
+        en_linea?: boolean
       }
       header?: never
       path?: never
@@ -3216,6 +3265,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ItemVendibleRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  obtener_kpis_de_produccion_api_v1_kpis_produccion_get: {
+    parameters: {
+      query?: {
+        agrupar?: 'tanda' | 'raza'
+        desde?: string | null
+        hasta?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['KpiProduccion'][]
         }
       }
       /** @description Validation Error */

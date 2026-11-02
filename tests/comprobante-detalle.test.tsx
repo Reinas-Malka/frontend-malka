@@ -203,8 +203,10 @@ describe('detalle del comprobante', () => {
     // Se abre en el clic (si no, el navegador la bloquea) y sin opener.
     expect(abrir).toHaveBeenCalledWith('', '_blank')
     expect(pestana.opener).toBeNull()
+    // En línea: el navegador lo muestra en la pestaña en vez de bajarlo.
     expect(pedirDescarga).toHaveBeenCalledWith(
       `documentos/${TENANT}/factura-a-0001-00000128.pdf`,
+      { enLinea: true },
     )
   })
 

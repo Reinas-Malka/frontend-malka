@@ -24,8 +24,12 @@ export function pedirSubida(pedido: PedidoDeSubida): Promise<SubidaPreparada> {
 }
 
 /** URL para bajar un documento del criadero. Vence en 2 minutos: se pide
- *  recién cuando la persona toca "Descargar". */
-export function pedirDescarga(clave: string): Promise<DescargaPreparada> {
+ *  recién cuando la persona toca "Descargar". Con enLinea el navegador lo
+ *  muestra en la pestaña en vez de bajarlo ("Abrir"). */
+export function pedirDescarga(
+  clave: string,
+  { enLinea = false }: { enLinea?: boolean } = {},
+): Promise<DescargaPreparada> {
   if (usaDatosSimulados(import.meta.env.VITE_DATOS_SIMULADOS)) {
     return Promise.reject(
       new ApiError({
@@ -35,6 +39,6 @@ export function pedirDescarga(clave: string): Promise<DescargaPreparada> {
     )
   }
   return request<DescargaPreparada>('/api/v1/documentos/descarga', {
-    query: { clave },
+    query: { clave, en_linea: enLinea ? 'true' : undefined },
   })
 }

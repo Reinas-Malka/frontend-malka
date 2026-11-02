@@ -52,7 +52,9 @@ function PdfDelComprobante({ comprobante }: { comprobante: Comprobante }) {
     // el navegador la bloquea como ventana emergente.
     const pestana = window.open('', '_blank')
     try {
-      const { url_descarga } = await pedirDescarga(comprobante.archivo_s3_key)
+      const { url_descarga } = await pedirDescarga(comprobante.archivo_s3_key, {
+        enLinea: true,
+      })
       if (pestana) {
         pestana.opener = null
         pestana.location.href = url_descarga
