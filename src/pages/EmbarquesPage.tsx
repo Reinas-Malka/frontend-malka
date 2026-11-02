@@ -5,7 +5,7 @@ import {
 } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { describirError } from '@/api/client'
 import { embarques } from '@/api/embarques'
 import { puede } from '@/auth/identidad'
@@ -16,7 +16,15 @@ import { CargarMas } from '@/components/pagina/CargarMas'
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorDePantalla, Vacio } from '@/components/ui/estados'
+import { Field } from '@/components/ui/label'
 import { Modal, ModalContenido } from '@/components/ui/modal'
+import {
+  Select,
+  SelectContenido,
+  SelectOpcion,
+  SelectTrigger,
+  SelectValor,
+} from '@/components/ui/select'
 import { DataTable, type Columna } from '@/components/ui/table'
 import { nombreDePais } from '@/lib/paises'
 import {
@@ -24,12 +32,18 @@ import {
   CLAVE_EMBARQUES,
   ROLES_EXPORTACION,
   aEmbarqueCrear,
+  leerFiltrosDeEmbarques,
 } from '@/modulos/exportacion/embarques'
 import {
   EstadoDeEmbarque,
   IndicadorDeDocumentos,
 } from '@/modulos/exportacion/insignias'
-import type { Embarque } from '@/tipos/dominio'
+import { TODOS } from '@/modulos/ventas/pedidos'
+import {
+  ESTADOS_EMBARQUE,
+  NOMBRE_DE_ESTADO_EMBARQUE,
+  type Embarque,
+} from '@/tipos/dominio'
 import { formatearFecha } from '@/lib/fechas'
 
 const columnas: Columna<Embarque>[] = [
@@ -83,12 +97,15 @@ export default function EmbarquesPage() {
   const cliente = useQueryClient()
   const [alta, setAlta] = useState<string | null>(null)
   const navegar = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const filtros = leerFiltrosDeEmbarques(params)
 
   // De a una página: las siguientes llegan con "Cargar más". Invalidar
-  // [CLAVE_EMBARQUES] vuelve a pedir todas las páginas ya cargadas.
+  // [CLAVE_EMBARQUES] vuelve a pedir todas las páginas ya cargadas, con
+  // cualquier filtro.
   const listado = useInfiniteQuery({
-    queryKey: [CLAVE_EMBARQUES],
-    queryFn: ({ pageParam }) => embarques.listar(pageParam),
+    queryKey: [CLAVE_EMBARQUES, filtros],
+    queryFn: ({ pageParam }) => embarques.listar(pageParam, filtros),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (ultima) => ultima.siguiente ?? undefined,
   })
@@ -103,6 +120,9 @@ export default function EmbarquesPage() {
     },
   })
 
+  const filtrar = (valor: string) =>
+    setParams(valor === TODOS ? {} : { estado: valor }, { replace: true })
+
   const filas = listado.data?.pages.flatMap((pagina) => pagina.items) ?? []
   const nuevo = (
     <Button onClick={() => setAlta(crypto.randomUUID())}>
@@ -114,9 +134,27 @@ export default function EmbarquesPage() {
     <section className="space-y-seccion">
       <EncabezadoDePagina
         titulo="Embarques"
-        descripcion="Cada envío de exportación y sus 6 documentos. Entrá a uno para ver qué falta y cargarlo."
+        descripcion="Cada envío de exportación y sus 6 documentos. Filtrá por estado y entrá a uno para ver qué falta y cargarlo."
         acciones={escribe ? nuevo : undefined}
       />
+
+      <div className="sm:max-w-xs">
+        <Field label="Estado" htmlFor="filtro-estado">
+          <Select value={filtros.estado ?? TODOS} onValueChange={filtrar}>
+            <SelectTrigger id="filtro-estado">
+              <SelectValor />
+            </SelectTrigger>
+            <SelectContenido>
+              <SelectOpcion value={TODOS}>Todos los estados</SelectOpcion>
+              {ESTADOS_EMBARQUE.map((e) => (
+                <SelectOpcion key={e} value={e}>
+                  {NOMBRE_DE_ESTADO_EMBARQUE[e]}
+                </SelectOpcion>
+              ))}
+            </SelectContenido>
+          </Select>
+        </Field>
+      </div>
 
       {listado.isPending ? (
         <Cargando columnas={5} />
@@ -133,14 +171,28 @@ export default function EmbarquesPage() {
             // Una sola página en pantalla: las siguientes llegan con "Cargar más".
             porPagina={Math.max(filas.length, 1)}
             vacio={
-              <Vacio
-                titulo="Todavía no hay embarques"
-                accion={escribe ? nuevo : undefined}
-              >
-                Un embarque agrupa el envío y sus 6 documentos: factura E,
-                permiso de embarque, guía aérea, lista de empaque, DTe y
-                shipper&apos;s certificate.
-              </Vacio>
+              filtros.estado ? (
+                <Vacio
+                  titulo={`Ningún embarque ${NOMBRE_DE_ESTADO_EMBARQUE[filtros.estado].toLowerCase()}`}
+                  accion={
+                    <Button
+                      variante="secundario"
+                      onClick={() => filtrar(TODOS)}
+                    >
+                      Ver todos los embarques
+                    </Button>
+                  }
+                />
+              ) : (
+                <Vacio
+                  titulo="Todavía no hay embarques"
+                  accion={escribe ? nuevo : undefined}
+                >
+                  Un embarque agrupa el envío y sus 6 documentos: factura E,
+                  permiso de embarque, guía aérea, lista de empaque, DTe y
+                  shipper&apos;s certificate.
+                </Vacio>
+              )
             }
           />
           <CargarMas consulta={listado} texto="Cargar más embarques" />

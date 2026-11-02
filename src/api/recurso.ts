@@ -71,6 +71,12 @@ export function recursoSimulado<T extends { id: string }, Crear, Actualizar>(
   semilla: readonly T[],
   construir: (datos: Crear, id: string) => T,
   derivar: (fila: T) => T = (fila) => fila,
+  /** Los filtros propios del listado (p. ej. ?parque_id= en núcleos), como
+   *  los aplica el backend. incluir_inactivos ya lo resuelve el recurso. */
+  filtrar: (
+    fila: T,
+    filtros: Record<string, string | undefined>,
+  ) => boolean = () => true,
 ): Recurso<T, Crear, Actualizar> {
   let filas: T[] = semilla.map((fila) => ({ ...fila }))
   // Como el backend: la misma clave devuelve el mismo resultado (24 h allá).
@@ -104,10 +110,11 @@ export function recursoSimulado<T extends { id: string }, Crear, Actualizar>(
   return {
     listar: async ({ limite = LIMITE_POR_DEFECTO, cursor, filtros } = {}) => {
       // Como el backend: las dadas de baja solo con incluir_inactivos.
-      const visibles =
+      const visibles = (
         filtros?.incluir_inactivos === 'true'
           ? filas
           : filas.filter((f) => (f as { activo?: boolean }).activo !== false)
+      ).filter((f) => filtrar(f, filtros ?? {}))
       const desde = cursor ? Number(cursor) : 0
       const items = visibles.slice(desde, desde + limite)
       const hasta = desde + items.length

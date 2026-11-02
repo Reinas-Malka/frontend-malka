@@ -8,6 +8,7 @@ import {
   within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { ApiError } from '../src/api/client'
 import type { components } from '../src/api/esquema'
@@ -83,7 +84,10 @@ function montar(
       identidad={{ email: `${rol}@malka.test`, roles: [rol], tenantId: 't' }}
     >
       <QueryClientProvider client={cliente}>
-        <PaginaCatalogo config={{ ...catalogoClientes, recurso }} />
+        {/* El nombre lleva al detalle del cliente: hace falta un router. */}
+        <MemoryRouter>
+          <PaginaCatalogo config={{ ...catalogoClientes, recurso }} />
+        </MemoryRouter>
       </QueryClientProvider>
     </ProveedorDeSesionFijo>,
   )

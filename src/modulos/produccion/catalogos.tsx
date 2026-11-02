@@ -131,7 +131,16 @@ export const catalogoParques: ConfigCatalogo<
     {
       clave: 'nucleos_activos',
       titulo: 'Núcleos',
-      render: (p) => `${p.nucleos_activos} / ${p.capacidad_max}`,
+      // Lleva a sus núcleos: el listado de núcleos filtrado por este parque.
+      render: (p) => (
+        <Link
+          to={`/produccion/nucleos?parque=${encodeURIComponent(p.id)}`}
+          aria-label={`Ver los núcleos de ${p.nombre}: ${p.nucleos_activos} de ${p.capacidad_max}`}
+          className="tabular-nums text-miel-300 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-acento"
+        >
+          {`${p.nucleos_activos} / ${p.capacidad_max}`}
+        </Link>
+      ),
       orden: (a, b) => a.nucleos_activos - b.nucleos_activos,
     },
   ],
@@ -303,8 +312,11 @@ const MAX_UBICACION = 1000
 /** Núcleos (baby nucs) de los parques (backend #29). La configuración se arma
  *  con los parques ya cargados, para el selector. Un núcleo es un baby nuc
  *  (dominio, 23/10): la introducción reparte entre los activos del parque. */
+/** Con parqueId, solo los núcleos de ese parque (?parque_id= del backend)
+ *  y el alta lo propone. */
 export function catalogoNucleos(
   listaDeParques: readonly Parque[],
+  parqueId?: string,
 ): ConfigCatalogo<
   Nucleo,
   Esquemas['NucleoCrear'],
@@ -370,6 +382,8 @@ export function catalogoNucleos(
     ],
     nombreDeFila: ubicacion,
     textoDeBusqueda: ubicacion,
+    filtros: parqueId ? { parque_id: parqueId } : undefined,
+    valoresIniciales: parqueId ? { parque_id: parqueId } : undefined,
     valoresDeFila: (n) => ({
       modo: 'edicion',
       parque_id: n.parque_id,
