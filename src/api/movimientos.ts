@@ -5,7 +5,7 @@
  *  con la misma firma, un solo swap por VITE_DATOS_SIMULADOS. */
 import { request } from '@/api/client'
 import type { components } from '@/api/esquema'
-import type { Pagina } from '@/api/recurso'
+import { paginarEnMemoria, type Pagina } from '@/api/recurso'
 import { usaDatosSimulados } from '@/datos/cliente'
 import { DATOS_SIMULADOS } from '@/datos/simulados'
 import type { MovimientoMaterial } from '@/tipos/dominio'
@@ -15,7 +15,10 @@ export type MovimientoCrear = Esquemas['MovimientoCrear']
 export type MovimientoGuardado = Esquemas['MovimientoGuardado']
 
 export interface ApiMovimientos {
-  listar(materialId: string): Promise<Pagina<MovimientoMaterial>>
+  listar(
+    materialId: string,
+    cursor?: string,
+  ): Promise<Pagina<MovimientoMaterial>>
   registrar(
     materialId: string,
     datos: MovimientoCrear,
@@ -23,15 +26,16 @@ export interface ApiMovimientos {
   ): Promise<MovimientoGuardado>
 }
 
-const LIMITE_MAXIMO = 100
+/** El máximo del backend. Las siguientes páginas llegan con "Cargar más". */
+export const LIMITE_MOVIMIENTOS = 100
 const de = (id: string) =>
   `/api/v1/materiales/${encodeURIComponent(id)}/movimientos`
 
 export function movimientosHttp(): ApiMovimientos {
   return {
-    listar: (id) =>
+    listar: (id, cursor) =>
       request<Pagina<MovimientoMaterial>>(de(id), {
-        query: { limite: LIMITE_MAXIMO },
+        query: { limite: LIMITE_MOVIMIENTOS, cursor },
       }),
     registrar: (id, datos, claveIdempotencia) =>
       request<MovimientoGuardado>(de(id), {
@@ -53,12 +57,15 @@ export function movimientosSimulados(
       .filter((m) => m.material_id === id)
       .reduce((total, m) => total + Number(m.cantidad), 0)
   return {
-    listar: async (id) => ({
-      items: filas
-        .filter((m) => m.material_id === id)
-        .sort((a, b) => b.fecha.localeCompare(a.fecha)),
-      siguiente: null,
-    }),
+    // Como el backend: solo los del material, del más nuevo al más viejo.
+    listar: async (id, cursor) =>
+      paginarEnMemoria(
+        filas
+          .filter((m) => m.material_id === id)
+          .sort((a, b) => b.fecha.localeCompare(a.fecha)),
+        LIMITE_MOVIMIENTOS,
+        cursor,
+      ),
     registrar: async (id, datos) => {
       const nuevo: MovimientoMaterial = {
         id: crypto.randomUUID(),

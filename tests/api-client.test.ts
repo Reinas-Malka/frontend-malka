@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, fijarProveedorDeToken, request } from '../src/api/client'
+import { embarquesHttp, LIMITE_EMBARQUES } from '../src/api/embarques'
+import { movimientosHttp, LIMITE_MOVIMIENTOS } from '../src/api/movimientos'
 
 const BASE = 'https://api.malka.test'
 
@@ -163,5 +165,35 @@ describe('request', () => {
 
     await expect(request('/api/v1/razas')).rejects.toThrow('sesión vencida')
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('listados paginados por cursor', () => {
+  it('embarques manda el límite y, para la página siguiente, el cursor tal cual', async () => {
+    // Una Response nueva por pedido: el cuerpo se lee una sola vez.
+    fetchMock.mockImplementation(async () =>
+      respuesta(200, { items: [], siguiente: null }),
+    )
+    const api = embarquesHttp()
+
+    await api.listar()
+    await api.listar('eyJ4IjoxfQ')
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${BASE}/api/v1/embarques?limite=${LIMITE_EMBARQUES}`,
+    )
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      `${BASE}/api/v1/embarques?limite=${LIMITE_EMBARQUES}&cursor=eyJ4IjoxfQ`,
+    )
+  })
+
+  it('movimientos de un material también pasan el cursor', async () => {
+    fetchMock.mockResolvedValue(respuesta(200, { items: [], siguiente: null }))
+
+    await movimientosHttp().listar('mat-1', 'eyJ4IjoxfQ')
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${BASE}/api/v1/materiales/mat-1/movimientos?limite=${LIMITE_MOVIMIENTOS}&cursor=eyJ4IjoxfQ`,
+    )
   })
 })

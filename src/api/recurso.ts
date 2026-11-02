@@ -8,6 +8,29 @@ import { ApiError, request } from '@/api/client'
 
 export type Pagina<T> = { items: T[]; siguiente: string | null }
 
+/** Una página de una lista ya filtrada y ordenada, para las APIs simuladas.
+ *  El cursor de la demo es el índice de la próxima fila; uno roto responde
+ *  422 cursor_invalido, como el backend. */
+export function paginarEnMemoria<T>(
+  filas: readonly T[],
+  limite: number,
+  cursor?: string,
+): Pagina<T> {
+  const desde = cursor === undefined ? 0 : Number(cursor)
+  if (!Number.isInteger(desde) || desde < 0)
+    throw new ApiError({
+      status: 422,
+      codigo: 'cursor_invalido',
+      mensaje:
+        'El cursor no es válido: usá el campo `siguiente` de la página anterior.',
+    })
+  const hasta = desde + limite
+  return {
+    items: filas.slice(desde, hasta),
+    siguiente: hasta < filas.length ? String(hasta) : null,
+  }
+}
+
 export type ParametrosDeListado = {
   limite?: number
   cursor?: string

@@ -3,7 +3,7 @@
  *  Recurso. Mismo esquema que api/recursos.ts: dos implementaciones con la
  *  misma firma y un solo swap por VITE_DATOS_SIMULADOS. */
 import { ApiError, request } from '@/api/client'
-import type { Pagina } from '@/api/recurso'
+import { paginarEnMemoria, type Pagina } from '@/api/recurso'
 import { usaDatosSimulados } from '@/datos/cliente'
 import { DATOS_SIMULADOS } from '@/datos/simulados'
 import { normalizarAwb } from '@/lib/awb'
@@ -33,14 +33,15 @@ export interface ApiEmbarques {
 }
 
 const RUTA = '/api/v1/embarques'
-const LIMITE_MAXIMO = 100
+/** El máximo del backend. Las siguientes páginas llegan con "Cargar más". */
+export const LIMITE_EMBARQUES = 100
 
 export function embarquesHttp(): ApiEmbarques {
   const de = (id: string) => `${RUTA}/${encodeURIComponent(id)}`
   return {
     listar: (cursor) =>
       request<Pagina<Embarque>>(RUTA, {
-        query: { limite: LIMITE_MAXIMO, cursor },
+        query: { limite: LIMITE_EMBARQUES, cursor },
       }),
     obtener: (id) => request<Embarque>(de(id)),
     crear: (datos, claveIdempotencia) =>
@@ -131,13 +132,17 @@ export function embarquesSimulados(
   }
 
   return {
-    listar: async () => ({
-      // Como el backend: el vuelo más nuevo primero.
-      items: [...embarques]
-        .sort((a, b) => b.fecha_vuelo.localeCompare(a.fecha_vuelo))
-        .map(conConteo),
-      siguiente: null,
-    }),
+    listar: async (cursor) => {
+      // Como el backend: el vuelo más nuevo primero, de a una página.
+      const pagina = paginarEnMemoria(
+        [...embarques].sort((a, b) =>
+          b.fecha_vuelo.localeCompare(a.fecha_vuelo),
+        ),
+        LIMITE_EMBARQUES,
+        cursor,
+      )
+      return { ...pagina, items: pagina.items.map(conConteo) }
+    },
     obtener: async (id) => buscar(id),
     crear: async (datos, clave) =>
       unaVez(clave, () => {
