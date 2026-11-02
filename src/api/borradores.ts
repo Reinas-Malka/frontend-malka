@@ -61,6 +61,7 @@ export type ContextoDePedido = {
   fechaEntrega: string
   /** Nombre del país de destino; null en una venta nacional. */
   destino: string | null
+  incoterm: string | null
   lineas: { cantidad: number; item: string; raza: string }[]
 }
 
@@ -69,22 +70,44 @@ export type FuenteDeContexto = (
   pedidoId: string,
 ) => Promise<ContextoDePedido | undefined>
 
-/** El texto que "redacta" la simulación. Solo prosa con datos del pedido
- *  (cantidades y fechas copiadas): ni montos, ni IVA, ni comprobante. */
+const reinas = (cantidad: number) => (cantidad === 1 ? 'reina' : 'reinas')
+
+/** El texto que "redacta" la simulación, con la forma del prompt
+ *  borrador_v3 del backend: Nota de venta o Proforma de exportación, con
+ *  secciones. Solo prosa con datos del pedido (cantidades y fechas
+ *  copiadas): ni montos, ni IVA, ni comprobante. */
 export function contenidoDeEjemplo(c: ContextoDePedido): ContenidoDeBorrador {
   const lineas = c.lineas.map(
-    (l) => `- ${l.cantidad} × ${l.item}, raza ${l.raza}.`,
+    (l) =>
+      `- ${l.cantidad} ${reinas(l.cantidad)} de raza ${l.raza} (ítem ${l.item}).`,
   )
+  const destino = c.destino
+    ? `con destino a ${c.destino}${c.incoterm ? `, en condición ${c.incoterm}` : ''}`
+    : 'dentro de Argentina'
   return {
-    encabezado: `Remito de venta a ${c.cliente}`,
+    encabezado: `${c.destino ? 'Proforma de exportación' : 'Nota de venta'} de reinas a ${c.cliente}`,
     cuerpo: [
-      `Se deja constancia de la entrega a ${c.cliente} de las reinas que se detallan, con fecha de entrega solicitada el ${formatearFecha(c.fechaEntrega)}.`,
-      '',
-      ...lineas,
-    ].join('\n'),
-    notas: c.destino
-      ? `Exportación a ${c.destino}: la documentación aduanera se completa aparte.`
-      : '',
+      'PARTES',
+      `Por medio de la presente, el criadero vendedor deja constancia del pedido realizado por ${c.cliente}, en carácter de comprador.`,
+      'OBJETO',
+      [
+        'El objeto de este documento son reinas vivas, según el siguiente detalle:',
+        ...lineas,
+      ].join('\n'),
+      'Los precios y los importes figuran en el detalle del pedido que acompaña este documento, calculado por el sistema.',
+      'CONDICIONES DE ENTREGA',
+      `La entrega se solicita para el ${formatearFecha(c.fechaEntrega)}, ${destino}.`,
+      'CIERRE',
+      'Este documento resume el pedido y queda sujeto a confirmación. La facturación se realiza por separado, con la factura que emite ARCA. Saludamos a usted muy atentamente.',
+    ].join('\n\n'),
+    notas: [
+      'Se recomienda recibir las reinas apenas lleguen, mantenerlas a la sombra y lejos del calor y del frío extremos, e introducirlas en la colmena cuanto antes.',
+      ...(c.destino
+        ? [
+            `Exportación a ${c.destino}: la documentación sanitaria y aduanera se gestiona aparte.`,
+          ]
+        : []),
+    ].join(' '),
   }
 }
 
@@ -168,7 +191,7 @@ export function borradoresSimulados({
         : {
             estado: 'borrador',
             contenido: contenidoDeEjemplo(datos),
-            version_prompt: 'borrador_v2',
+            version_prompt: 'borrador_v3',
           }),
       actualizado_en: new Date().toISOString(),
     })
@@ -249,6 +272,7 @@ const contextoDeLaDemo: FuenteDeContexto = async (pedidoId) => {
     cliente: await cliente(pedido.cliente_id),
     fechaEntrega: pedido.fecha_entrega_solicitada,
     destino: pedido.destino_pais ? nombreDePais(pedido.destino_pais) : null,
+    incoterm: pedido.incoterm,
     lineas: await Promise.all(
       lineas.map(async (l) => ({
         cantidad: l.cantidad,

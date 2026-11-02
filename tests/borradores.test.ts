@@ -16,6 +16,7 @@ const CONTEXTO: ContextoDePedido = {
   cliente: 'Bee Kingdom NZ Ltd',
   fechaEntrega: '2026-11-20',
   destino: 'Nueva Zelanda (NZ)',
+  incoterm: 'CPT',
   lineas: [{ cantidad: 50, item: 'Reina fecundada', raza: 'Carniola' }],
 }
 const contexto = async (id: string) => (id === PEDIDO ? CONTEXTO : undefined)
@@ -134,20 +135,48 @@ describe('borradores simulados', () => {
 })
 
 describe('contenido de ejemplo', () => {
-  it('es prosa con datos del pedido, sin montos ni datos fiscales', () => {
+  it('es una proforma con secciones y datos del pedido, sin montos ni datos fiscales', () => {
     const { encabezado, cuerpo, notas } = contenidoDeEjemplo(CONTEXTO)
     const todo = `${encabezado}\n${cuerpo}\n${notas}`
 
-    expect(encabezado).toBe('Remito de venta a Bee Kingdom NZ Ltd')
-    expect(cuerpo).toContain('50 × Reina fecundada, raza Carniola')
-    expect(cuerpo).toContain('20/11/2026')
+    expect(encabezado).toBe(
+      'Proforma de exportación de reinas a Bee Kingdom NZ Ltd',
+    )
+    for (const seccion of [
+      'PARTES',
+      'OBJETO',
+      'CONDICIONES DE ENTREGA',
+      'CIERRE',
+    ])
+      expect(cuerpo.split('\n\n')).toContain(seccion)
+    expect(cuerpo).toContain(
+      '50 reinas de raza Carniola (ítem Reina fecundada)',
+    )
+    expect(cuerpo).toContain(
+      '20/11/2026, con destino a Nueva Zelanda (NZ), en condición CPT',
+    )
     expect(notas).toContain('Nueva Zelanda (NZ)')
     // Lo que el filtro del backend rechazaría (borrador.py).
-    expect(todo).not.toMatch(/\$|USD|EUR|ARS|IVA|CAE|%|comprobante/i)
+    expect(todo).not.toMatch(
+      /\$|\b(USD|EUR|ARS|IVA|CAE)\b|%|n[uú]mero de comprobante/i,
+    )
+    // El criadero vende solo reinas.
+    expect(todo).not.toMatch(/n[uú]cleo/i)
   })
 
-  it('una venta nacional no lleva notas de aduana', () => {
-    expect(contenidoDeEjemplo({ ...CONTEXTO, destino: null }).notas).toBe('')
+  it('una venta nacional es una nota de venta y no lleva notas de aduana', () => {
+    const nacional = contenidoDeEjemplo({
+      ...CONTEXTO,
+      destino: null,
+      incoterm: null,
+    })
+
+    expect(nacional.encabezado).toBe(
+      'Nota de venta de reinas a Bee Kingdom NZ Ltd',
+    )
+    expect(nacional.cuerpo).toContain('dentro de Argentina')
+    expect(nacional.notas).not.toMatch(/aduan/i)
+    expect(nacional.notas).toContain('a la sombra')
   })
 })
 

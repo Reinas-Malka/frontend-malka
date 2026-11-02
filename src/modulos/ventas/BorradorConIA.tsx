@@ -16,11 +16,12 @@ import {
   claveDeBorrador,
   formatearEspera,
   NOMBRE_DE_ESTADO_BORRADOR,
+  type PedidoDelDocumento,
   segundosDeEspera,
 } from '@/modulos/ventas/borradores'
 import { DetalleDeBorrador } from '@/modulos/ventas/DetalleDeBorrador'
 import { ROLES_VENTAS } from '@/modulos/ventas/pedidos'
-import type { Borrador, EstadoBorrador, Pedido } from '@/tipos/dominio'
+import type { Borrador, EstadoBorrador } from '@/tipos/dominio'
 
 const TONO_DE_BORRADOR: Record<EstadoBorrador, 'aviso' | 'ok' | 'peligro'> = {
   generando: 'aviso',
@@ -34,7 +35,8 @@ type Espera = { hasta: number; ahora: number; diario: boolean }
 /** El borrador del documento del pedido, redactado por la IA (#16). Lo
  *  piden admin y ventas; lo leen todos. Aprobarlo es del #17: acá solo se
  *  genera, se espera y se revisa. */
-export function BorradorConIA({ pedido }: { pedido: Pedido }) {
+export function BorradorConIA(origen: PedidoDelDocumento) {
+  const { pedido } = origen
   const { identidad } = useSesion()
   const escribe = puede(identidad, ROLES_VENTAS)
   const consultas = useQueryClient()
@@ -144,7 +146,8 @@ export function BorradorConIA({ pedido }: { pedido: Pedido }) {
         <Bot className="mt-0.5 size-4 shrink-0" aria-hidden />
         <span>
           El texto lo redacta una IA a partir del pedido. Los números fiscales
-          (comprobante, CAE, IVA y totales) los carga una persona.
+          de la factura (número, CAE, IVA y total facturados) los carga una
+          persona desde el comprobante de ARCA.
         </span>
       </p>
 
@@ -203,6 +206,7 @@ export function BorradorConIA({ pedido }: { pedido: Pedido }) {
             key={seleccionado}
             id={seleccionado}
             claveDelListado={claveDelListado}
+            origen={origen}
             generar={accion}
           />
         </div>
