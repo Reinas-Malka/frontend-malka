@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Ban, PackageCheck, Truck } from 'lucide-react'
+import { ArrowLeft, Ban, PackageCheck, ReceiptText, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { describirError, esApiError } from '@/api/client'
@@ -17,6 +17,7 @@ import { formatearImporte } from '@/lib/importes'
 import { nombreDePais } from '@/lib/paises'
 import { puedePasar } from '@/lib/pedidos'
 import { BorradorConIA } from '@/modulos/ventas/BorradorConIA'
+import { urlParaRegistrarFactura } from '@/modulos/ventas/comprobantes'
 import { DespachoDePedido } from '@/modulos/ventas/DespachoDePedido'
 import { EstadoDePedido } from '@/modulos/ventas/insignias'
 import { TrazabilidadDePedido } from '@/modulos/ventas/TrazabilidadDePedido'
@@ -360,6 +361,15 @@ export default function PedidoPage() {
           onClick={abrirCancelacion}
         >
           <Ban className="size-4" aria-hidden /> Cancelar pedido
+        </Button>
+      ) : null}
+      {/* La factura ya la emitió ARCA: acá se registra con el cliente y la
+          moneda del pedido puestos. No queda vínculo pedido↔comprobante. */}
+      {p.estado !== 'cancelado' ? (
+        <Button variante="secundario" comoHijo>
+          <Link to={urlParaRegistrarFactura(p)}>
+            <ReceiptText className="size-4" aria-hidden /> Registrar factura
+          </Link>
         </Button>
       ) : null}
     </>
