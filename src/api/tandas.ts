@@ -155,6 +155,18 @@ type Semilla = {
 
 const porId = (a: Celda, b: Celda) => a.id.localeCompare(b.id)
 
+/** La simulación, más lo que necesitan otras simulaciones que cuentan
+ *  desde las mismas celdas (los KPIs de api/kpis.ts): así una operación de
+ *  la demo también mueve los indicadores, como en la base. */
+export interface SimulacionDeTandas extends ApiTandas {
+  /** Las tandas en orden de carga y sus celdas, tal como están ahora. */
+  instantanea(): {
+    tandas: readonly TandaBase[]
+    celdas: readonly Celda[]
+    razas: readonly Raza[]
+  }
+}
+
 /** En memoria para la demo sin backend. Repite las reglas del alta (raza y
  *  material activos, domingo salvo retroactivo, una celda por cúpula y el
  *  descuento de cúpulas con su advertencia) y las de las operaciones por
@@ -167,7 +179,7 @@ export function tandasSimuladas({
   razas = DATOS_SIMULADOS.razas,
   materiales = DATOS_SIMULADOS.materiales,
   catalogos = catalogosDe(),
-}: Semilla = {}): ApiTandas {
+}: Semilla = {}): SimulacionDeTandas {
   // Sin los conteos: salen de las celdas en cada lectura.
   let tandas: TandaBase[] = semilla.map((t) => ({
     id: t.id,
@@ -540,6 +552,7 @@ export function tandasSimuladas({
   }
 
   return {
+    instantanea: () => ({ tandas, celdas, razas }),
     listar: async ({ raza_id, desde, hasta } = {}, cursor) => {
       // Como el backend: la tanda más nueva primero; a igual fecha, la
       // cargada después.
@@ -579,8 +592,11 @@ export function tandasSimuladas({
   }
 }
 
-export const tandas: ApiTandas = usaDatosSimulados(
+/** La simulación en uso, o null con la API real. */
+export const simulacionDeTandas: SimulacionDeTandas | null = usaDatosSimulados(
   import.meta.env.VITE_DATOS_SIMULADOS,
 )
   ? tandasSimuladas({ catalogos: catalogosDeRecursos() })
-  : tandasHttp()
+  : null
+
+export const tandas: ApiTandas = simulacionDeTandas ?? tandasHttp()

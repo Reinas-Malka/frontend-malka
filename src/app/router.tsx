@@ -52,6 +52,12 @@ export const rutas: RouteObject[] = [
             }),
           },
           {
+            path: 'produccion/kpis',
+            lazy: async () => ({
+              Component: (await import('@/pages/KpisPage')).default,
+            }),
+          },
+          {
             path: 'produccion/tandas/:id',
             lazy: async () => ({
               Component: (await import('@/pages/TandaPage')).default,
