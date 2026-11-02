@@ -140,8 +140,14 @@ describe('inicio', () => {
   ] as [Rol[], string][])('%s entra a %s', async (roles, pantalla) => {
     montarComo(roles, '/')
 
+    // La pantalla es lazy: con la máquina cargada el chunk tarda más que
+    // el segundo por defecto de findBy (como en rutas.test.tsx).
     expect(
-      await screen.findByRole('heading', { level: 1, name: pantalla }),
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: pantalla },
+        { timeout: 5000 },
+      ),
     ).toBeTruthy()
   })
 
