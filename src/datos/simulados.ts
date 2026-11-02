@@ -471,34 +471,53 @@ export const reservas: Reserva[] = [
   },
 ]
 
+/** Tres comprobantes transcriptos, uno por letra y coherentes con su
+ *  cliente (exterior E, responsable inscripto A, resto B): E en USD con su
+ *  tipo de cambio, A y B en pesos sin él. El B es del cliente dado de baja:
+ *  la factura ya la emitió ARCA y se conserva. Del más nuevo al más viejo,
+ *  como los devuelve el backend. */
 export const comprobantes: Comprobante[] = [
   {
-    id: id(71),
-    tenant_id: T,
-    tipo: 'E',
-    cliente_id: id(62),
-    punto_venta: 3,
-    numero: 41,
-    fecha_emision: iso(25),
-    moneda: 'USD',
-    importe: '4820.50',
-    tipo_cambio: '1180.00',
-    archivo_s3_key: 'documentos/tenant-a/factura-e-0003-00000041.pdf',
-    cargado_por: 'admin@tenant-a.malka.test',
-  },
-  {
     id: id(72),
-    tenant_id: T,
     tipo: 'A',
     cliente_id: id(61),
     punto_venta: 1,
     numero: 128,
-    fecha_emision: iso(9),
+    fecha_emision: diaAtras(9),
     moneda: 'ARS',
     importe: '640500.00',
     tipo_cambio: null,
-    archivo_s3_key: 'documentos/tenant-a/factura-a-0001-00000128.pdf',
+    archivo_s3_key: `documentos/${T}/factura-a-0001-00000128.pdf`,
     cargado_por: 'ventas@tenant-a.malka.test',
+    creado_en: iso(9),
+  },
+  {
+    id: id(71),
+    tipo: 'E',
+    cliente_id: id(62),
+    punto_venta: 3,
+    numero: 41,
+    fecha_emision: diaAtras(25),
+    moneda: 'USD',
+    importe: '4820.50',
+    tipo_cambio: '1180.000000',
+    archivo_s3_key: `documentos/${T}/factura-e-0003-00000041.pdf`,
+    cargado_por: 'admin@tenant-a.malka.test',
+    creado_en: iso(25),
+  },
+  {
+    id: id(73),
+    tipo: 'B',
+    cliente_id: id(63),
+    punto_venta: 1,
+    numero: 57,
+    fecha_emision: diaAtras(60),
+    moneda: 'ARS',
+    importe: '96000.00',
+    tipo_cambio: null,
+    archivo_s3_key: `documentos/${T}/factura-b-0001-00000057.pdf`,
+    cargado_por: 'ventas@tenant-a.malka.test',
+    creado_en: iso(60),
   },
 ]
 

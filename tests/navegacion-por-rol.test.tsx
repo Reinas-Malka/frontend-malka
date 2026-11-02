@@ -70,6 +70,7 @@ const MENU_POR_ROL: Record<Rol, string[]> = {
     'Bancos',
     'Materiales',
     'Pedidos',
+    'Comprobantes',
     'Disponibilidad',
     'Clientes',
     'Ítems vendibles',
@@ -88,6 +89,7 @@ const MENU_POR_ROL: Record<Rol, string[]> = {
   ],
   ventas: [
     'Pedidos',
+    'Comprobantes',
     'Disponibilidad',
     'Clientes',
     'Ítems vendibles',
@@ -101,6 +103,7 @@ const MENU_POR_ROL: Record<Rol, string[]> = {
     'Bancos',
     'Materiales',
     'Pedidos',
+    'Comprobantes',
     'Disponibilidad',
     'Clientes',
     'Ítems vendibles',

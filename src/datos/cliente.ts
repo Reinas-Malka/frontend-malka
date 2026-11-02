@@ -1,14 +1,9 @@
 /** Datos de las entidades que TODAVÍA no tienen endpoint en el backend
- *  (tandas #27, celdas #28 y comprobantes). Los catálogos con endpoint viven
- *  en api/recursos.ts y los embarques en api/embarques.ts. Cuando aparezca cada endpoint, su
+ *  (tandas #27 y celdas #28). Los catálogos con endpoint viven en
+ *  api/recursos.ts; los embarques y los comprobantes, en api/embarques.ts y
+ *  api/comprobantes.ts. Cuando aparezca cada endpoint, su
  *  método pasa a un Recurso y sale de acá. */
-import type {
-  Celda,
-  Comprobante,
-  MovimientoMaterial,
-  Nucleo,
-  Tanda,
-} from '@/tipos/dominio'
+import type { Celda, MovimientoMaterial, Nucleo, Tanda } from '@/tipos/dominio'
 import { DATOS_SIMULADOS } from '@/datos/simulados'
 
 export interface ClienteDeDatos {
@@ -16,7 +11,6 @@ export interface ClienteDeDatos {
   listarCeldas(tandaId: string): Promise<Celda[]>
   listarNucleos(parqueId: string): Promise<Nucleo[]>
   listarMovimientos(materialId: string): Promise<MovimientoMaterial[]>
-  listarComprobantes(): Promise<Comprobante[]>
 }
 
 const simulado: ClienteDeDatos = {
@@ -27,7 +21,6 @@ const simulado: ClienteDeDatos = {
     DATOS_SIMULADOS.nucleos.filter((n) => n.parque_id === id),
   listarMovimientos: async (id) =>
     DATOS_SIMULADOS.movimientos.filter((m) => m.material_id === id),
-  listarComprobantes: async () => DATOS_SIMULADOS.comprobantes,
 }
 
 /** El flag se lee en un solo lugar: el banner y el cliente deciden igual. */
@@ -50,7 +43,6 @@ const sinClienteReal: ClienteDeDatos = {
   listarCeldas: sinCliente,
   listarNucleos: sinCliente,
   listarMovimientos: sinCliente,
-  listarComprobantes: sinCliente,
 }
 
 export function elegirCliente(flag: string | undefined): ClienteDeDatos {
