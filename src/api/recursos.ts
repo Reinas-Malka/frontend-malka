@@ -27,9 +27,10 @@ function elegir<T extends { id: string }, C, A>(
   semilla: readonly T[],
   construir: (datos: C, id: string) => T,
   derivar?: (fila: T) => T,
+  filtrar?: (fila: T, filtros: Record<string, string | undefined>) => boolean,
 ): Recurso<T, C, A> {
   return simulado
-    ? recursoSimulado<T, C, A>(semilla, construir, derivar)
+    ? recursoSimulado<T, C, A>(semilla, construir, derivar, filtrar)
     : recursoHttp<T, C, A>(ruta)
 }
 
@@ -75,16 +76,19 @@ export const parques = elegir<
   activo: true,
 }))
 
-/** Núcleo (baby nuc) de un parque: fila y posición. El parque no cambia después. */
+/** Núcleo (baby nuc) de un parque: fila y posición. El parque no cambia
+ *  después. El listado acepta ?parque_id= para ver los de un parque. */
 export const nucleos = elegir<
   Nucleo,
   Esquemas['NucleoCrear'],
   Esquemas['NucleoActualizar']
->('/api/v1/nucleos', DATOS_SIMULADOS.nucleos, (d, id) => ({
-  id,
-  ...d,
-  activo: true,
-}))
+>(
+  '/api/v1/nucleos',
+  DATOS_SIMULADOS.nucleos,
+  (d, id) => ({ id, ...d, activo: true }),
+  undefined,
+  (n, { parque_id }) => !parque_id || n.parque_id === parque_id,
+)
 
 /** Banco (16/10): las reinas se cuentan desde las celdas; uno nuevo arranca vacío. */
 export const bancos = elegir<

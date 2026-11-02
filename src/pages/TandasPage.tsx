@@ -5,7 +5,7 @@ import {
 } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { describirError } from '@/api/client'
 import { madres, materiales, razas } from '@/api/recursos'
 import { tandas } from '@/api/tandas'
@@ -17,7 +17,16 @@ import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Cargando, ErrorDePantalla, Vacio } from '@/components/ui/estados'
+import { Input } from '@/components/ui/input'
+import { Field } from '@/components/ui/label'
 import { Modal, ModalContenido } from '@/components/ui/modal'
+import {
+  Select,
+  SelectContenido,
+  SelectOpcion,
+  SelectTrigger,
+  SelectValor,
+} from '@/components/ui/select'
 import { DataTable, type Columna } from '@/components/ui/table'
 import { useListado } from '@/hooks/useRecurso'
 import {
@@ -28,10 +37,12 @@ import {
   camposDelAlta,
   edadEnDias,
   etapasDe,
+  leerFiltrosDeTandas,
   valoresIniciales,
 } from '@/modulos/produccion/tandas'
+import { TODOS } from '@/modulos/ventas/pedidos'
 import type { Tanda, TandaCreada } from '@/tipos/dominio'
-import { formatearFecha } from '@/lib/fechas'
+import { errorDePeriodo, formatearFecha } from '@/lib/fechas'
 
 function CeldasPorEtapa({ tanda }: { tanda: Tanda }) {
   return (
@@ -64,14 +75,32 @@ export default function TandasPage() {
   const cliente = useQueryClient()
   const [alta, setAlta] = useState<string | null>(null)
   const [aviso, setAviso] = useState<{ texto: string; negativo: boolean }>()
+  const [params, setParams] = useSearchParams()
+  const filtros = leerFiltrosDeTandas(params)
+  const errorDelPeriodo = errorDePeriodo(filtros)
+  const hayFiltros = Boolean(filtros.raza_id || filtros.desde || filtros.hasta)
 
-  // De a una página: las siguientes llegan con "Cargar más".
+  // De a una página: las siguientes llegan con "Cargar más". Los filtros los
+  // aplica el backend: cada combinación es otra consulta.
   const listado = useInfiniteQuery({
-    queryKey: [CLAVE_TANDAS, 'listado'],
-    queryFn: ({ pageParam }) => tandas.listar({}, pageParam),
+    queryKey: [CLAVE_TANDAS, 'listado', filtros],
+    queryFn: ({ pageParam }) => tandas.listar(filtros, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (ultima) => ultima.siguiente ?? undefined,
+    // Un período al revés no se pide.
+    enabled: errorDelPeriodo === null,
   })
+  const filtrar = (clave: 'raza' | 'desde' | 'hasta', valor: string) =>
+    setParams(
+      (actuales) => {
+        const nuevos = new URLSearchParams(actuales)
+        if (!valor || valor === TODOS) nuevos.delete(clave)
+        else nuevos.set(clave, valor)
+        return nuevos
+      },
+      { replace: true },
+    )
+  const limpiar = () => setParams({}, { replace: true })
   const listaRazas = useListado('razas', razas)
   const listaMateriales = useListado('materiales', materiales)
   const listaMadres = useListado('madres', madres)
@@ -154,7 +183,9 @@ export default function TandasPage() {
   ]
 
   const listas = [listado, listaRazas, listaMateriales, listaMadres]
-  const cargando = listas.some((l) => l.isPending)
+  const cargando =
+    (errorDelPeriodo === null && listado.isPending) ||
+    listas.slice(1).some((l) => l.isPending)
   // Si falla una página siguiente, las ya cargadas se siguen viendo.
   const error =
     (!listado.data && listado.error) ||
@@ -171,7 +202,7 @@ export default function TandasPage() {
     <section className="space-y-seccion">
       <EncabezadoDePagina
         titulo="Tandas"
-        descripcion="Cada traslarve, con la raza, su edad y cuántas celdas hay en cada estado. Se da de alta por cuadros: el sistema crea una celda por cúpula."
+        descripcion="Cada traslarve, con la raza, su edad y cuántas celdas hay en cada estado. Filtrá por raza o por fecha de traslarve. Se da de alta por cuadros: el sistema crea una celda por cúpula."
         acciones={escribe ? nuevo : undefined}
       />
 
@@ -188,7 +219,58 @@ export default function TandasPage() {
         </p>
       ) : null}
 
-      {cargando ? (
+      <div className="grid gap-3 sm:grid-cols-3 lg:max-w-3xl">
+        <Field label="Raza" htmlFor="filtro-raza">
+          <Select
+            value={filtros.raza_id ?? TODOS}
+            onValueChange={(v) => filtrar('raza', v)}
+          >
+            <SelectTrigger id="filtro-raza">
+              <SelectValor />
+            </SelectTrigger>
+            <SelectContenido>
+              <SelectOpcion value={TODOS}>Todas las razas</SelectOpcion>
+              {listaRazas.filas.map((r) => (
+                <SelectOpcion key={r.id} value={r.id}>
+                  {r.nombre}
+                </SelectOpcion>
+              ))}
+            </SelectContenido>
+          </Select>
+        </Field>
+        <Field label="Traslarve desde" htmlFor="filtro-desde">
+          <Input
+            id="filtro-desde"
+            type="date"
+            value={filtros.desde ?? ''}
+            max={filtros.hasta}
+            onChange={(e) => filtrar('desde', e.target.value)}
+          />
+        </Field>
+        <Field
+          label="Traslarve hasta"
+          htmlFor="filtro-hasta"
+          error={errorDelPeriodo ?? undefined}
+        >
+          <Input
+            id="filtro-hasta"
+            type="date"
+            value={filtros.hasta ?? ''}
+            min={filtros.desde}
+            invalido={errorDelPeriodo !== null}
+            aria-describedby={
+              errorDelPeriodo ? 'filtro-hasta-error' : undefined
+            }
+            onChange={(e) => filtrar('hasta', e.target.value)}
+          />
+        </Field>
+      </div>
+
+      {errorDelPeriodo ? (
+        <Vacio titulo="Revisá el período">
+          Corregí las fechas para ver las tandas.
+        </Vacio>
+      ) : cargando ? (
         <Cargando columnas={5} />
       ) : error ? (
         <ErrorDePantalla
@@ -203,13 +285,24 @@ export default function TandasPage() {
             // Una sola página en pantalla: las siguientes llegan con "Cargar más".
             porPagina={Math.max(filas.length, 1)}
             vacio={
-              <Vacio
-                titulo="Todavía no hay tandas"
-                accion={escribe ? nuevo : undefined}
-              >
-                Una tanda es un traslarve: se carga la raza, la fecha y cuántos
-                cuadros de madera se usaron.
-              </Vacio>
+              hayFiltros ? (
+                <Vacio
+                  titulo="Ninguna tanda con estos filtros"
+                  accion={
+                    <Button variante="secundario" onClick={limpiar}>
+                      Ver todas las tandas
+                    </Button>
+                  }
+                />
+              ) : (
+                <Vacio
+                  titulo="Todavía no hay tandas"
+                  accion={escribe ? nuevo : undefined}
+                >
+                  Una tanda es un traslarve: se carga la raza, la fecha y
+                  cuántos cuadros de madera se usaron.
+                </Vacio>
+              )
             }
           />
           {listado.isFetchNextPageError ? (

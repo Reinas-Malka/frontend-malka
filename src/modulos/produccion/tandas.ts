@@ -4,7 +4,8 @@
  *  crea el backend, una por cúpula. */
 import type { Rol } from '@/auth/identidad'
 import type { Campo, Opcion, Valores } from '@/components/catalogo/campos'
-import { diasEntre, esDomingo, hoyEnArgentina } from '@/lib/fechas'
+import type { FiltrosDeTandas } from '@/api/tandas'
+import { diasEntre, esDomingo, hoyEnArgentina, leerPeriodo } from '@/lib/fechas'
 import {
   CUPULAS_POR_CUADRO,
   type EstadoCelda,
@@ -213,5 +214,14 @@ export function aTandaCrear(v: Valores): TandaCrear {
     fila_continuadora: numeroOpcional(v.fila_continuadora),
     posicion_continuadora: numeroOpcional(v.posicion_continuadora),
     madre_id: v.madre_id && v.madre_id !== SIN_MADRE ? v.madre_id : null,
+  }
+}
+/** Los filtros del listado viven en la URL (?raza=&desde=&hasta=): se
+ *  comparten y sobreviven a ir al detalle y volver. Una fecha mal escrita
+ *  se ignora en vez de mandarla y recibir un 422. */
+export function leerFiltrosDeTandas(params: URLSearchParams): FiltrosDeTandas {
+  return {
+    raza_id: params.get('raza') || undefined,
+    ...leerPeriodo(params),
   }
 }

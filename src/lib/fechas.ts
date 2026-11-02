@@ -70,3 +70,35 @@ export function diasEntre(desde: string, hasta: string): number {
 export function esDomingo(fecha: string): boolean {
   return new Date(`${fecha}T12:00:00Z`).getUTCDay() === 0
 }
+
+/** ¿Es una fecha AAAA-MM-DD que existe? Para lo que llega de la URL: un
+ *  texto cualquiera se ignora en vez de mandarlo y recibir un 422. */
+export function esFechaValida(texto: string | null | undefined): boolean {
+  if (!texto || !/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false
+  const fecha = new Date(`${texto}T12:00:00Z`)
+  return (
+    !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === texto
+  )
+}
+
+/** Un período por fecha de traslarve, con los dos días incluidos. */
+export type Periodo = { desde?: string; hasta?: string }
+
+/** El error de un período para mostrar, o null si está bien. El backend
+ *  responde 422 periodo_invalido si termina antes de empezar: se avisa antes
+ *  de pedirlo. */
+export function errorDePeriodo({ desde, hasta }: Periodo): string | null {
+  if (desde && hasta && hasta < desde)
+    return 'La fecha final no puede ser anterior a la inicial.'
+  return null
+}
+
+/** El período de la URL (?desde=&hasta=): una fecha mal escrita se ignora. */
+export function leerPeriodo(params: URLSearchParams): Periodo {
+  const desde = params.get('desde')
+  const hasta = params.get('hasta')
+  return {
+    desde: esFechaValida(desde) ? (desde ?? undefined) : undefined,
+    hasta: esFechaValida(hasta) ? (hasta ?? undefined) : undefined,
+  }
+}

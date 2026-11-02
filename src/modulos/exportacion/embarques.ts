@@ -3,7 +3,9 @@
 import type { Rol } from '@/auth/identidad'
 import type { Campo, Valores } from '@/components/catalogo/campos'
 import { errorDeAwb } from '@/lib/awb'
+import type { FiltrosDeEmbarques } from '@/api/embarques'
 import {
+  ESTADOS_EMBARQUE,
   type Embarque,
   type EmbarqueActualizar,
   type EmbarqueCrear,
@@ -83,3 +85,16 @@ export const valoresDeEmbarque = (e: Embarque): Valores => ({
 
 export const aEmbarqueActualizar = (v: Valores): EmbarqueActualizar =>
   aEmbarqueCrear(v)
+
+const esEstado = (valor: string | null): valor is EstadoEmbarque =>
+  ESTADOS_EMBARQUE.some((e) => e === valor)
+
+/** El filtro del listado vive en la URL (?estado=): sobrevive a ir al
+ *  detalle y volver. Un valor que no es un estado se ignora en lugar de
+ *  mandarlo y recibir un 422. */
+export function leerFiltrosDeEmbarques(
+  params: URLSearchParams,
+): FiltrosDeEmbarques {
+  const estado = params.get('estado')
+  return { estado: esEstado(estado) ? estado : undefined }
+}

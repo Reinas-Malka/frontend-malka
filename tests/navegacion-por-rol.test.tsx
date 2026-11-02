@@ -64,6 +64,7 @@ async function enlacesDelMenu(): Promise<string[]> {
 const MENU_POR_ROL: Record<Rol, string[]> = {
   admin: [
     'Tandas',
+    'Indicadores',
     'Razas',
     'Parques',
     'Núcleos',
@@ -79,6 +80,7 @@ const MENU_POR_ROL: Record<Rol, string[]> = {
   ],
   produccion: [
     'Tandas',
+    'Indicadores',
     'Razas',
     'Parques',
     'Núcleos',
@@ -97,6 +99,7 @@ const MENU_POR_ROL: Record<Rol, string[]> = {
   ],
   lectura: [
     'Tandas',
+    'Indicadores',
     'Razas',
     'Parques',
     'Núcleos',

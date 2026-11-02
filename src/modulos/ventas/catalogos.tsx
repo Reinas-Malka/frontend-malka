@@ -1,4 +1,5 @@
 /** Catálogos de ventas: ítems vendibles (backend #30) y clientes (#32). */
+import { Link } from 'react-router'
 import type { components } from '@/api/esquema'
 import { clientes, itemsVendibles } from '@/api/recursos'
 import type { Opcion, Valores } from '@/components/catalogo/campos'
@@ -129,6 +130,15 @@ export const catalogoClientes: ConfigCatalogo<
     {
       clave: 'nombre',
       titulo: 'Nombre',
+      // Al detalle: sus datos y el acceso a sus pedidos y comprobantes.
+      render: (c) => (
+        <Link
+          to={`/ventas/clientes/${c.id}`}
+          className="font-medium text-miel-300 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-acento"
+        >
+          {c.nombre}
+        </Link>
+      ),
       orden: (a, b) => a.nombre.localeCompare(b.nombre),
     },
     {

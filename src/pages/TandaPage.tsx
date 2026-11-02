@@ -20,6 +20,7 @@ import { Cargando, ErrorDePantalla } from '@/components/ui/estados'
 import { Modal, ModalContenido } from '@/components/ui/modal'
 import { useListado } from '@/hooks/useRecurso'
 import { formatearFecha } from '@/lib/fechas'
+import { IndicadoresDeTanda } from '@/modulos/produccion/IndicadoresDeProduccion'
 import { OperacionDeTanda } from '@/modulos/produccion/OperacionDeTanda'
 import {
   ACCIONES,
@@ -222,6 +223,10 @@ export default function TandaPage() {
       </div>
 
       <CeldasDeLaTanda tanda={tanda} />
+      <IndicadoresDeTanda
+        tandaId={tanda.id}
+        fechaTraslarve={tanda.fecha_traslarve}
+      />
       <UbicacionDeTanda
         tanda={tanda}
         nombreDeParque={(parqueId) =>

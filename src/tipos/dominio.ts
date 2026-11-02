@@ -5,7 +5,7 @@
  *  generado del OpenAPI del backend (npm run contrato:tipos): si el backend
  *  cambia un campo, el build lo marca. Las que todavía no tienen endpoint
  *  (celda) se escriben a mano desde dominio.md. */
-import type { components } from '@/api/esquema'
+import type { components, operations } from '@/api/esquema'
 
 type Esquemas = components['schemas']
 
@@ -65,6 +65,20 @@ export type AccionDeTanda = OperacionCrear['accion']
  *  en la cosecha (al cosechar). */
 export type OperacionRealizada = Esquemas['OperacionRealizada']
 export type RepartoNucleo = Esquemas['RepartoNucleo']
+
+/** GET /api/v1/kpis/produccion (#31, dominio del 23/10): conteos desde las
+ *  celdas y los dos %, con un decimal como texto ("79.2"); null si la tanda
+ *  o la raza todavía no tiene introducidas. */
+export type KpiProduccion = Esquemas['KpiProduccion']
+type ConsultaDeKpis = NonNullable<
+  operations['obtener_kpis_de_produccion_api_v1_kpis_produccion_get']['parameters']['query']
+>
+/** Por tanda (la más nueva primero) o por raza (suma sus tandas). */
+export type AgrupacionKpi = NonNullable<ConsultaDeKpis['agrupar']>
+export const AGRUPACIONES_KPI = [
+  'tanda',
+  'raza',
+] as const satisfies readonly AgrupacionKpi[]
 
 export type Celda = {
   id: string

@@ -1,5 +1,5 @@
 import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { describirError } from '@/api/client'
 import type { Recurso } from '@/api/recurso'
 import type { Campo, Valores } from '@/components/catalogo/campos'
@@ -42,6 +42,8 @@ export type ConfigCatalogo<T extends Fila, C, A> = {
   /** Roles que pueden dar de alta, editar y dar de baja: los mismos que el
    *  require_role del router del backend. Leer, pueden todos. */
   rolesEscritura: readonly Rol[]
+  /** Filtros que aplica el backend (p. ej. { parque_id } en núcleos). */
+  filtros?: Record<string, string>
 }
 
 type Edicion<T> = { modo: 'alta'; clave: string } | { modo: 'edicion'; fila: T }
@@ -58,13 +60,20 @@ const CON_BAJAS = { incluir_inactivos: 'true' }
 
 export function PaginaCatalogo<T extends Fila, C, A>({
   config,
+  controles,
 }: {
   config: ConfigCatalogo<T, C, A>
+  /** Los controles de los filtros del backend, junto al buscador. */
+  controles?: ReactNode
 }) {
   const { clave, recurso, singular } = config
   const { identidad } = useSesion()
   const escribe = puede(identidad, config.rolesEscritura)
-  const listado = useListado(clave, recurso, CON_BAJAS)
+  const filtrado = Object.keys(config.filtros ?? {}).length > 0
+  const listado = useListado(clave, recurso, {
+    ...CON_BAJAS,
+    ...config.filtros,
+  })
   const { crear, actualizar, desactivar } = useMutacionesDe(clave, recurso)
   const [busqueda, setBusqueda] = useState('')
   const [edicion, setEdicion] = useState<Edicion<T> | null>(null)
@@ -155,6 +164,8 @@ export function PaginaCatalogo<T extends Fila, C, A>({
         acciones={escribe ? agregar : undefined}
       />
 
+      {controles}
+
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Input
           type="search"
@@ -196,12 +207,16 @@ export function PaginaCatalogo<T extends Fila, C, A>({
                 titulo={
                   busqueda
                     ? 'No hay resultados para esa búsqueda.'
-                    : `Todavía no hay ${config.titulo.toLowerCase()}.`
+                    : filtrado
+                      ? 'No hay resultados con ese filtro.'
+                      : `Todavía no hay ${config.titulo.toLowerCase()}.`
                 }
               >
                 {busqueda
                   ? 'Probá con otro texto.'
-                  : `Cargá el primero con "Agregar ${singular}".`}
+                  : filtrado
+                    ? `Elegí otro filtro o cargá uno con "Agregar ${singular}".`
+                    : `Cargá el primero con "Agregar ${singular}".`}
               </Vacio>
             }
           />

@@ -15,11 +15,18 @@ import {
   type Embarque,
   type EmbarqueActualizar,
   type EmbarqueCrear,
+  type EstadoEmbarque,
   type TipoDocumentoEmbarque,
 } from '@/tipos/dominio'
 
+/** Filtros de GET /api/v1/embarques. */
+export type FiltrosDeEmbarques = { estado?: EstadoEmbarque }
+
 export interface ApiEmbarques {
-  listar(cursor?: string): Promise<Pagina<Embarque>>
+  listar(
+    cursor?: string,
+    filtros?: FiltrosDeEmbarques,
+  ): Promise<Pagina<Embarque>>
   obtener(id: string): Promise<Embarque>
   crear(datos: EmbarqueCrear, claveIdempotencia?: string): Promise<Embarque>
   actualizar(id: string, datos: EmbarqueActualizar): Promise<Embarque>
@@ -39,9 +46,9 @@ export const LIMITE_EMBARQUES = 100
 export function embarquesHttp(): ApiEmbarques {
   const de = (id: string) => `${RUTA}/${encodeURIComponent(id)}`
   return {
-    listar: (cursor) =>
+    listar: (cursor, filtros = {}) =>
       request<Pagina<Embarque>>(RUTA, {
-        query: { limite: LIMITE_EMBARQUES, cursor },
+        query: { ...filtros, limite: LIMITE_EMBARQUES, cursor },
       }),
     obtener: (id) => request<Embarque>(de(id)),
     crear: (datos, claveIdempotencia) =>
@@ -132,12 +139,12 @@ export function embarquesSimulados(
   }
 
   return {
-    listar: async (cursor) => {
+    listar: async (cursor, { estado } = {}) => {
       // Como el backend: el vuelo más nuevo primero, de a una página.
       const pagina = paginarEnMemoria(
-        [...embarques].sort((a, b) =>
-          b.fecha_vuelo.localeCompare(a.fecha_vuelo),
-        ),
+        embarques
+          .filter((e) => !estado || e.estado === estado)
+          .sort((a, b) => b.fecha_vuelo.localeCompare(a.fecha_vuelo)),
         LIMITE_EMBARQUES,
         cursor,
       )
