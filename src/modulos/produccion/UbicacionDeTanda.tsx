@@ -54,7 +54,7 @@ export function CeldasDeLaTanda({ tanda }: { tanda: TandaDetalle }) {
     <section aria-labelledby="celdas-por-estado" className="space-y-3">
       <h2 id="celdas-por-estado" className={TITULO}>
         Celdas por estado{' '}
-        <span className="font-mono text-base font-normal text-texto-suave tabular-nums">
+        <span className="text-base font-normal text-texto-suave tabular-nums">
           ({tanda.celdas} en total)
         </span>
       </h2>

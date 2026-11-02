@@ -203,7 +203,7 @@ export function OperacionDeTanda({
           value={valores.cantidad}
           invalido={Boolean(errores.cantidad)}
           aria-describedby={describir('cantidad', errores.cantidad)}
-          className="sm:max-w-48"
+          className="block sm:max-w-48"
           onChange={(e) => cambiar('cantidad', e.target.value)}
         />
       </Field>
@@ -223,7 +223,7 @@ export function OperacionDeTanda({
             value={valores.fecha ?? ''}
             invalido={Boolean(errores.fecha)}
             aria-describedby={describir('fecha', errores.fecha)}
-            className="sm:max-w-48"
+            className="block sm:max-w-48"
             onChange={(e) => cambiar('fecha', e.target.value)}
           />
         </Field>

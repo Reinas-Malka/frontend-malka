@@ -168,6 +168,9 @@ export default function TandaPage() {
   )
   const escribe = puede(identidad, ROLES_PRODUCCION)
   const posibles = accionesPosibles(resumenDe(tanda))
+  // El paso que sigue en el ciclo va resaltado; descartar es un desvío y
+  // solo se resalta si es lo único que queda.
+  const siguiente = posibles.find((a) => a !== 'descartar') ?? posibles[0]
 
   const abrir = (accion: AccionDeTanda) => {
     operar.reset()
@@ -179,13 +182,12 @@ export default function TandaPage() {
   const acciones =
     escribe && posibles.length > 0 ? (
       <>
-        {posibles.map((accion, n) => {
+        {posibles.map((accion) => {
           const Icono = ICONO[accion]
           return (
             <Button
               key={accion}
-              // La primera posible es el paso que sigue en el ciclo.
-              variante={n === 0 ? 'primario' : 'secundario'}
+              variante={accion === siguiente ? 'primario' : 'secundario'}
               disabled={operar.isPending}
               onClick={() => abrir(accion)}
             >
