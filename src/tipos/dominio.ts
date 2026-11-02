@@ -46,6 +46,26 @@ export type TandaCrear = Esquemas['TandaCrear']
  *  y la advertencia stock_negativo si quedó bajo cero (no bloquea). */
 export type TandaCreada = Esquemas['TandaCreada']
 
+/** GET /api/v1/tandas/{id}: además de las celdas por estado, dónde están.
+ *  nucleos: los que tienen celdas de la tanda en el parque (vacío después
+ *  de la cosecha). bancos: los que tienen reinas cosechadas de la tanda. */
+export type TandaDetalle = Esquemas['TandaDetalle']
+export type NucleoDeTanda = Esquemas['NucleoDeTanda']
+export type BancoDeTanda = Esquemas['BancoDeTanda']
+
+/** POST /api/v1/tandas/{id}/operaciones: siempre por lote (dominio del
+ *  23/10), nunca celda por celda. El campo accion elige la operación. */
+export type OperacionCrear =
+  | Esquemas['OperacionDescartar']
+  | Esquemas['OperacionIntroducir']
+  | Esquemas['OperacionCosechar']
+  | Esquemas['OperacionPasarABanco']
+export type AccionDeTanda = OperacionCrear['accion']
+/** La tanda como quedó, más el reparto (al introducir) o las descartadas
+ *  en la cosecha (al cosechar). */
+export type OperacionRealizada = Esquemas['OperacionRealizada']
+export type RepartoNucleo = Esquemas['RepartoNucleo']
+
 export type Celda = {
   id: string
   tenant_id: string
