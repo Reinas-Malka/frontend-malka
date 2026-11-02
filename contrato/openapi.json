@@ -1243,6 +1243,100 @@
     "title": "ItemVendibleRespuesta",
     "type": "object"
    },
+   "KpiProduccion": {
+    "properties": {
+     "cosechadas": {
+      "title": "Cosechadas",
+      "type": "integer"
+     },
+     "en_parque": {
+      "title": "En Parque",
+      "type": "integer"
+     },
+     "fecha_traslarve": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Traslarve"
+     },
+     "introducidas": {
+      "title": "Introducidas",
+      "type": "integer"
+     },
+     "perdidas": {
+      "title": "Perdidas",
+      "type": "integer"
+     },
+     "porcentaje_cosecha": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Porcentaje Cosecha"
+     },
+     "porcentaje_perdida": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Porcentaje Perdida"
+     },
+     "raza": {
+      "title": "Raza",
+      "type": "string"
+     },
+     "raza_id": {
+      "format": "uuid",
+      "title": "Raza Id",
+      "type": "string"
+     },
+     "tanda_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tanda Id"
+     },
+     "tandas": {
+      "title": "Tandas",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "tanda_id",
+     "fecha_traslarve",
+     "raza_id",
+     "raza",
+     "tandas",
+     "introducidas",
+     "cosechadas",
+     "perdidas",
+     "en_parque",
+     "porcentaje_cosecha",
+     "porcentaje_perdida"
+    ],
+    "title": "KpiProduccion",
+    "type": "object"
+   },
    "LineaDespacho": {
     "additionalProperties": false,
     "description": "Una linea del pedido y de que bancos salen sus reinas.",
@@ -4559,6 +4653,16 @@
        "title": "Clave",
        "type": "string"
       }
+     },
+     {
+      "in": "query",
+      "name": "en_linea",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "En Linea",
+       "type": "boolean"
+      }
      }
     ],
     "responses": {
@@ -5370,6 +5474,97 @@
     "summary": "Actualizar Item",
     "tags": [
      "items-vendibles"
+    ]
+   }
+  },
+  "/api/v1/kpis/produccion": {
+   "get": {
+    "description": "% de cosecha y % de perdida en el parque, por tanda o por raza.",
+    "operationId": "obtener_kpis_de_produccion_api_v1_kpis_produccion_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "agrupar",
+      "required": false,
+      "schema": {
+       "default": "tanda",
+       "enum": [
+        "tanda",
+        "raza"
+       ],
+       "title": "Agrupar",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "desde",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Desde"
+      }
+     },
+     {
+      "in": "query",
+      "name": "hasta",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "format": "date",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Hasta"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/KpiProduccion"
+         },
+         "title": "Response Obtener Kpis De Produccion Api V1 Kpis Produccion Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Obtener Kpis De Produccion",
+    "tags": [
+     "kpis"
     ]
    }
   },
