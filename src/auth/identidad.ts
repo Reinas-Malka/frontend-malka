@@ -4,7 +4,13 @@
 export const ROLES = ['admin', 'produccion', 'ventas', 'lectura'] as const
 export type Rol = (typeof ROLES)[number]
 
-export type Identidad = { email: string; roles: Rol[]; tenantId: string }
+export type Identidad = {
+  email: string
+  roles: Rol[]
+  tenantId: string
+  /** El sub del token: lo que el backend guarda como autor (cargado_por). */
+  sub?: string
+}
 
 const esRol = (valor: unknown): valor is Rol => ROLES.includes(valor as Rol)
 
@@ -17,6 +23,7 @@ export function identidadDesdePerfil(
     // Un grupo que no es rol del sistema se ignora: no da permisos.
     roles: Array.isArray(grupos) ? grupos.filter(esRol) : [],
     tenantId: String(perfil['custom:tenant_id'] ?? ''),
+    sub: typeof perfil.sub === 'string' ? perfil.sub : undefined,
   }
 }
 

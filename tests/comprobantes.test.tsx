@@ -8,6 +8,7 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -18,6 +19,32 @@ import type { Rol } from '../src/auth/identidad'
 
 const TENANT = '11111111-1111-4111-8111-111111111111'
 const EMISION_PASADA = '2026-01-15'
+
+// La extracción del QR (pdf.js + jsQR) necesita un navegador: acá se
+// reemplaza por lo que "leería" del PDF. El parseo es el real.
+const leerQr = vi.hoisted(() => vi.fn<(pdf: File) => Promise<string | null>>())
+vi.mock('../src/documentos/leerQrDelPdf', () => ({ leerQrDelPdf: leerQr }))
+
+/** El texto del QR de ARCA para un JSON como el de RG 4892. */
+const qrDeArca = (json: Record<string, unknown>) =>
+  `https://www.afip.gob.ar/fe/qr/?p=${btoa(JSON.stringify(json))}`
+
+const FACTURA_A_DON_EMILIO = {
+  ver: 1,
+  fecha: EMISION_PASADA,
+  cuit: 30712345671,
+  ptoVta: 2,
+  tipoCmp: 1,
+  nroCmp: 310,
+  importe: 15730.5,
+  moneda: 'PES',
+  ctz: 1,
+  tipoDocRec: 80,
+  // El CUIT de Apícola Don Emilio en los datos de ejemplo.
+  nroDocRec: 20305211894,
+  tipoCodAut: 'E',
+  codAut: 74123456789012,
+}
 
 describe('pantalla de comprobantes', () => {
   // api/comprobantes.ts decide simulado/real al cargarse: el flag va antes.
@@ -40,6 +67,11 @@ describe('pantalla de comprobantes', () => {
     api = (await import('../src/api/comprobantes')).comprobantes
   })
   afterAll(() => vi.unstubAllEnvs())
+  beforeEach(() => {
+    // Por defecto el PDF no tiene QR: la carga es a mano, como antes.
+    leerQr.mockReset()
+    leerQr.mockResolvedValue(null)
+  })
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
@@ -47,7 +79,10 @@ describe('pantalla de comprobantes', () => {
 
   function montar(roles: Rol[] = ['lectura'], ruta = '/ventas/comprobantes') {
     const router = createMemoryRouter(
-      [{ path: '/ventas/comprobantes', element: <ComprobantesPage /> }],
+      [
+        { path: '/ventas/comprobantes', element: <ComprobantesPage /> },
+        { path: '/ventas/comprobantes/:id', element: <p>Detalle</p> },
+      ],
       { initialEntries: [ruta] },
     )
     render(
@@ -384,5 +419,244 @@ describe('pantalla de comprobantes', () => {
         crear.mock.calls[0][0].archivo_s3_key,
       )
     }, 20_000)
+  })
+
+  describe('alta con el QR del PDF de ARCA', () => {
+    const pdf = () =>
+      new File(['%PDF'], 'factura-arca.pdf', { type: 'application/pdf' })
+    const valor = (etiqueta: string | RegExp) =>
+      (screen.getByLabelText(etiqueta) as HTMLInputElement).value
+    const combo = (nombre: string) =>
+      screen.getByRole('combobox', { name: nombre }).textContent
+
+    it('completa el formulario, elige el cliente por su CUIT y se guarda tal cual', async () => {
+      leerQr.mockResolvedValue(qrDeArca(FACTURA_A_DON_EMILIO))
+      const crear = vi.spyOn(api, 'crear')
+      const { usuario } = montar(['ventas'])
+      await abrirAlta(usuario)
+
+      const archivo = pdf()
+      await usuario.upload(
+        screen.getByLabelText('PDF del comprobante'),
+        archivo,
+      )
+
+      expect(
+        await screen.findByText(
+          'Completamos los datos con el código QR de la factura. Revisalos antes de guardar.',
+        ),
+      ).toBeTruthy()
+      expect(leerQr).toHaveBeenCalledWith(archivo)
+      expect(
+        screen.getByText('Elegimos el cliente Apícola Don Emilio por su CUIT.'),
+      ).toBeTruthy()
+      expect(combo('Cliente')).toMatch('Apícola Don Emilio')
+      expect(combo('Letra')).toMatch('Factura A')
+      expect(valor('Punto de venta')).toBe('2')
+      expect(valor('Número')).toBe('310')
+      expect(valor('Fecha de emisión')).toBe(EMISION_PASADA)
+      expect(valor(/importe total/i)).toBe('15730.50')
+      expect(screen.queryByLabelText('Tipo de cambio')).toBeNull()
+
+      // Sigue editable: la persona corrige y confirma.
+      await usuario.clear(screen.getByLabelText('Número'))
+      await usuario.type(screen.getByLabelText('Número'), '311')
+      await usuario.click(
+        screen.getByRole('button', { name: 'Cargar comprobante' }),
+      )
+
+      expect(await fila('Factura A 0002-00000311')).toBeTruthy()
+      expect(crear.mock.calls[0][0]).toMatchObject({
+        tipo: 'A',
+        punto_venta: 2,
+        numero: 311,
+        fecha_emision: EMISION_PASADA,
+        moneda: 'ARS',
+        importe: '15730.50',
+        tipo_cambio: null,
+      })
+    }, 20_000)
+
+    it('una factura E completa la moneda y el tipo de cambio', async () => {
+      leerQr.mockResolvedValue(
+        qrDeArca({
+          ...FACTURA_A_DON_EMILIO,
+          tipoCmp: 19,
+          ptoVta: 3,
+          nroCmp: 52,
+          importe: 2150.75,
+          moneda: '060',
+          ctz: 1290.5,
+          // El receptor del exterior no es un CUIT de un cliente cargado.
+          nroDocRec: 55000002126,
+        }),
+      )
+      const { usuario } = montar(['ventas'])
+      await abrirAlta(usuario)
+      await elegir(usuario, 'Cliente', 'Bee Kingdom NZ Ltd')
+
+      await usuario.upload(screen.getByLabelText('PDF del comprobante'), pdf())
+
+      await screen.findByText(/completamos los datos con el código QR/i)
+      expect(combo('Cliente')).toMatch('Bee Kingdom NZ Ltd')
+      expect(combo('Letra')).toMatch('Factura E')
+      expect(combo('Moneda')).toMatch('EUR')
+      expect(valor('Tipo de cambio')).toBe('1290.5')
+      expect(valor(/importe total \(EUR\)/i)).toBe('2150.75')
+      // El cliente ya estaba elegido: no se pide elegirlo.
+      expect(screen.queryByText(/no encontramos un cliente/i)).toBeNull()
+    }, 15_000)
+
+    it('sin un cliente con ese CUIT pide elegirlo', async () => {
+      leerQr.mockResolvedValue(
+        qrDeArca({ ...FACTURA_A_DON_EMILIO, nroDocRec: 20111111112 }),
+      )
+      const { usuario } = montar(['ventas'])
+      await abrirAlta(usuario)
+
+      await usuario.upload(screen.getByLabelText('PDF del comprobante'), pdf())
+
+      expect(
+        await screen.findByText(
+          'No encontramos un cliente con el CUIT de la factura: elegilo.',
+        ),
+      ).toBeTruthy()
+      expect(valor('Número')).toBe('310')
+    })
+
+    it('una nota de crédito lo avisa y deja la letra sin completar', async () => {
+      leerQr.mockResolvedValue(
+        qrDeArca({ ...FACTURA_A_DON_EMILIO, tipoCmp: 3 }),
+      )
+      const { usuario } = montar(['ventas'])
+      await abrirAlta(usuario)
+
+      await usuario.upload(screen.getByLabelText('PDF del comprobante'), pdf())
+
+      expect(
+        await screen.findByText(
+          'Este comprobante es una nota de crédito u otro tipo; por ahora se cargan facturas A, B y E.',
+        ),
+      ).toBeTruthy()
+      expect(combo('Letra')).toMatch('Elegí la letra')
+    })
+
+    it.each([
+      ['el PDF no tiene QR', null, '9'],
+      ['el QR no es de ARCA', 'https://example.com/otra-cosa', '10'],
+      ['el QR es ilegible', 'https://www.afip.gob.ar/fe/qr/?p=%%%', '11'],
+    ])(
+      'si %s avisa y queda la carga a mano',
+      async (_, texto, numero) => {
+        leerQr.mockResolvedValue(texto)
+        const { usuario } = montar(['ventas'])
+        await abrirAlta(usuario)
+
+        await usuario.upload(
+          screen.getByLabelText('PDF del comprobante'),
+          pdf(),
+        )
+
+        expect(
+          await screen.findByText(
+            'No encontramos el código QR de ARCA en el PDF: completá los datos a mano.',
+          ),
+        ).toBeTruthy()
+        expect(valor('Número')).toBe('')
+        // A mano funciona como siempre.
+        await elegir(usuario, 'Cliente', 'Apícola Don Emilio')
+        await usuario.type(screen.getByLabelText('Punto de venta'), '5')
+        await usuario.type(screen.getByLabelText('Número'), numero)
+        await usuario.type(
+          screen.getByLabelText('Fecha de emisión'),
+          EMISION_PASADA,
+        )
+        await usuario.type(screen.getByLabelText(/importe total/i), '100')
+        await usuario.click(
+          screen.getByRole('button', { name: 'Cargar comprobante' }),
+        )
+        expect(
+          await fila(`Factura A 0005-${numero.padStart(8, '0')}`),
+        ).toBeTruthy()
+      },
+      20_000,
+    )
+
+    it('si la lectura del PDF falla, también queda la carga a mano', async () => {
+      leerQr.mockRejectedValue(new Error('PDF dañado'))
+      const { usuario } = montar(['ventas'])
+      await abrirAlta(usuario)
+
+      await usuario.upload(screen.getByLabelText('PDF del comprobante'), pdf())
+
+      expect(
+        await screen.findByText(/no encontramos el código QR de ARCA/i),
+      ).toBeTruthy()
+    })
+
+    it('un archivo que no es PDF no se lee', async () => {
+      const { usuario } = montar(['ventas'])
+      await abrirAlta(usuario)
+
+      await usuario.upload(
+        screen.getByLabelText('PDF del comprobante'),
+        new File(['x'], 'foto.png', { type: 'image/png' }),
+      )
+
+      expect(leerQr).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('alta pedida por la URL (desde el pedido)', () => {
+    const BEE_KINGDOM = '00000062-0000-4000-8000-000000000062'
+
+    it('abre el alta con el cliente y la moneda puestos y al cerrar limpia la URL', async () => {
+      const { usuario, router } = montar(
+        ['ventas'],
+        `/ventas/comprobantes?alta=1&cliente=${BEE_KINGDOM}&moneda=EUR`,
+      )
+
+      const dialogo = await screen.findByRole('dialog', {
+        name: 'Cargar comprobante',
+      })
+      const combo = (nombre: string) =>
+        within(dialogo).getByRole('combobox', { name: nombre }).textContent
+      // El formulario arranca cuando llegan los clientes.
+      await within(dialogo).findByRole('combobox', { name: 'Cliente' })
+      expect(combo('Cliente')).toMatch('Bee Kingdom NZ Ltd')
+      expect(combo('Letra')).toMatch('Factura E')
+      expect(combo('Moneda')).toMatch('EUR')
+
+      await usuario.click(
+        within(dialogo).getByRole('button', { name: 'Cancelar' }),
+      )
+
+      expect(screen.queryByRole('dialog')).toBeNull()
+      // Queda el filtro por cliente: detrás se ven sus comprobantes.
+      expect(router.state.location.search).toBe(`?cliente=${BEE_KINGDOM}`)
+      expect(await fila('Factura E 0003-00000041')).toBeTruthy()
+      expect(
+        screen.queryByRole('cell', { name: 'Factura A 0001-00000128' }),
+      ).toBeNull()
+    }, 15_000)
+
+    it('lectura no abre el alta aunque la URL la pida', async () => {
+      montar(['lectura'], `/ventas/comprobantes?alta=1&cliente=${BEE_KINGDOM}`)
+
+      await fila('Factura E 0003-00000041')
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
+  })
+
+  it('cada comprobante lleva a su detalle', async () => {
+    const { usuario, router } = montar()
+
+    await usuario.click(
+      await screen.findByRole('link', { name: 'Factura A 0001-00000128' }),
+    )
+
+    expect(router.state.location.pathname).toMatch(
+      /^\/ventas\/comprobantes\/[0-9a-f-]{36}$/,
+    )
   })
 })

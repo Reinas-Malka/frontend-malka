@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-query'
 import { Download, Plus } from 'lucide-react'
 import { useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { describirError } from '@/api/client'
 import { comprobantes } from '@/api/comprobantes'
 import { pedirDescarga } from '@/api/documentos'
@@ -30,7 +30,10 @@ import { formatearFecha } from '@/lib/fechas'
 import { formatearImporte } from '@/lib/importes'
 import {
   CLAVE_COMPROBANTES,
+  PARAMETROS_DE_ALTA,
+  leerAltaDeLaUrl,
   leerFiltrosDeComprobantes,
+  type ValoresDeAlta,
 } from '@/modulos/ventas/comprobantes'
 import { FormularioDeComprobante } from '@/modulos/ventas/FormularioDeComprobante'
 import {
@@ -38,6 +41,7 @@ import {
   ROLES_VENTAS,
   TODOS,
   clientesConBajas,
+  type DesdeElListado,
 } from '@/modulos/ventas/pedidos'
 import type { Comprobante, ComprobanteCrear } from '@/tipos/dominio'
 
@@ -49,15 +53,21 @@ type Descarga = {
 function columnas(
   nombreDe: (id: string) => string,
   { enCurso, descargar }: Descarga,
+  desde: DesdeElListado,
 ): Columna<Comprobante>[] {
   return [
     {
       clave: 'numero',
       titulo: 'Comprobante',
+      // Lleva al detalle, con todo lo cargado.
       render: (c) => (
-        <span className="whitespace-nowrap font-medium tabular-nums">
+        <Link
+          to={`/ventas/comprobantes/${c.id}`}
+          state={desde}
+          className="whitespace-nowrap font-medium tabular-nums text-miel-300 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-acento"
+        >
           {nombreDeComprobante(c)}
-        </span>
+        </Link>
       ),
     },
     {
@@ -113,9 +123,19 @@ export default function ComprobantesPage() {
   const filtros = leerFiltrosDeComprobantes(params)
   const { identidad } = useSesion()
   const escribe = puede(identidad, ROLES_VENTAS)
-  // La clave de idempotencia del alta en curso, o null si no hay modal. Se
-  // fija al abrir: si el guardado se reintenta, el backend no duplica.
-  const [alta, setAlta] = useState<string | null>(null)
+  // El alta en curso, o null si no hay modal: su clave de idempotencia (se
+  // fija al abrir: si el guardado se reintenta, el backend no duplica) y lo
+  // que ya viene puesto. Desde el pedido llega pedida por la URL
+  // (?alta=1&cliente=…&moneda=…): se abre al entrar, solo para quien carga.
+  const [alta, setAlta] = useState<{
+    clave: string
+    inicial?: ValoresDeAlta
+  } | null>(() => {
+    const pedida = leerAltaDeLaUrl(params)
+    return pedida && escribe
+      ? { clave: crypto.randomUUID(), inicial: pedida }
+      : null
+  })
   const [aviso, setAviso] = useState('')
   const [descargando, setDescargando] = useState<string | null>(null)
   const [errorDescarga, setErrorDescarga] = useState<string | null>(null)
@@ -145,15 +165,34 @@ export default function ComprobantesPage() {
       consultas.invalidateQueries({ queryKey: [CLAVE_COMPROBANTES] }),
   })
 
+  /** Saca de la URL el pedido de abrir el alta: al volver o recargar no se
+   *  abre de nuevo. cliente queda: es el filtro del listado, así detrás se
+   *  ven los comprobantes de ese cliente. */
+  const olvidarAltaDeLaUrl = () =>
+    setParams(
+      (actuales) => {
+        const nuevos = new URLSearchParams(actuales)
+        nuevos.delete(PARAMETROS_DE_ALTA.abrir)
+        nuevos.delete(PARAMETROS_DE_ALTA.moneda)
+        return nuevos
+      },
+      { replace: true },
+    )
+
   async function guardar(datos: ComprobanteCrear) {
-    const enCurso = alta
+    const enCurso = alta?.clave
     if (!enCurso) return
     const creado = await crear.mutateAsync({ datos, clave: enCurso })
     setAviso(`${nombreDeComprobante(creado)} cargada.`)
     // Solo cierra el modal que inició este guardado.
-    setAlta((actual) => (actual === enCurso ? null : actual))
+    setAlta((actual) => (actual?.clave === enCurso ? null : actual))
+    olvidarAltaDeLaUrl()
   }
-  const cerrarAlta = () => !crear.isPending && setAlta(null)
+  const cerrarAlta = () => {
+    if (crear.isPending) return
+    setAlta(null)
+    olvidarAltaDeLaUrl()
+  }
 
   // La URL vence en 2 minutos: se pide recién al tocar, nunca antes.
   async function descargar(c: Comprobante) {
@@ -186,7 +225,15 @@ export default function ComprobantesPage() {
   const error = (!listado.data && listado.error) || clientes.error
 
   const nuevo = (
-    <Button onClick={() => setAlta(crypto.randomUUID())}>
+    <Button
+      onClick={() =>
+        // Con el listado filtrado por un cliente, el alta ya lo trae puesto.
+        setAlta({
+          clave: crypto.randomUUID(),
+          inicial: { cliente_id: filtros.cliente_id },
+        })
+      }
+    >
       <Plus aria-hidden className="size-4" /> Cargar comprobante
     </Button>
   )
@@ -237,10 +284,12 @@ export default function ComprobantesPage() {
       ) : (
         <div className="space-y-3">
           <DataTable
-            columnas={columnas(nombreDe, {
-              enCurso: descargando,
-              descargar: (c) => void descargar(c),
-            })}
+            columnas={columnas(
+              nombreDe,
+              { enCurso: descargando, descargar: (c) => void descargar(c) },
+              // El detalle vuelve al listado con los mismos filtros.
+              { filtros: params.toString() ? `?${params}` : undefined },
+            )}
             filas={filas}
             // Una sola página en pantalla: las siguientes llegan con "Cargar más".
             porPagina={Math.max(filas.length, 1)}
@@ -304,11 +353,12 @@ export default function ComprobantesPage() {
         {alta ? (
           <ModalContenido
             titulo="Cargar comprobante"
-            descripcion="Copiá los datos tal como figuran en el comprobante que emitió ARCA. Una vez cargado no se edita."
+            descripcion="Elegí el PDF que emitió ARCA: si tiene el código QR, completamos los datos. Revisalos tal como figuran en el comprobante; una vez cargado no se edita."
             className="max-h-[calc(100dvh-2rem)] max-w-2xl overflow-y-auto"
           >
             <FormularioDeComprobante
-              key={alta}
+              key={alta.clave}
+              inicial={alta.inicial}
               alGuardar={guardar}
               alCancelar={cerrarAlta}
             />

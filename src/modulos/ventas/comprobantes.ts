@@ -4,6 +4,7 @@
  *  su campo. */
 import { esApiError } from '@/api/client'
 import type { FiltrosDeComprobantes } from '@/api/comprobantes'
+import type { Identidad } from '@/auth/identidad'
 import type { Errores } from '@/components/catalogo/campos'
 import {
   errorDeFechaDeEmision,
@@ -18,11 +19,14 @@ import {
   numeroImpreso,
   normalizarTipoDeCambio,
 } from '@/lib/comprobantes'
+import { normalizarCuit } from '@/lib/cuit'
 import { MONEDAS_POR_TIPO } from '@/lib/pedidos'
+import type { DatosDelQr } from '@/lib/qrDeArca'
 import type {
   Cliente,
   ComprobanteCrear,
   Moneda,
+  Pedido,
   TipoComprobante,
 } from '@/tipos/dominio'
 
@@ -67,6 +71,17 @@ export const BORRADOR_VACIO: BorradorDeComprobante = {
 export const monedasDelCliente = (
   cliente: Cliente | undefined,
 ): readonly Moneda[] => (cliente ? MONEDAS_POR_TIPO[cliente.tipo] : ['ARS'])
+
+/** Las monedas que admite el cliente y, si el QR trajo otra, también esa:
+ *  el formulario la tiene que poder mostrar (la validación avisa si no
+ *  corresponde). */
+export const monedasParaElegir = (
+  cliente: Cliente | undefined,
+  actual: Moneda,
+): readonly Moneda[] => {
+  const delCliente = monedasDelCliente(cliente)
+  return delCliente.includes(actual) ? delCliente : [...delCliente, actual]
+}
 
 /** Al elegir el cliente se sugiere la letra (se puede cambiar: la real es
  *  la del PDF) y la moneda toma lo que admite su tipo. */
@@ -233,4 +248,132 @@ export function mensajeDelAlta(error: unknown): string {
       return String(deLaFila.mensaje).replace(PREFIJO_DE_PYDANTIC, '')
   }
   return error.mensaje
+}
+
+// --- alta abierta desde otra pantalla (el pedido) ---
+
+/** ?alta=1&cliente=<id>&moneda=USD abre el alta con eso ya puesto. cliente
+ *  es el mismo parámetro que el filtro del listado: detrás del modal se ven
+ *  los comprobantes de ese cliente. */
+export const PARAMETROS_DE_ALTA = { abrir: 'alta', moneda: 'moneda' } as const
+
+export type ValoresDeAlta = { cliente_id?: string; moneda?: Moneda }
+
+const MONEDAS: readonly Moneda[] = ['ARS', 'USD', 'EUR']
+
+/** Los valores del alta pedida por la URL, o null si no se pidió. */
+export function leerAltaDeLaUrl(params: URLSearchParams): ValoresDeAlta | null {
+  if (params.get(PARAMETROS_DE_ALTA.abrir) !== '1') return null
+  const moneda = MONEDAS.find(
+    (m) => m === params.get(PARAMETROS_DE_ALTA.moneda),
+  )
+  return {
+    cliente_id: params.get('cliente') || undefined,
+    moneda,
+  }
+}
+
+/** La URL del alta con el cliente y la moneda del pedido. No se guarda
+ *  ningún vínculo pedido↔comprobante: solo se ahorra elegirlos. */
+export function urlParaRegistrarFactura(
+  pedido: Pick<Pedido, 'cliente_id' | 'moneda'>,
+): string {
+  const params = new URLSearchParams({
+    [PARAMETROS_DE_ALTA.abrir]: '1',
+    cliente: pedido.cliente_id,
+    [PARAMETROS_DE_ALTA.moneda]: pedido.moneda,
+  })
+  return `/ventas/comprobantes?${params}`
+}
+
+/** El borrador con el que abre el alta: el cliente (con su letra y su
+ *  moneda sugeridas) y la moneda pedida si el cliente la admite. */
+export function borradorInicial(
+  valores: ValoresDeAlta | undefined,
+  clientes: readonly Cliente[],
+): BorradorDeComprobante {
+  const cliente = clientes.find((c) => c.id === valores?.cliente_id)
+  if (!cliente) return BORRADOR_VACIO
+  const conCliente = borradorParaCliente(BORRADOR_VACIO, cliente)
+  const moneda = valores?.moneda
+  return moneda && monedasDelCliente(cliente).includes(moneda)
+    ? { ...conCliente, moneda, tipo_cambio: '' }
+    : conCliente
+}
+
+// --- datos leídos del QR de ARCA ---
+
+/** El documento del receptor, sin guiones ni espacios, como se compara. */
+const normalizarDocumento = (valor: string) =>
+  normalizarCuit(valor).replace(/\s/g, '').toUpperCase()
+
+/** El cliente cuyo CUIT o tax id coincide con el receptor del QR. */
+export function clientePorDocumento(
+  clientes: readonly Cliente[],
+  documento: string | null,
+): Cliente | undefined {
+  if (!documento) return undefined
+  const buscado = normalizarDocumento(documento)
+  return clientes.find((c) => normalizarDocumento(c.cuit_o_tax_id) === buscado)
+}
+
+/** El borrador completado con el QR. Si el receptor es un cliente, se
+ *  elige; si no, queda el que estaba. Lo del QR pisa la sugerencia del
+ *  cliente (la letra y la moneda reales son las del comprobante). Una nota
+ *  de crédito deja la letra sin elegir; otra moneda deja la que estaba. */
+export function borradorConQr(
+  actual: BorradorDeComprobante,
+  datos: DatosDelQr,
+  clientes: readonly Cliente[],
+): BorradorDeComprobante {
+  const delQr = clientePorDocumento(clientes, datos.documento_receptor)
+  const base = delQr ? borradorParaCliente(actual, delQr) : actual
+  const moneda = datos.moneda ?? base.moneda
+  return {
+    ...base,
+    // Una nota de crédito u otro tipo: la letra no se completa.
+    tipo: datos.tipo ?? '',
+    punto_venta: String(datos.punto_venta),
+    numero: String(datos.numero),
+    fecha_emision: datos.fecha_emision,
+    moneda,
+    importe: datos.importe,
+    tipo_cambio:
+      moneda === 'ARS' ? '' : (datos.tipo_cambio ?? base.tipo_cambio),
+  }
+}
+
+// --- detalle ---
+
+export const NOMBRE_DE_MONEDA: Readonly<Record<Moneda, string>> = {
+  ARS: 'Pesos (ARS)',
+  USD: 'Dólares (USD)',
+  EUR: 'Euros (EUR)',
+}
+
+/** "CUIT 20-30521189-4" para un cliente nacional; "Tax ID …" para uno del
+ *  exterior, tal como se cargó. */
+export function documentoDelCliente(
+  cliente: Pick<Cliente, 'tipo' | 'cuit_o_tax_id'>,
+): string {
+  if (cliente.tipo === 'exportacion') return `Tax ID ${cliente.cuit_o_tax_id}`
+  const cuit = normalizarCuit(cliente.cuit_o_tax_id)
+  return `CUIT ${cuit.replace(/^(\d{2})(\d{8})(\d)$/, '$1-$2-$3')}`
+}
+
+const PARECE_EMAIL = /^[^\s@]+@[^\s@]+$/
+
+/** Quién cargó el comprobante, para mostrar. cargado_por es el sub del
+ *  token de Cognito (en la demo, un email). Sin un endpoint de usuarios, un
+ *  sub ajeno no se puede traducir a un nombre: no se muestra el código. */
+export function quienLoCargo(
+  cargadoPor: string,
+  identidad: Identidad | null,
+): string {
+  if (
+    identidad &&
+    (cargadoPor === identidad.sub || cargadoPor === identidad.email)
+  )
+    return 'vos'
+  return PARECE_EMAIL.test(cargadoPor) ? cargadoPor : 'otra persona del equipo'
 }
