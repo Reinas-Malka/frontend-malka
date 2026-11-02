@@ -22,6 +22,7 @@ import {
 } from 'vitest'
 import type { Rol } from '../src/auth/identidad'
 import { DATOS_SIMULADOS } from '../src/datos/simulados'
+import { formatearImporte } from '../src/lib/importes'
 import type { Borrador } from '../src/tipos/dominio'
 
 const TENANT = '11111111-1111-4111-8111-111111111111'
@@ -112,13 +113,26 @@ describe('borrador con IA en el detalle del pedido', () => {
 
     expect(
       await zona.findByRole('heading', {
-        name: `Remito de venta a ${CLIENTE.nombre}`,
+        name: `Nota de venta de reinas a ${CLIENTE.nombre}`,
       }),
     ).toBeTruthy()
     const texto = within(
       zona.getByRole('article', { name: 'Texto del borrador' }),
     )
-    expect(texto.getByText(/Reina fecundada, raza Carniola/)).toBeTruthy()
+    expect(
+      texto.getByText(/20 reinas de raza Carniola \(ítem Reina fecundada\)/),
+    ).toBeTruthy()
+    // Las secciones del cuerpo y, debajo, el detalle que calcula el sistema.
+    expect(texto.getByRole('heading', { name: 'OBJETO' })).toBeTruthy()
+    const detalle = within(
+      zona.getByRole('region', {
+        name: 'Detalle del pedido (calculado por el sistema)',
+      }),
+    )
+    expect(
+      detalle.getByText(`ARS ${formatearImporte(PEDIDO.total)}`),
+    ).toBeTruthy()
+    expect(zona.getByRole('button', { name: 'Copiar texto' })).toBeTruthy()
     expect(zona.getByText('Para revisar')).toBeTruthy()
     expect(zona.queryByText(/La IA está redactando/)).toBeNull()
     // Siempre a la vista: lo redacta una IA y lo fiscal lo carga una persona.
@@ -235,7 +249,7 @@ describe('borrador con IA en el detalle del pedido', () => {
 
     expect(
       await zona.findByRole('heading', {
-        name: `Remito de venta a ${CLIENTE.nombre}`,
+        name: `Nota de venta de reinas a ${CLIENTE.nombre}`,
       }),
     ).toBeTruthy()
     expect(zona.queryByRole('button', { name: 'Generar borrador' })).toBeNull()
@@ -259,7 +273,7 @@ describe('borrador con IA en el detalle del pedido', () => {
     const usuario = abrir()
     const zona = await seccion()
     await zona.findByRole('heading', {
-      name: `Remito de venta a ${CLIENTE.nombre}`,
+      name: `Nota de venta de reinas a ${CLIENTE.nombre}`,
     })
 
     await usuario.click(zona.getByRole('button', { name: /Editar texto/ }))
@@ -276,7 +290,7 @@ describe('borrador con IA en el detalle del pedido', () => {
     )
     expect(
       zona.getByRole('heading', {
-        name: `Remito de venta a ${CLIENTE.nombre}`,
+        name: `Nota de venta de reinas a ${CLIENTE.nombre}`,
       }),
     ).toBeTruthy()
     expect(zona.queryByText('Con cambios sin guardar')).toBeNull()

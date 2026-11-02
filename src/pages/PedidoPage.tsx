@@ -448,7 +448,11 @@ export default function PedidoPage() {
 
       <TrazabilidadDePedido pedido={p} nombreDeLinea={nombreDeLinea} />
 
-      <BorradorConIA pedido={p} />
+      <BorradorConIA
+        pedido={p}
+        nombreDeItem={nombreDeItem}
+        nombreDeRaza={nombreDeRaza}
+      />
 
       <Modal
         open={entrega !== null}

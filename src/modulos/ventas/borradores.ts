@@ -1,7 +1,13 @@
 /** Lo que la pantalla dice de un borrador con IA (#16), sin React. */
 import { esApiError } from '@/api/client'
 import { segundosHastaMedianocheEnArgentina } from '@/lib/fechas'
-import type { EstadoBorrador, MotivoRechazo } from '@/tipos/dominio'
+import { formatearImporte } from '@/lib/importes'
+import type {
+  ContenidoDeBorrador,
+  EstadoBorrador,
+  MotivoRechazo,
+  Pedido,
+} from '@/tipos/dominio'
 
 export const CLAVE_BORRADORES = 'borradores'
 
@@ -54,4 +60,110 @@ export function formatearEspera(segundos: number): string {
   const horas = Math.floor(minutos / 60)
   const resto = minutos % 60
   return resto ? `${horas} h ${resto} min` : `${horas} h`
+}
+
+/** Los largos máximos del esquema del backend (BorradorValidado). */
+export const LARGO_MAXIMO = {
+  encabezado: 200,
+  cuerpo: 6000,
+  notas: 1000,
+} as const
+
+/** Un pedazo del cuerpo: el título de una sección (una línea sola en
+ *  mayúsculas, como PARTES u OBJETO) o un párrafo con sus saltos de línea. */
+export type BloqueDelCuerpo = { tipo: 'titulo' | 'parrafo'; texto: string }
+
+const esTitulo = (bloque: string) =>
+  !bloque.includes('\n') &&
+  /\p{L}/u.test(bloque) &&
+  bloque === bloque.toLocaleUpperCase('es-AR')
+
+/** El cuerpo en párrafos (separados por una línea en blanco). */
+export function bloquesDelCuerpo(cuerpo: string): BloqueDelCuerpo[] {
+  return cuerpo
+    .replace(/\r\n/g, '\n')
+    .split(/\n[ \t]*\n/)
+    .map((bloque) => bloque.trim())
+    .filter((bloque) => bloque !== '')
+    .map((texto) => ({ tipo: esTitulo(texto) ? 'titulo' : 'parrafo', texto }))
+}
+
+export const TITULO_DEL_DETALLE =
+  'Detalle del pedido (calculado por el sistema)'
+
+/** El detalle que acompaña al texto, con nombres en lugar de ids. Los
+ *  importes son los que manda el backend: el front no los calcula. */
+export type DetalleDelDocumento = {
+  moneda: string
+  lineas: {
+    cantidad: number
+    item: string
+    raza: string
+    precio_unitario: string
+    neto: string
+  }[]
+  neto: string
+  iva: string
+  total: string
+}
+
+/** El pedido del que sale el documento, con los nombres de su catálogo. */
+export type PedidoDelDocumento = {
+  pedido: Pedido
+  nombreDeItem: (id: string) => string
+  nombreDeRaza: (id: string) => string
+}
+
+export type FilaDelDetalle = DetalleDelDocumento['lineas'][number] & {
+  id: string
+}
+
+/** El detalle con nombres, en el orden en que se cargaron las líneas. */
+export function detalleDelPedido({
+  pedido,
+  nombreDeItem,
+  nombreDeRaza,
+}: PedidoDelDocumento): DetalleDelDocumento & { lineas: FilaDelDetalle[] } {
+  return {
+    moneda: pedido.moneda,
+    lineas: [...pedido.items]
+      .sort((a, b) => a.numero_linea - b.numero_linea)
+      .map((l) => ({
+        id: l.id,
+        cantidad: l.cantidad,
+        item: nombreDeItem(l.item_vendible_id),
+        raza: nombreDeRaza(l.raza_id),
+        precio_unitario: l.precio_unitario,
+        neto: l.neto,
+      })),
+    neto: pedido.neto,
+    iva: pedido.iva,
+    total: pedido.total,
+  }
+}
+
+/** Todo el documento como texto plano, para pegarlo en otro lado: el
+ *  texto de la IA y, aparte, el detalle calculado por el sistema. */
+export function textoParaCopiar(
+  contenido: ContenidoDeBorrador,
+  detalle: DetalleDelDocumento,
+): string {
+  const importe = (valor: string) =>
+    `${detalle.moneda} ${formatearImporte(valor)}`
+  const partes = [
+    contenido.encabezado,
+    contenido.cuerpo.trim(),
+    [
+      TITULO_DEL_DETALLE,
+      ...detalle.lineas.map(
+        (l) =>
+          `- ${l.cantidad} × ${l.item}, raza ${l.raza}: precio unitario ${importe(l.precio_unitario)}, neto ${importe(l.neto)}`,
+      ),
+      `Neto: ${importe(detalle.neto)}`,
+      `IVA: ${importe(detalle.iva)}`,
+      `Total: ${importe(detalle.total)}`,
+    ].join('\n'),
+  ]
+  if (contenido.notas.trim()) partes.push(`Notas\n${contenido.notas.trim()}`)
+  return partes.join('\n\n')
 }

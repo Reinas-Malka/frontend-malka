@@ -14,8 +14,11 @@ import {
   claveDeBorrador,
   CONSULTA_CADA_MS,
   EXPLICACION_DE_RECHAZO,
+  LARGO_MAXIMO,
+  type PedidoDelDocumento,
   TOPE_DE_CONSULTAS,
 } from '@/modulos/ventas/borradores'
+import { DocumentoDelBorrador } from '@/modulos/ventas/DocumentoDelBorrador'
 import type { Borrador, ContenidoDeBorrador } from '@/tipos/dominio'
 
 /** Generar otro desde un rechazo; undefined si quien mira no puede. */
@@ -26,15 +29,18 @@ export type AccionDeGenerar = {
 }
 
 /** Un borrador: mientras se redacta lo consulta cada 2 s (con tope), y
- *  después muestra el texto para revisar o por qué se rechazó. */
+ *  después muestra el documento para revisar o por qué se rechazó. */
 export function DetalleDeBorrador({
   id,
   claveDelListado,
+  origen,
   generar,
 }: {
   id: string
   /** El listado del pedido: se actualiza con el estado que llega. */
   claveDelListado: readonly unknown[]
+  /** El pedido: de ahí sale el detalle calculado por el sistema. */
+  origen: PedidoDelDocumento
   generar?: AccionDeGenerar
 }) {
   const consultas = useQueryClient()
@@ -147,18 +153,22 @@ export function DetalleDeBorrador({
     <RevisionDeBorrador
       key={borrador.id}
       contenido={borrador.contenido}
+      origen={origen}
       editable={generar !== undefined}
     />
   )
 }
 
-/** El texto de la IA para leer y, quien vende, retocarlo antes de aprobar.
- *  Los cambios quedan solo en la pantalla: todavía no hay dónde guardarlos. */
+/** El documento para leer y, quien vende, retocar el texto antes de
+ *  aprobar. Los cambios quedan solo en la pantalla: todavía no hay dónde
+ *  guardarlos. Copiar copia lo que se ve, con los cambios. */
 function RevisionDeBorrador({
   contenido,
+  origen,
   editable,
 }: {
   contenido: ContenidoDeBorrador
+  origen: PedidoDelDocumento
   editable: boolean
 }) {
   const ids = useId()
@@ -190,16 +200,16 @@ function RevisionDeBorrador({
             <Input
               id={`${ids}-encabezado`}
               value={texto.encabezado}
-              maxLength={200}
+              maxLength={LARGO_MAXIMO.encabezado}
               onChange={cambiar('encabezado')}
             />
           </Field>
           <Field label="Cuerpo" htmlFor={`${ids}-cuerpo`}>
             <Textarea
               id={`${ids}-cuerpo`}
-              rows={10}
+              rows={16}
               value={texto.cuerpo}
-              maxLength={4000}
+              maxLength={LARGO_MAXIMO.cuerpo}
               onChange={cambiar('cuerpo')}
             />
           </Field>
@@ -207,28 +217,13 @@ function RevisionDeBorrador({
             <Textarea
               id={`${ids}-notas`}
               value={texto.notas}
-              maxLength={1000}
+              maxLength={LARGO_MAXIMO.notas}
               onChange={cambiar('notas')}
             />
           </Field>
         </div>
       ) : (
-        <article aria-label="Texto del borrador" className="space-y-3">
-          <h3 className="text-tarjeta-titulo font-semibold text-texto">
-            {texto.encabezado}
-          </h3>
-          <p className="whitespace-pre-line text-sm text-texto">
-            {texto.cuerpo}
-          </p>
-          {texto.notas ? (
-            <div>
-              <h4 className="text-sm font-medium text-texto">Notas</h4>
-              <p className="whitespace-pre-line text-sm text-texto-suave">
-                {texto.notas}
-              </p>
-            </div>
-          ) : null}
-        </article>
+        <DocumentoDelBorrador contenido={texto} origen={origen} />
       )}
 
       {editable ? (

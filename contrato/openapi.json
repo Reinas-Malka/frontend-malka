@@ -256,7 +256,7 @@
     "description": "Esquema de la salida del modelo: solo prosa, nada de numeros.\n\nEstricto: un campo de mas (un \"total\", un \"cbu\") se rechaza, y nada viene\nvacio ni desbordado. El contrato definitivo sale del brief del #40.",
     "properties": {
      "cuerpo": {
-      "maxLength": 4000,
+      "maxLength": 6000,
       "minLength": 1,
       "title": "Cuerpo",
       "type": "string"
