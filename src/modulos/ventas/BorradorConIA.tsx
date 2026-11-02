@@ -177,7 +177,7 @@ export function BorradorConIA(origen: PedidoDelDocumento) {
             : 'Los generan administración y ventas.'}
         </Vacio>
       ) : (
-        <div className="grid gap-3 md:grid-cols-[16rem_1fr]">
+        <div className="grid gap-3 md:grid-cols-[16rem_minmax(0,1fr)]">
           <ul aria-label="Borradores del pedido" className="space-y-1">
             {items.map((b) => (
               <li key={b.id}>
