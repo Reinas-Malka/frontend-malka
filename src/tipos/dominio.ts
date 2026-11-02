@@ -147,6 +147,17 @@ export type Despacho = Omit<Entregar, 'estado'>
  *  (GET /pedidos/{id}/despachos). */
 export type DespachoDeLinea = Esquemas['DespachoDeLinea']
 
+// --- borradores de documentos con IA (backend #40) ---
+/** La IA redacta; los números fiscales los carga una persona y la
+ *  aprobación es siempre del dueño o un admin (dominio, "Aprobación de
+ *  borradores"). contenido solo en borrador; motivo_rechazo solo en
+ *  rechazado. */
+export type Borrador = Esquemas['BorradorRespuesta']
+export type EstadoBorrador = Esquemas['EstadoBorrador']
+export type MotivoRechazo = Esquemas['MotivoRechazo']
+export type ContenidoDeBorrador = Esquemas['BorradorValidado']
+export type BorradorPedido = Esquemas['BorradorPedido']
+
 export const NOMBRE_DE_ESTADO_RESERVA: Record<EstadoReserva, string> = {
   activa: 'Activa',
   consumida: 'Consumida',
