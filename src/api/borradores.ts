@@ -79,7 +79,7 @@ const reinas = (cantidad: number) => (cantidad === 1 ? 'reina' : 'reinas')
 export function contenidoDeEjemplo(c: ContextoDePedido): ContenidoDeBorrador {
   const lineas = c.lineas.map(
     (l) =>
-      `- ${l.cantidad} ${reinas(l.cantidad)} de raza ${l.raza} (ítem ${l.item}).`,
+      `- ${l.cantidad} ${reinas(l.cantidad)} de raza ${l.raza} (producto ${l.item}).`,
   )
   const destino = c.destino
     ? `con destino a ${c.destino}${c.incoterm ? `, en condición ${c.incoterm}` : ''}`
@@ -263,7 +263,7 @@ const contextoDeLaDemo: FuenteDeContexto = async (pedidoId) => {
     throw error
   }
   const cliente = nombreDe(clientes, 'Cliente desconocido')
-  const item = nombreDe(itemsVendibles, 'Ítem desconocido')
+  const item = nombreDe(itemsVendibles, 'Producto desconocido')
   const raza = nombreDe(razas, 'Raza desconocida')
   const lineas = [...pedido.items].sort(
     (a, b) => a.numero_linea - b.numero_linea,

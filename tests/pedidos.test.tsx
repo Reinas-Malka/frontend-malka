@@ -88,8 +88,10 @@ describe('listado de pedidos', () => {
     expect(
       within(exportacion).getByText('Nueva Zelanda (NZ) · CPT'),
     ).toBeTruthy()
-    expect(within(exportacion).getByText('1 línea · 50 reinas')).toBeTruthy()
-    expect(within(exportacion).getByText('USD')).toBeTruthy()
+    // El tamaño en reinas por raza, sin "líneas", y el total con su moneda.
+    expect(within(exportacion).getByText('50 reinas · Carniola')).toBeTruthy()
+    expect(within(exportacion).queryByText(/línea/)).toBeNull()
+    expect(within(exportacion).getByText('US$ 1.925,00')).toBeTruthy()
     expect(screen.getAllByText('Nacional')).toHaveLength(3)
   })
 
@@ -163,7 +165,7 @@ describe('listado de pedidos', () => {
       const zona = within(
         await screen.findByRole('dialog', { name: 'Nuevo pedido' }),
       )
-      // Espera los catálogos de clientes, ítems y razas.
+      // Espera los catálogos de clientes, productos y razas.
       await zona.findByRole('combobox', { name: 'Cliente' })
       return zona
     }
@@ -206,17 +208,21 @@ describe('listado de pedidos', () => {
       )
 
       expect(
-        zona.getByText('Venta nacional: en ARS, sin destino ni incoterm.'),
+        zona.getByText(
+          /Cliente nacional: el pedido va en pesos \(ARS\)\. No hay ventas nacionales en moneda extranjera\./,
+        ),
       ).toBeTruthy()
       expect(zona.queryByRole('combobox', { name: 'Moneda' })).toBeNull()
       expect(zona.queryByRole('combobox', { name: 'Destino' })).toBeNull()
-      expect(linea(zona, 1).getByLabelText('Precio (ARS)')).toBeTruthy()
+      expect(linea(zona, 1).getByLabelText('Precio por reina ($)')).toBeTruthy()
     })
 
     it('marca cada error en su campo y en su línea sin mandar nada', async () => {
       const { usuario } = montar('/ventas/pedidos', ['ventas'])
       const zona = await abrirAlta(usuario)
-      await usuario.click(zona.getByRole('button', { name: 'Agregar línea' }))
+      await usuario.click(
+        zona.getByRole('button', { name: 'Agregar otra raza' }),
+      )
       await usuario.type(linea(zona, 1).getByLabelText(/Precio/), '12,345')
 
       await usuario.click(zona.getByRole('button', { name: 'Crear pedido' }))
@@ -224,7 +230,7 @@ describe('listado de pedidos', () => {
       expect(zona.getByText('Elegí el cliente.')).toBeTruthy()
       expect(zona.getByText('Elegí la fecha de entrega.')).toBeTruthy()
       expect(linea(zona, 1).getByText(/hasta 2 decimales/)).toBeTruthy()
-      expect(linea(zona, 2).getByText('Elegí el ítem.')).toBeTruthy()
+      expect(linea(zona, 2).getByText('Elegí el producto.')).toBeTruthy()
       expect(
         linea(zona, 2).getByText('La cantidad es un número entero.'),
       ).toBeTruthy()
@@ -234,7 +240,7 @@ describe('listado de pedidos', () => {
       expect(
         linea(zona, 2).queryByText('La cantidad es un número entero.'),
       ).toBeNull()
-      expect(linea(zona, 2).getByText('Elegí el ítem.')).toBeTruthy()
+      expect(linea(zona, 2).getByText('Elegí el producto.')).toBeTruthy()
     })
 
     it('quita líneas pero deja al menos una', async () => {
@@ -244,7 +250,9 @@ describe('listado de pedidos', () => {
         zona.getByRole('button', { name: `Quitar la línea ${n}` })
 
       expect(quitar(1).hasAttribute('disabled')).toBe(true)
-      await usuario.click(zona.getByRole('button', { name: 'Agregar línea' }))
+      await usuario.click(
+        zona.getByRole('button', { name: 'Agregar otra raza' }),
+      )
       await usuario.click(quitar(2))
 
       expect(zona.getAllByRole('group')).toHaveLength(1)
@@ -256,9 +264,13 @@ describe('listado de pedidos', () => {
       const zona = await abrirAlta(usuario)
 
       await elegirEn(usuario, zona, 'Cliente', 'Bee Kingdom NZ Ltd')
-      expect(zona.getByRole('combobox', { name: 'Moneda' }).textContent).toBe(
-        'USD',
+      const moneda = zona.getByRole('combobox', { name: 'Moneda' })
+      expect(moneda.textContent).toBe('USD · dólares (US$)')
+      // La regla, al lado del selector: exportación en USD o EUR.
+      expect(moneda.getAttribute('aria-describedby')).toBe(
+        'pedido-moneda-ayuda',
       )
+      expect(zona.getByText(/dólares \(USD\) o en euros \(EUR\)/)).toBeTruthy()
       expect(
         zona.getByRole('combobox', { name: 'Destino' }).textContent,
       ).toContain('(NZ)')
@@ -266,10 +278,13 @@ describe('listado de pedidos', () => {
         target: { value: '2026-12-01' },
       })
       const primera = linea(zona, 1)
-      await elegirEn(usuario, primera, 'Ítem', 'Reina fecundada')
+      await elegirEn(usuario, primera, 'Producto', 'Reina fecundada')
       await elegirEn(usuario, primera, 'Raza', 'Carniola')
       await usuario.type(primera.getByLabelText('Cantidad'), '20')
-      await usuario.type(primera.getByLabelText('Precio (USD)'), '1.500,50')
+      await usuario.type(
+        primera.getByLabelText('Precio por reina (US$)'),
+        '1.500,50',
+      )
 
       await usuario.click(zona.getByRole('button', { name: 'Crear pedido' }))
 

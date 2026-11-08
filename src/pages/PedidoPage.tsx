@@ -13,9 +13,15 @@ import { Button } from '@/components/ui/button'
 import { Cargando, ErrorDePantalla } from '@/components/ui/estados'
 import { Modal, ModalContenido } from '@/components/ui/modal'
 import { DataTable, type Columna } from '@/components/ui/table'
-import { formatearImporte } from '@/lib/importes'
+import {
+  NOMBRE_DE_MONEDA,
+  SIMBOLO_DE_MONEDA,
+  formatearImporte,
+  formatearMonto,
+} from '@/lib/importes'
 import { nombreDePais } from '@/lib/paises'
 import { puedePasar } from '@/lib/pedidos'
+import { capitalizar } from '@/lib/textos'
 import { BorradorConIA } from '@/modulos/ventas/BorradorConIA'
 import { urlParaRegistrarFactura } from '@/modulos/ventas/comprobantes'
 import { DespachoDePedido } from '@/modulos/ventas/DespachoDePedido'
@@ -35,7 +41,7 @@ import {
   faltantesDeStock,
   itemsConBajas,
   razasConBajas,
-  resumenDeLineas,
+  tamanoDelPedido,
 } from '@/modulos/ventas/pedidos'
 import type { Despacho, Moneda, Pedido, PedidoItem } from '@/tipos/dominio'
 import { formatearFecha } from '@/lib/fechas'
@@ -79,7 +85,7 @@ function columnas(
   return [
     {
       clave: 'item_vendible_id',
-      titulo: 'Ítem',
+      titulo: 'Producto',
       render: (l) => (
         <span className="font-medium text-texto">
           {nombreDeItem(l.item_vendible_id)}
@@ -99,7 +105,7 @@ function columnas(
     ...disponible,
     {
       clave: 'precio_unitario',
-      titulo: `Precio (${moneda})`,
+      titulo: `Precio por reina (${SIMBOLO_DE_MONEDA[moneda]})`,
       className: 'text-right font-mono tabular-nums',
       render: (l) => formatearImporte(l.precio_unitario),
     },
@@ -306,7 +312,9 @@ export default function PedidoPage() {
     return (id: string) => nombres.get(id) ?? otro
   }
   const nombreDeCliente = nombre(clientes.data, 'Cliente desconocido')
-  const nombreDeItem = nombre(items.data, 'Ítem desconocido')
+  // Los productos se muestran con mayúscula inicial (el dato no cambia).
+  const nombreDeProducto = nombre(items.data, 'Producto desconocido')
+  const nombreDeItem = (id: string) => capitalizar(nombreDeProducto(id))
   const nombreDeRaza = nombre(razas.data, 'Raza desconocida')
 
   const escribe = puede(identidad, ROLES_VENTAS)
@@ -380,12 +388,14 @@ export default function PedidoPage() {
       {volver}
       <EncabezadoDePagina
         titulo={`Pedido de ${nombreDeCliente(p.cliente_id)}`}
-        descripcion={`Entrega solicitada: ${formatearFecha(p.fecha_entrega_solicitada)} · ${destino} · ${p.moneda}`}
+        descripcion={`Entrega solicitada: ${formatearFecha(p.fecha_entrega_solicitada)} · ${destino} · en ${NOMBRE_DE_MONEDA[p.moneda]} (${p.moneda})`}
         acciones={acciones}
       />
       <div className="flex flex-wrap items-center gap-2">
         <EstadoDePedido estado={p.estado} />
-        <span className="text-sm text-texto-suave">{resumenDeLineas(p)}</span>
+        <span className="text-sm text-texto-suave">
+          {tamanoDelPedido(p, nombreDeRaza)}
+        </span>
         <p role="status" className="text-sm text-ok-texto">
           {aviso}
         </p>
@@ -433,7 +443,7 @@ export default function PedidoPage() {
                 {nombre}
               </dt>
               <dd className="text-right font-mono tabular-nums text-texto">
-                {p.moneda} {formatearImporte(valor)}
+                {formatearMonto(valor, p.moneda)}
               </dd>
             </div>
           ))}

@@ -19,7 +19,8 @@ import {
   erroresDelAlta,
   leerFiltros,
   lineaVacia,
-  resumenDeLineas,
+  explicacionDeMoneda,
+  tamanoDelPedido,
   validarAlta,
   type LineaDePedido,
 } from '../src/modulos/ventas/pedidos'
@@ -365,16 +366,55 @@ describe('listado de pedidos: filtros, tamaño y páginas', () => {
     )
   })
 
-  it('resume el tamaño en líneas y reinas, en singular y plural', () => {
-    expect(resumenDeLineas(RESERVADO)).toBe('1 línea · 50 reinas')
-    const dos = {
-      ...RESERVADO,
+  it('resume el tamaño en reinas y por raza, sin hablar de líneas', () => {
+    const nombre = (id: string) =>
+      DATOS_SIMULADOS.razas.find((r) => r.id === id)?.nombre ?? '?'
+    const [, BUCKFAST, ITALIANA] = DATOS_SIMULADOS.razas
+    expect(tamanoDelPedido(RESERVADO, nombre)).toBe('50 reinas · Carniola')
+    const linea = RESERVADO.items[0]
+    // 200 Buckfast (en dos líneas de distinto producto) y 100 Italiana.
+    const mezclado = {
       items: [
-        { ...RESERVADO.items[0], cantidad: 1 },
-        { ...RESERVADO.items[0], id: 'otra', cantidad: 0 },
+        {
+          ...linea,
+          id: 'a',
+          numero_linea: 1,
+          raza_id: BUCKFAST.id,
+          cantidad: 150,
+        },
+        {
+          ...linea,
+          id: 'b',
+          numero_linea: 2,
+          raza_id: ITALIANA.id,
+          cantidad: 100,
+        },
+        {
+          ...linea,
+          id: 'c',
+          numero_linea: 3,
+          raza_id: BUCKFAST.id,
+          cantidad: 50,
+        },
       ],
     }
-    expect(resumenDeLineas(dos)).toBe('2 líneas · 1 reina')
+    expect(tamanoDelPedido(mezclado, nombre)).toBe(
+      '300 reinas · 200 Buckfast, 100 Italiana',
+    )
+    expect(
+      tamanoDelPedido({ items: [{ ...linea, cantidad: 1 }] }, nombre),
+    ).toBe('1 reina · Carniola')
+  })
+
+  it('explica la moneda según el tipo de cliente', () => {
+    expect(explicacionDeMoneda('nacional')).toMatch(/pesos \(ARS\)/)
+    expect(explicacionDeMoneda('nacional')).toMatch(
+      /No hay ventas nacionales en moneda extranjera/,
+    )
+    expect(explicacionDeMoneda('exportacion')).toMatch(
+      /dólares \(USD\) o en euros \(EUR\)/,
+    )
+    expect(explicacionDeMoneda(undefined)).toMatch(/nacional.*exportación/)
   })
 
   it('pagina de a 50, del más nuevo al más viejo, con los filtros puestos', async () => {

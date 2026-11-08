@@ -298,7 +298,7 @@ export function pedidosSimulados({
         if (sinItem.length)
           throw validacion(
             'item_vendible_inexistente',
-            'Algún ítem vendible no existe o está dado de baja.',
+            'Algún producto no existe o está dado de baja.',
             { ids: [...new Set(sinItem)].sort() },
           )
         const lasRazas = await Promise.all(
