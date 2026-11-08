@@ -28,6 +28,8 @@ export function BotonAsistente() {
 
   return (
     <>
+      {/* Espacio al pie de la página: el botón flotante no tapa lo último. */}
+      <div aria-hidden className="h-20" />
       <button
         ref={boton}
         type="button"
