@@ -1,6 +1,6 @@
 import { Hexagon, LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router'
+import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { NAVEGACION, puedeAbrir } from '@/app/navegacion'
 import { NOMBRE_DE_ROL } from '@/auth/identidad'
 import { useSesion } from '@/auth/useSesion'
@@ -114,12 +114,17 @@ export function AppLayout() {
   )
 }
 
+/** El logo lleva al inicio: Indicadores, o lo primero del rol. */
 function Marca() {
   return (
-    <span className="inline-flex items-center gap-2 font-semibold text-texto">
+    <Link
+      to="/"
+      aria-label="Malka Suite, ir al inicio"
+      className="inline-flex items-center gap-2 rounded-control font-semibold text-texto focus-visible:outline-2 focus-visible:outline-acento"
+    >
       <Hexagon aria-hidden className="size-5 fill-miel-500/20 text-miel-400" />
       Malka Suite
-    </span>
+    </Link>
   )
 }
 

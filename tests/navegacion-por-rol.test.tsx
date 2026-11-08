@@ -54,8 +54,10 @@ function montarComo(roles: Rol[], ruta = '/') {
 
 async function enlacesDelMenu(): Promise<string[]> {
   const menu = await screen.findByRole('navigation', { name: 'Principal' })
+  // El logo también es un enlace (al inicio), pero no es una sección.
   return within(menu)
     .queryAllByRole('link')
+    .filter((enlace) => !enlace.getAttribute('aria-label')?.includes('inicio'))
     .map((enlace) => enlace.textContent ?? '')
 }
 
@@ -63,8 +65,8 @@ async function enlacesDelMenu(): Promise<string[]> {
 // este es el test que hay que actualizar.
 const MENU_POR_ROL: Record<Rol, string[]> = {
   admin: [
-    'Tandas',
     'Indicadores',
+    'Tandas',
     'Razas',
     'Parques',
     'Núcleos',
@@ -74,32 +76,32 @@ const MENU_POR_ROL: Record<Rol, string[]> = {
     'Comprobantes',
     'Disponibilidad',
     'Clientes',
-    'Ítems vendibles',
+    'Productos',
     'Embarques',
     'Estado del sistema',
   ],
   produccion: [
-    'Tandas',
     'Indicadores',
+    'Tandas',
     'Razas',
     'Parques',
     'Núcleos',
     'Bancos',
     'Materiales',
     'Disponibilidad',
-    'Ítems vendibles',
+    'Productos',
   ],
   ventas: [
     'Pedidos',
     'Comprobantes',
     'Disponibilidad',
     'Clientes',
-    'Ítems vendibles',
+    'Productos',
     'Embarques',
   ],
   lectura: [
-    'Tandas',
     'Indicadores',
+    'Tandas',
     'Razas',
     'Parques',
     'Núcleos',
@@ -109,7 +111,7 @@ const MENU_POR_ROL: Record<Rol, string[]> = {
     'Comprobantes',
     'Disponibilidad',
     'Clientes',
-    'Ítems vendibles',
+    'Productos',
     'Embarques',
   ],
 }
@@ -131,18 +133,19 @@ describe('menú por rol', () => {
     for (const titulo of ['Exportación', 'Equipo']) {
       expect(within(menu).queryByText(titulo), titulo).toBeNull()
     }
-    // Ítems vendibles, que también carga producción, vive en Ventas.
+    // Productos, que también carga producción, vive en Ventas.
     expect(within(menu).getByText('Ventas')).toBeTruthy()
   })
 })
 
-// El inicio no es una pantalla técnica: lleva a la primera sección del rol.
+// El inicio es Indicadores (prueba del 07/11) para quien lo ve; ventas
+// entra a lo primero de su menú.
 describe('inicio', () => {
   it.each([
-    [['admin'], 'Tandas'],
-    [['produccion'], 'Tandas'],
+    [['admin'], 'Indicadores de producción'],
+    [['produccion'], 'Indicadores de producción'],
     [['ventas'], 'Pedidos'],
-    [['lectura'], 'Tandas'],
+    [['lectura'], 'Indicadores de producción'],
   ] as [Rol[], string][])('%s entra a %s', async (roles, pantalla) => {
     montarComo(roles, '/')
 
@@ -155,6 +158,15 @@ describe('inicio', () => {
         { timeout: 5000 },
       ),
     ).toBeTruthy()
+  })
+
+  it('el logo lleva al inicio', async () => {
+    montarComo(['produccion'], '/produccion/razas')
+
+    const logos = await screen.findAllByRole('link', {
+      name: 'Malka Suite, ir al inicio',
+    })
+    for (const logo of logos) expect(logo.getAttribute('href')).toBe('/')
   })
 
   it('el estado del sistema queda solo para admin', async () => {
