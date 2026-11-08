@@ -493,6 +493,30 @@ export interface paths {
     patch: operations['actualizar_parque_api_v1_parques__parque_id__patch']
     trace?: never
   }
+  '/api/v1/parques/{parque_id}/nucleos': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Crear Nucleos Por Cantidad
+     * @description Crea `cantidad` nucleos en el parque; el sistema elige fila y posicion.
+     *
+     *     Van a una fila nueva (la siguiente a la mas alta del parque), en las
+     *     posiciones 1..cantidad. Con Idempotency-Key, un reintento devuelve lo ya
+     *     creado y no suma nucleos dos veces (#25).
+     */
+    post: operations['crear_nucleos_por_cantidad_api_v1_parques__parque_id__nucleos_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/pedidos': {
     parameters: {
       query?: never
@@ -752,12 +776,15 @@ export interface components {
      * @enum {string}
      */
     Alicuota: '0' | '0.025' | '0.05' | '0.105' | '0.21' | '0.27'
-    /** BancoActualizar */
+    /**
+     * BancoActualizar
+     * @description Se puede renombrar y reactivar; la capacidad queda fija desde el alta.
+     *
+     *     extra="forbid": un PATCH con capacidad_max es 422.
+     */
     BancoActualizar: {
       /** Activo */
       activo?: boolean | null
-      /** Capacidad Max */
-      capacidad_max?: number | null
       /** Identificador */
       identificador?: string | null
     }
@@ -769,7 +796,7 @@ export interface components {
        */
       capacidad_max: number
       /** Identificador */
-      identificador: string
+      identificador?: string | null
     }
     /**
      * BancoDeTanda
@@ -1248,6 +1275,31 @@ export interface components {
       | 'FOB'
       | 'CFR'
       | 'CIF'
+    /**
+     * IntroduccionDeTanda
+     * @description Donde y cuando se introdujo la tanda: un parque en una fecha.
+     *
+     *     Sale del nucleo y la fecha que la celda conserva despues de cosecharse,
+     *     pasar a banco o despacharse: no se pierde con el resto del ciclo.
+     */
+    IntroduccionDeTanda: {
+      /** Celdas */
+      celdas: number
+      /**
+       * Fecha Introduccion
+       * Format: date
+       */
+      fecha_introduccion: string
+      /** Nucleos */
+      nucleos: number
+      /**
+       * Parque Id
+       * Format: uuid
+       */
+      parque_id: string
+      /** Parque Nombre */
+      parque_nombre: string
+    }
     /** ItemVendibleActualizar */
     ItemVendibleActualizar: {
       /** Activo */
@@ -1561,6 +1613,45 @@ export interface components {
       parque_id: string
       /** Posicion */
       posicion: number
+    }
+    /**
+     * NucleosLoteCreados
+     * @description Respuesta del alta por cantidad: cuantos se crearon y donde.
+     */
+    NucleosLoteCreados: {
+      /**
+       * Advertencias
+       * @default []
+       */
+      advertencias: components['schemas']['Advertencia'][]
+      /** Capacidad Max */
+      capacidad_max: number
+      /** Creados */
+      creados: number
+      /** Fila */
+      fila: number
+      /** Nucleos Activos */
+      nucleos_activos: number
+      /**
+       * Parque Id
+       * Format: uuid
+       */
+      parque_id: string
+      /** Posicion Desde */
+      posicion_desde: number
+      /** Posicion Hasta */
+      posicion_hasta: number
+    }
+    /**
+     * NucleosLoteCrear
+     * @description Alta de varios nucleos en un parque: solo la cantidad.
+     *
+     *     El sistema les asigna la ubicacion: una fila nueva, la siguiente a la
+     *     mas alta del parque, con posiciones 1..cantidad.
+     */
+    NucleosLoteCrear: {
+      /** Cantidad */
+      cantidad: number
     }
     /**
      * OperacionCosechar
@@ -1994,6 +2085,30 @@ export interface components {
       raza_id: string
     }
     /**
+     * ResultadoDeTanda
+     * @description Que salio de lo que se introdujo, contado al leer desde las celdas.
+     */
+    ResultadoDeTanda: {
+      /** Cosechadas */
+      cosechadas: number
+      /** Descartadas Con Nucleo */
+      descartadas_con_nucleo: number
+      /** Descartadas Sin Nucleo */
+      descartadas_sin_nucleo: number
+      /** Despachadas */
+      despachadas: number
+      /** En Parque */
+      en_parque: number
+      /** Enjauladas */
+      enjauladas: number
+      /** Enjauladas Sin Banco */
+      enjauladas_sin_banco: number
+      /** Fecha Cosecha */
+      fecha_cosecha: string | null
+      /** Introducidas */
+      introducidas: number
+    }
+    /**
      * SalidaDeBanco
      * @description De que banco salen reinas para una linea, y cuantas.
      */
@@ -2052,6 +2167,16 @@ export interface components {
         [key: string]: number
       }
       consumo: components['schemas']['MovimientoRespuesta']
+      /**
+       * Estado
+       * @enum {string}
+       */
+      estado: 'en_curso' | 'cosechada'
+      /**
+       * Fecha Salida Estimada
+       * Format: date
+       */
+      fecha_salida_estimada: string
       /**
        * Fecha Traslarve
        * Format: date
@@ -2124,8 +2249,9 @@ export interface components {
      *
      *     Solo el detalle: el listado sigue con TandaRespuesta. Los nucleos son los
      *     que tienen celdas de la tanda en el parque; despues de la cosecha quedan
-     *     libres y la lista viene vacia. Las cosechadas sin banco son
-     *     celdas_por_estado["enjaulada"] menos la suma de bancos.
+     *     libres y la lista viene vacia. Los bancos, las enjauladas que hay hoy en
+     *     cada uno. introducciones y resultado no cambian al cosechar, pasar a
+     *     banco o despachar: salen del nucleo y la fecha que cada celda conserva.
      */
     TandaDetalle: {
       /** Bancos */
@@ -2136,6 +2262,16 @@ export interface components {
       celdas_por_estado: {
         [key: string]: number
       }
+      /**
+       * Estado
+       * @enum {string}
+       */
+      estado: 'en_curso' | 'cosechada'
+      /**
+       * Fecha Salida Estimada
+       * Format: date
+       */
+      fecha_salida_estimada: string
       /**
        * Fecha Traslarve
        * Format: date
@@ -2148,6 +2284,8 @@ export interface components {
        * Format: uuid
        */
       id: string
+      /** Introducciones */
+      introducciones: components['schemas']['IntroduccionDeTanda'][]
       /** Madre Id */
       madre_id: string | null
       /** Nucleos */
@@ -2159,6 +2297,7 @@ export interface components {
        * Format: uuid
        */
       raza_id: string
+      resultado: components['schemas']['ResultadoDeTanda']
       /** Retroactivo */
       retroactivo: boolean
     }
@@ -2170,6 +2309,16 @@ export interface components {
       celdas_por_estado: {
         [key: string]: number
       }
+      /**
+       * Estado
+       * @enum {string}
+       */
+      estado: 'en_curso' | 'cosechada'
+      /**
+       * Fecha Salida Estimada
+       * Format: date
+       */
+      fecha_salida_estimada: string
       /**
        * Fecha Traslarve
        * Format: date
@@ -4050,6 +4199,44 @@ export interface operations {
       }
     }
   }
+  crear_nucleos_por_cantidad_api_v1_parques__parque_id__nucleos_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path: {
+        parque_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['NucleosLoteCrear']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['NucleosLoteCreados']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   listar_pedidos_api_v1_pedidos_get: {
     parameters: {
       query?: {
@@ -4460,6 +4647,7 @@ export interface operations {
         raza_id?: string | null
         desde?: string | null
         hasta?: string | null
+        estado?: ('en_curso' | 'cosechada') | null
         /** @description Cantidad maxima de items (1 a 100). */
         limite?: number
         /** @description El campo `siguiente` de la pagina anterior. */

@@ -88,7 +88,13 @@ describe('filtros de las APIs simuladas, como el backend', () => {
           `raza=${BUCKFAST.id}&desde=2026-13-01&hasta=2026-09-30`,
         ),
       ),
-    ).toEqual({ raza_id: BUCKFAST.id, desde: undefined, hasta: '2026-09-30' })
+    ).toEqual({
+      raza_id: BUCKFAST.id,
+      desde: undefined,
+      hasta: '2026-09-30',
+      // Sin ?estado, las en curso (prueba del 07/11).
+      estado: 'en_curso',
+    })
   })
 })
 
@@ -165,19 +171,22 @@ describe('pantallas con los filtros del backend', () => {
     })
 
     it('elegir la raza la pone en la URL y se puede volver a todas', async () => {
-      const { usuario, router } = montar('/produccion/tandas')
+      // Todas: la cosechada no está entre las en curso.
+      const { usuario, router } = montar('/produccion/tandas?estado=todas')
       await screen.findByRole('link', { name: fecha(COSECHADA) })
 
       await elegir(usuario, 'Raza', 'Buckfast')
 
-      expect(router.state.location.search).toBe(`?raza=${BUCKFAST.id}`)
+      expect(router.state.location.search).toBe(
+        `?estado=todas&raza=${BUCKFAST.id}`,
+      )
       await vi.waitFor(() =>
         expect(
           screen.queryByRole('link', { name: fecha(COSECHADA) }),
         ).toBeNull(),
       )
       await elegir(usuario, 'Raza', 'Todas las razas')
-      expect(router.state.location.search).toBe('')
+      expect(router.state.location.search).toBe('?estado=todas')
       expect(
         await screen.findByRole('link', { name: fecha(COSECHADA) }),
       ).toBeTruthy()

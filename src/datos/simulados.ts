@@ -3,6 +3,7 @@
  *  en predios distintos y fechas que respetan el ciclo con las operaciones
  *  del campo (23/10): traslarve D0, introducción ~D10, cosecha ≈ D26. */
 import { conTotales, type PedidoSinTotales } from '@/lib/importes'
+import { fechaDeSalidaEstimada } from '@/lib/tandas'
 import {
   CUPULAS_POR_CUADRO,
   type Banco,
@@ -211,7 +212,10 @@ function porEstado(tandaId: string): Record<string, number> {
   return conteo
 }
 
-const TANDAS_BASE: Omit<Tanda, 'celdas' | 'celdas_por_estado'>[] = [
+const TANDAS_BASE: Omit<
+  Tanda,
+  'celdas' | 'celdas_por_estado' | 'estado' | 'fecha_salida_estimada'
+>[] = [
   {
     id: id(31),
     fecha_traslarve: diaAtras(40),
@@ -248,6 +252,16 @@ export const tandas: Tanda[] = TANDAS_BASE.map((t) => {
     ...t,
     celdas_por_estado,
     celdas: Object.values(celdas_por_estado).reduce((a, b) => a + b, 0),
+    // Como el backend: cosechada si alguna celda pasó por un núcleo y salió.
+    estado: celdas.some(
+      (c) =>
+        c.tanda_id === t.id &&
+        c.nucleo_id !== null &&
+        c.estado !== 'introducida',
+    )
+      ? 'cosechada'
+      : 'en_curso',
+    fecha_salida_estimada: fechaDeSalidaEstimada(t),
   }
 })
 

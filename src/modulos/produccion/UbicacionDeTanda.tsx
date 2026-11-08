@@ -1,5 +1,12 @@
+import { Hexagon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { formatearFecha } from '@/lib/fechas'
 import { celdas, reinas, resumenDe } from '@/modulos/produccion/operaciones'
+import {
+  filasDeResultado,
+  resumenDeIntroduccion,
+} from '@/modulos/produccion/resultadoDeTanda'
 import { ETAPA, etapasDe } from '@/modulos/produccion/tandas'
 import type { NucleoDeTanda, TandaDetalle } from '@/tipos/dominio'
 
@@ -165,5 +172,89 @@ export function UbicacionDeTanda({
         ) : null}
       </section>
     </div>
+  )
+}
+
+/** Dónde entró la tanda: un resumen que queda a la vista ("Introducida el
+ *  12/10 en Parque Norte: 270 celdas en 135 núcleos (2 por núcleo)") y, si
+ *  todavía hay celdas sin introducir, la acción para hacerlo. El parque se
+ *  elige al introducir; los núcleos los reparte el sistema. */
+export function DondeSeIntrodujo({
+  tanda,
+  nombreDeParque,
+  alIntroducir,
+}: {
+  tanda: TandaDetalle
+  nombreDeParque: (id: string) => string
+  /** Solo si se puede introducir y quien mira tiene permiso. */
+  alIntroducir?: () => void
+}) {
+  const resumen = resumenDeIntroduccion(tanda, nombreDeParque)
+  const r = resumenDe(tanda)
+  return (
+    <section
+      aria-labelledby="donde-se-introdujo"
+      className="space-y-3 rounded-tarjeta border border-borde bg-panel p-4"
+    >
+      <h2 id="donde-se-introdujo" className={TITULO}>
+        Introducción en el parque
+      </h2>
+      {resumen.length > 0 ? (
+        <ul className="space-y-1 text-sm text-texto">
+          {resumen.map((linea) => (
+            <li key={linea.clave}>{linea.texto}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-texto-suave">
+          {r.cosechada
+            ? 'Ya se cosechó y los núcleos quedaron libres.'
+            : 'Todavía no se introdujo en ningún parque.'}
+        </p>
+      )}
+      {r.trasladadas > 0 && !r.cosechada ? (
+        <div className="space-y-2">
+          <p className="text-sm text-texto-suave">
+            {`Quedan ${celdas(r.trasladadas)} sin introducir. `}
+            Al introducir elegís el parque, la cantidad y la fecha: el sistema
+            reparte las celdas parejo entre los núcleos activos de ese parque,
+            primero los más libres.
+          </p>
+          {alIntroducir ? (
+            <Button onClick={alIntroducir}>
+              <Hexagon className="size-4" aria-hidden /> Elegir el parque e
+              introducir
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+/** Qué salió de la tanda: introducidas, cosechadas (y a dónde fueron) y
+ *  descartadas, con y sin núcleo (backend #155). */
+export function ResultadoDeLaTanda({ tanda }: { tanda: TandaDetalle }) {
+  const filas = filasDeResultado(tanda, formatearFecha)
+  return (
+    <section aria-labelledby="resultado-de-la-tanda" className="space-y-3">
+      <h2 id="resultado-de-la-tanda" className={TITULO}>
+        Resultado de la tanda
+      </h2>
+      <dl
+        aria-label="Resultado de la tanda"
+        className="divide-y divide-borde rounded-control border border-borde text-sm"
+      >
+        {filas.map((f) => (
+          <div
+            key={f.clave}
+            className="flex items-center justify-between gap-3 px-3 py-2"
+          >
+            <dt className="text-texto">{f.nombre}</dt>
+            <dd className="font-mono text-texto tabular-nums">{f.valor}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   )
 }

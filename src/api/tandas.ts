@@ -10,29 +10,40 @@ import { bancos, nucleos, parques } from '@/api/recursos'
 import { usaDatosSimulados } from '@/datos/cliente'
 import { DATOS_SIMULADOS } from '@/datos/simulados'
 import { esDomingo, hoyEnArgentina } from '@/lib/fechas'
-import { MAXIMO_CELDAS_POR_OPERACION, repartir } from '@/lib/tandas'
+import {
+  MAXIMO_CELDAS_POR_OPERACION,
+  fechaDeSalidaEstimada,
+  repartir,
+} from '@/lib/tandas'
 import {
   CUPULAS_POR_CUADRO,
   type Banco,
   type Celda,
   type EstadoCelda,
+  type EstadoTanda,
   type Material,
   type Nucleo,
   type OperacionCrear,
   type OperacionRealizada,
   type Parque,
+  type IntroduccionDeTanda,
   type Raza,
+  type ResultadoDeTanda,
   type Tanda,
   type TandaCreada,
   type TandaCrear,
   type TandaDetalle,
 } from '@/tipos/dominio'
 
-/** Filtros de GET /api/v1/tandas: raza y rango de fecha de traslarve. */
+/** Filtros de GET /api/v1/tandas: raza, rango de fecha de traslarve y
+ *  estado (en curso o cosechada; sin él, todas). ?estado lo suma el backend
+ *  en feat/observaciones-produccion: hasta entonces lo ignora y la pantalla
+ *  filtra la página que llega (TandasPage). */
 export type FiltrosDeTandas = {
   raza_id?: string
   desde?: string
   hasta?: string
+  estado?: EstadoTanda
 }
 
 export interface ApiTandas {
@@ -142,7 +153,10 @@ const invalido = error(422)
 const conflicto = error(409)
 const noEncontrado = error(404)
 
-type TandaBase = Omit<Tanda, 'celdas' | 'celdas_por_estado'>
+type TandaBase = Omit<
+  Tanda,
+  'celdas' | 'celdas_por_estado' | 'estado' | 'fecha_salida_estimada'
+>
 
 type Semilla = {
   tandas?: readonly Tanda[]
@@ -203,12 +217,28 @@ export function tandasSimuladas({
     celdas.filter(
       (c) => c.tanda_id === id && (estado === undefined || c.estado === estado),
     )
+  /** Alguna celda ya pasó por el parque y salió (YA_COSECHADA del backend):
+   *  vale también para una cosecha de 0. */
+  const yaCosechada = (id: string) =>
+    deLaTanda(id).some(
+      (c) => c.nucleo_id !== null && c.estado !== 'introducida',
+    )
+  const estadoDe = (id: string): EstadoTanda =>
+    yaCosechada(id) ? 'cosechada' : 'en_curso'
+  // Como el backend de feat/observaciones-produccion: el estado y la fecha
+  // de salida estimada se calculan al leer.
   const conCeldas = (tanda: TandaBase): Tanda => {
     const celdas_por_estado: Record<string, number> = {}
     const propias = deLaTanda(tanda.id)
     for (const c of propias)
       celdas_por_estado[c.estado] = (celdas_por_estado[c.estado] ?? 0) + 1
-    return { ...tanda, celdas: propias.length, celdas_por_estado }
+    return {
+      ...tanda,
+      celdas: propias.length,
+      celdas_por_estado,
+      estado: estadoDe(tanda.id),
+      fecha_salida_estimada: fechaDeSalidaEstimada(tanda),
+    }
   }
   /** Cambia esas celdas; todo lo demás queda igual. */
   const cambiar = (ids: Celda[], cambio: (c: Celda) => Celda) => {
@@ -229,13 +259,6 @@ export function tandasSimuladas({
     if (clave) porClave.set(`${alcance}:${clave}`, resultado)
     return resultado
   }
-
-  /** Alguna celda ya pasó por el parque y salió (YA_COSECHADA del backend):
-   *  vale también para una cosecha de 0. */
-  const yaCosechada = (id: string) =>
-    deLaTanda(id).some(
-      (c) => c.nucleo_id !== null && c.estado !== 'introducida',
-    )
 
   const excedida = (pedidas: number, hay: number, estado: string): never => {
     throw conflicto(
@@ -430,6 +453,83 @@ export function tandasSimuladas({
     }
   }
 
+  /** Dónde y cuándo se introdujo: por parque y fecha, desde el núcleo y la
+   *  fecha que la celda conserva después de la cosecha (como el backend de
+   *  feat/observaciones-produccion). */
+  async function introduccionesDe(
+    id: string,
+    todos: ReadonlyMap<string, Nucleo>,
+  ): Promise<IntroduccionDeTanda[]> {
+    const grupos = new Map<
+      string,
+      { parque_id: string; fecha: string; nucleos: Set<string>; celdas: number }
+    >()
+    for (const c of deLaTanda(id)) {
+      const nucleo = c.nucleo_id ? todos.get(c.nucleo_id) : undefined
+      if (!nucleo || !c.fecha_introduccion) continue
+      const clave = `${nucleo.parque_id}|${c.fecha_introduccion}`
+      const grupo = grupos.get(clave) ?? {
+        parque_id: nucleo.parque_id,
+        fecha: c.fecha_introduccion,
+        nucleos: new Set<string>(),
+        celdas: 0,
+      }
+      grupo.nucleos.add(nucleo.id)
+      grupo.celdas += 1
+      grupos.set(clave, grupo)
+    }
+    const lista = await Promise.all(
+      [...grupos.values()].map(async (g) => ({
+        parque_id: g.parque_id,
+        parque_nombre: (await catalogos.parque(g.parque_id))?.nombre ?? '',
+        fecha_introduccion: g.fecha,
+        nucleos: g.nucleos.size,
+        celdas: g.celdas,
+      })),
+    )
+    return lista.sort(
+      (a, b) =>
+        a.fecha_introduccion.localeCompare(b.fecha_introduccion) ||
+        a.parque_nombre.localeCompare(b.parque_nombre),
+    )
+  }
+
+  /** Qué salió de lo introducido, contado desde las celdas. */
+  function resultadoDe(id: string): ResultadoDeTanda {
+    const propias = deLaTanda(id)
+    const cuantas = (filtro: (c: Celda) => boolean) =>
+      propias.filter(filtro).length
+    const conNucleo = (c: Celda) => c.nucleo_id !== null
+    const enjauladas = cuantas((c) => c.estado === 'enjaulada')
+    const despachadas = cuantas((c) => c.estado === 'despachada')
+    const cosecha = propias.find(
+      (c) =>
+        conNucleo(c) &&
+        (c.estado === 'enjaulada' ||
+          c.estado === 'despachada' ||
+          c.estado === 'descartada'),
+    )
+    return {
+      introducidas: cuantas(conNucleo),
+      en_parque: cuantas((c) => c.estado === 'introducida'),
+      cosechadas: enjauladas + despachadas,
+      enjauladas,
+      enjauladas_sin_banco: cuantas(
+        (c) => c.estado === 'enjaulada' && c.banco_id === null,
+      ),
+      despachadas,
+      descartadas_con_nucleo: cuantas(
+        (c) => c.estado === 'descartada' && conNucleo(c),
+      ),
+      descartadas_sin_nucleo: cuantas(
+        (c) => c.estado === 'descartada' && !conNucleo(c),
+      ),
+      fecha_cosecha: cosecha
+        ? (cosecha.fecha_enjaulado ?? cosecha.fecha_descarte)
+        : null,
+    }
+  }
+
   async function detalle(id: string): Promise<TandaDetalle> {
     const tanda = conCeldas(buscar(id))
     const enParque = new Map<string, number>()
@@ -464,6 +564,8 @@ export function tandasSimuladas({
     )
     return {
       ...tanda,
+      introducciones: await introduccionesDe(id, todos),
+      resultado: resultadoDe(id),
       // ORDER BY parque_id, fila, posicion e identificador, como el backend.
       nucleos: nucleosDeLaTanda.sort(
         (a, b) =>
@@ -553,7 +655,7 @@ export function tandasSimuladas({
 
   return {
     instantanea: () => ({ tandas, celdas, razas }),
-    listar: async ({ raza_id, desde, hasta } = {}, cursor) => {
+    listar: async ({ raza_id, desde, hasta, estado } = {}, cursor) => {
       // Como el backend: la tanda más nueva primero; a igual fecha, la
       // cargada después.
       const filtradas = tandas
@@ -562,7 +664,8 @@ export function tandasSimuladas({
           ({ t }) =>
             (!raza_id || t.raza_id === raza_id) &&
             (!desde || t.fecha_traslarve >= desde) &&
-            (!hasta || t.fecha_traslarve <= hasta),
+            (!hasta || t.fecha_traslarve <= hasta) &&
+            (!estado || estadoDe(t.id) === estado),
         )
         .sort(
           (a, b) =>
