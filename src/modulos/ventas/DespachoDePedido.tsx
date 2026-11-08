@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { describirError, esApiError } from '@/api/client'
+import { describirError, detalleTecnico, esApiError } from '@/api/client'
 import { disponibilidad } from '@/api/disponibilidad'
 import type { Errores } from '@/components/catalogo/campos'
 import { Button } from '@/components/ui/button'
@@ -132,9 +132,8 @@ export function DespachoDePedido({
           esApiError(error)
             ? {
                 mensaje: error.mensaje,
-                detalle: [error.codigo, error.requestId]
-                  .filter(Boolean)
-                  .join(' · '),
+                // Código y request id solo si es inesperado (5xx, red).
+                detalle: detalleTecnico(error),
               }
             : { mensaje: 'No se pudo entregar el pedido.', detalle: null },
         )

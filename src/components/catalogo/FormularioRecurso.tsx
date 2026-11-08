@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import { esApiError } from '@/api/client'
+import { detalleTecnico, esApiError } from '@/api/client'
 import {
+  ayudaDe,
   camposVisibles,
   erroresDelBackend,
   validarValores,
@@ -80,9 +81,8 @@ export function FormularioRecurso({
           esApiError(error)
             ? {
                 mensaje: error.mensaje,
-                detalle: [error.codigo, error.requestId]
-                  .filter(Boolean)
-                  .join(' · '),
+                // Código y request id solo si es inesperado (5xx, red).
+                detalle: detalleTecnico(error),
               }
             : { mensaje: 'No se pudo guardar.', detalle: null },
         )
@@ -97,9 +97,10 @@ export function FormularioRecurso({
       {camposVisibles(campos, valores).map((campo) => {
         const id = `campo-${campo.nombre}`
         const error = errores[campo.nombre]
+        const ayuda = ayudaDe(campo, valores)
         const describedBy = error
           ? `${id}-error`
-          : campo.ayuda
+          : ayuda
             ? `${id}-ayuda`
             : undefined
         const valor = valores[campo.nombre] ?? ''
@@ -109,7 +110,7 @@ export function FormularioRecurso({
             label={campo.etiqueta}
             htmlFor={id}
             error={error}
-            ayuda={campo.ayuda}
+            ayuda={ayuda}
           >
             {campo.tipo === 'seleccion' ? (
               <Select
