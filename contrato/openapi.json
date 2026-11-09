@@ -1,6 +1,18 @@
 {
  "components": {
   "schemas": {
+   "AccionPropuesta": {
+    "enum": [
+     "crear_cliente",
+     "crear_pedido",
+     "reservar_pedido",
+     "crear_tanda",
+     "operar_tanda",
+     "pedir_borrador"
+    ],
+    "title": "AccionPropuesta",
+    "type": "string"
+   },
    "Advertencia": {
     "description": "Aviso que no bloquea la operacion (#29; el alta de tanda lo reusa, #27).\n\nLa operacion se hizo igual: el frontend lo muestra y sigue.",
     "properties": {
@@ -658,6 +670,25 @@
     ],
     "title": "CondicionIva",
     "type": "string"
+   },
+   "Consulta": {
+    "description": "Una herramienta de lectura que uso el asistente (\"Consulté disponibilidad\").",
+    "properties": {
+     "resumen": {
+      "title": "Resumen",
+      "type": "string"
+     },
+     "tool": {
+      "title": "Tool",
+      "type": "string"
+     }
+    },
+    "required": [
+     "tool",
+     "resumen"
+    ],
+    "title": "Consulta",
+    "type": "object"
    },
    "DescargaPreparada": {
     "properties": {
@@ -1533,6 +1564,26 @@
      "activo"
     ],
     "title": "MaterialRespuesta",
+    "type": "object"
+   },
+   "MensajeAsistente": {
+    "additionalProperties": false,
+    "properties": {
+     "rol": {
+      "$ref": "#/components/schemas/RolMensaje"
+     },
+     "texto": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Texto",
+      "type": "string"
+     }
+    },
+    "required": [
+     "rol",
+     "texto"
+    ],
+    "title": "MensajeAsistente",
     "type": "object"
    },
    "Moneda": {
@@ -2510,6 +2561,25 @@
     "title": "Pagina[TandaRespuesta]",
     "type": "object"
    },
+   "ParResumen": {
+    "description": "Un renglon del resumen que el front muestra antes de confirmar.",
+    "properties": {
+     "etiqueta": {
+      "title": "Etiqueta",
+      "type": "string"
+     },
+     "valor": {
+      "title": "Valor",
+      "type": "string"
+     }
+    },
+    "required": [
+     "etiqueta",
+     "valor"
+    ],
+    "title": "ParResumen",
+    "type": "object"
+   },
    "ParqueActualizar": {
     "additionalProperties": false,
     "properties": {
@@ -2634,6 +2704,26 @@
      "activo"
     ],
     "title": "ParqueRespuesta",
+    "type": "object"
+   },
+   "PedidoAsistente": {
+    "additionalProperties": false,
+    "description": "Cuerpo de POST /api/v1/asistente: el historial, el ultimo es del usuario.",
+    "properties": {
+     "mensajes": {
+      "items": {
+       "$ref": "#/components/schemas/MensajeAsistente"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "title": "Mensajes",
+      "type": "array"
+     }
+    },
+    "required": [
+     "mensajes"
+    ],
+    "title": "PedidoAsistente",
     "type": "object"
    },
    "PedidoCrear": {
@@ -2902,6 +2992,64 @@
     "title": "PedidoRespuesta",
     "type": "object"
    },
+   "Propuesta": {
+    "description": "Una escritura armada y validada por el servidor, todavia sin ejecutar.\n\n- id: uuid nuevo; el front lo usa como Idempotency-Key al confirmar.\n- metodo y ruta: el endpoint REST existente que la ejecuta.\n- cuerpo: el JSON exacto de ese endpoint, ya validado contra su schema;\n  null cuando el endpoint no lleva cuerpo (reservar un pedido).\n- resumen: armado por el servidor desde el cuerpo y los nombres\n  resueltos, nunca texto del modelo.\n- roles_permitidos: los del endpoint, para deshabilitar el boton si el\n  usuario no puede confirmarla.",
+    "properties": {
+     "accion": {
+      "$ref": "#/components/schemas/AccionPropuesta"
+     },
+     "cuerpo": {
+      "anyOf": [
+       {
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cuerpo"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "metodo": {
+      "const": "POST",
+      "default": "POST",
+      "title": "Metodo",
+      "type": "string"
+     },
+     "resumen": {
+      "items": {
+       "$ref": "#/components/schemas/ParResumen"
+      },
+      "title": "Resumen",
+      "type": "array"
+     },
+     "roles_permitidos": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Roles Permitidos",
+      "type": "array"
+     },
+     "ruta": {
+      "title": "Ruta",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "accion",
+     "ruta",
+     "cuerpo",
+     "resumen",
+     "roles_permitidos"
+    ],
+    "title": "Propuesta",
+    "type": "object"
+   },
    "RazaActualizar": {
     "additionalProperties": false,
     "properties": {
@@ -3075,6 +3223,43 @@
     ],
     "title": "ReservaRespuesta",
     "type": "object"
+   },
+   "RespuestaAsistente": {
+    "properties": {
+     "consultas": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/Consulta"
+      },
+      "title": "Consultas",
+      "type": "array"
+     },
+     "propuestas": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/Propuesta"
+      },
+      "title": "Propuestas",
+      "type": "array"
+     },
+     "texto": {
+      "title": "Texto",
+      "type": "string"
+     }
+    },
+    "required": [
+     "texto"
+    ],
+    "title": "RespuestaAsistente",
+    "type": "object"
+   },
+   "RolMensaje": {
+    "enum": [
+     "usuario",
+     "asistente"
+    ],
+    "title": "RolMensaje",
+    "type": "string"
    },
    "SalidaDeBanco": {
     "additionalProperties": false,
@@ -3604,6 +3789,58 @@
  },
  "openapi": "3.1.0",
  "paths": {
+  "/api/v1/asistente": {
+   "post": {
+    "operationId": "conversar_con_asistente_api_v1_asistente_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PedidoAsistente"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RespuestaAsistente"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     },
+     "429": {
+      "description": "Se paso el limite de IA del criadero"
+     },
+     "503": {
+      "description": "Bedrock no esta disponible"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Conversar Con Asistente",
+    "tags": [
+     "asistente"
+    ]
+   }
+  },
   "/api/v1/bancos": {
    "get": {
     "operationId": "listar_bancos_api_v1_bancos_get",
