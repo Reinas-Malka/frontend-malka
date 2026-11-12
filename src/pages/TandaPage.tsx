@@ -32,12 +32,17 @@ import {
   CLAVE_TANDAS,
   ROLES_PRODUCCION,
   edadEnDias,
+  textoDeSalida,
 } from '@/modulos/produccion/tandas'
 import {
   CeldasDeLaTanda,
+  DondeSeIntrodujo,
+  ResultadoDeLaTanda,
   TablaDeNucleos,
   UbicacionDeTanda,
 } from '@/modulos/produccion/UbicacionDeTanda'
+import { Badge } from '@/components/ui/badge'
+import { estaAtrasada, estadoDeTanda } from '@/lib/tandas'
 import { CLAVE_DISPONIBILIDAD } from '@/modulos/ventas/pedidos'
 import type {
   AccionDeTanda,
@@ -67,9 +72,17 @@ function descripcionDe(tanda: TandaDetalle): string {
       ? `continuadora en fila ${tanda.fila_continuadora}, posición ${tanda.posicion_continuadora}`
       : 'continuadora sin cargar'
   const edad = edadEnDias(tanda)
+  const fechaCosecha = tanda.resultado.fecha_cosecha
+  const salida =
+    estadoDeTanda(tanda) === 'cosechada'
+      ? fechaCosecha
+        ? `Cosechada el ${formatearFecha(fechaCosecha)}`
+        : 'Cosechada'
+      : textoDeSalida(tanda)
   return [
     `Traslarve: ${formatearFecha(tanda.fecha_traslarve)}${tanda.retroactivo ? ' (carga retroactiva)' : ''}`,
     `${edad} ${edad === 1 ? 'día' : 'días'}`,
+    salida,
     continuadora,
   ].join(' · ')
 }
@@ -208,6 +221,13 @@ export default function TandaPage() {
         acciones={acciones}
       />
 
+      {estaAtrasada(tanda) ? (
+        <p className="flex flex-wrap items-center gap-2 text-sm text-texto">
+          <Badge tono="aviso">Atrasada</Badge>
+          Ya pasó el día de salida y todavía no se cosechó.
+        </p>
+      ) : null}
+
       <div role="status" className="empty:hidden">
         {hecho ? (
           <div className="space-y-3 rounded-tarjeta border border-ok/40 bg-ok/10 p-4">
@@ -222,6 +242,18 @@ export default function TandaPage() {
         ) : null}
       </div>
 
+      <DondeSeIntrodujo
+        tanda={tanda}
+        nombreDeParque={(parqueId) =>
+          nombresDeParque.get(parqueId) ?? 'Parque desconocido'
+        }
+        alIntroducir={
+          escribe && posibles.includes('introducir')
+            ? () => abrir('introducir')
+            : undefined
+        }
+      />
+      <ResultadoDeLaTanda tanda={tanda} />
       <CeldasDeLaTanda tanda={tanda} />
       <IndicadoresDeTanda
         tandaId={tanda.id}

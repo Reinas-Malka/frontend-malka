@@ -37,7 +37,7 @@ export const CLAVE_PEDIDOS = 'pedidos'
 export const CLAVE_DISPONIBILIDAD = 'disponibilidad'
 
 /** Todas las filas de un catálogo, también las dadas de baja: un pedido
- *  viejo puede ser de un cliente, un ítem o una raza que ya no está activo
+ *  viejo puede ser de un cliente, un producto o una raza que ya no está activo
  *  y tiene que seguir mostrando su nombre. El backend los excluye si no se
  *  pide ?incluir_inactivos=true. */
 async function conBajas<T>(recurso: {
@@ -91,10 +91,38 @@ export function leerFiltros(params: URLSearchParams): FiltrosDePedidos {
 const plural = (n: number, palabra: string) =>
   `${n} ${palabra}${n === 1 ? '' : 's'}`
 
-/** "2 líneas · 32 reinas": el tamaño del pedido, sin importes. */
-export function resumenDeLineas(pedido: Pedido): string {
-  const reinas = pedido.items.reduce((total, l) => total + l.cantidad, 0)
-  return `${plural(pedido.items.length, 'línea')} · ${plural(reinas, 'reina')}`
+/** El tamaño del pedido en reinas y por raza, sin importes: "300 reinas ·
+ *  200 Buckfast, 100 Italiana". Las líneas de una misma raza se suman (un
+ *  pedido puede llevar dos productos de la misma raza) y las razas van en
+ *  el orden de las líneas. Con una sola raza: "30 reinas · Carniola". */
+export function tamanoDelPedido(
+  pedido: Pick<Pedido, 'items'>,
+  nombreDeRaza: (id: string) => string,
+): string {
+  const porRaza = new Map<string, number>()
+  for (const l of [...pedido.items].sort(
+    (a, b) => a.numero_linea - b.numero_linea,
+  ))
+    porRaza.set(l.raza_id, (porRaza.get(l.raza_id) ?? 0) + l.cantidad)
+  const total = [...porRaza.values()].reduce((suma, n) => suma + n, 0)
+  const razas = [...porRaza]
+  if (razas.length === 0) return plural(total, 'reina')
+  const desglose =
+    razas.length === 1
+      ? nombreDeRaza(razas[0][0])
+      : razas.map(([raza, n]) => `${n} ${nombreDeRaza(raza)}`).join(', ')
+  return `${plural(total, 'reina')} · ${desglose}`
+}
+
+/** Qué moneda lleva el pedido según el cliente (dominio, confirmado por la
+ *  clienta el 11/10: no hay ventas nacionales en moneda extranjera). Sin
+ *  cliente elegido, la regla completa. */
+export function explicacionDeMoneda(tipo: Cliente['tipo'] | undefined): string {
+  if (tipo === 'nacional')
+    return 'Cliente nacional: el pedido va en pesos (ARS). No hay ventas nacionales en moneda extranjera.'
+  if (tipo === 'exportacion')
+    return 'Cliente de exportación: elegí si el pedido va en dólares (USD) o en euros (EUR).'
+  return 'La moneda sale del cliente: nacional, en pesos (ARS); exportación, en dólares (USD) o euros (EUR).'
 }
 
 // --- el alta (FormularioDePedido) ---
@@ -189,7 +217,7 @@ export function validarAlta(
     errores.items = `Un pedido tiene hasta ${MAX_LINEAS} líneas.`
   lineas.forEach((linea, n) => {
     const deLinea: Partial<Record<CampoDeLinea, string | null>> = {
-      item_vendible_id: linea.item_vendible_id ? null : 'Elegí el ítem.',
+      item_vendible_id: linea.item_vendible_id ? null : 'Elegí el producto.',
       raza_id: linea.raza_id ? null : 'Elegí la raza.',
       cantidad: errorDeCantidad(linea.cantidad),
       precio_unitario: errorDePrecio(linea.precio_unitario),
@@ -236,7 +264,7 @@ const CABECERA_POR_CODIGO: Partial<Record<string, string>> = {
   cliente_inexistente: 'cliente_id',
   cliente_inactivo: 'cliente_id',
 }
-/** Los que traen en details.ids los ítems o las razas que fallaron: el
+/** Los que traen en details.ids los productos o las razas que fallaron: el
  *  error va en cada línea que los usa. */
 const LINEA_POR_CODIGO: Partial<Record<string, CampoDeLinea>> = {
   item_vendible_inexistente: 'item_vendible_id',

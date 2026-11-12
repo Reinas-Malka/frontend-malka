@@ -40,6 +40,7 @@
    },
    "BancoActualizar": {
     "additionalProperties": false,
+    "description": "Se puede renombrar y reactivar; la capacidad queda fija desde el alta.\n\nextra=\"forbid\": un PATCH con capacidad_max es 422.",
     "properties": {
      "activo": {
       "anyOf": [
@@ -51,19 +52,6 @@
        }
       ],
       "title": "Activo"
-     },
-     "capacidad_max": {
-      "anyOf": [
-       {
-        "maximum": 10000.0,
-        "minimum": 1.0,
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Capacidad Max"
      },
      "identificador": {
       "anyOf": [
@@ -93,15 +81,19 @@
       "type": "integer"
      },
      "identificador": {
-      "maxLength": 50,
-      "minLength": 1,
-      "title": "Identificador",
-      "type": "string"
+      "anyOf": [
+       {
+        "maxLength": 50,
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Identificador"
      }
     },
-    "required": [
-     "identificador"
-    ],
     "title": "BancoCrear",
     "type": "object"
    },
@@ -1141,6 +1133,42 @@
     "title": "Incoterm",
     "type": "string"
    },
+   "IntroduccionDeTanda": {
+    "description": "Donde y cuando se introdujo la tanda: un parque en una fecha.\n\nSale del nucleo y la fecha que la celda conserva despues de cosecharse,\npasar a banco o despacharse: no se pierde con el resto del ciclo.",
+    "properties": {
+     "celdas": {
+      "title": "Celdas",
+      "type": "integer"
+     },
+     "fecha_introduccion": {
+      "format": "date",
+      "title": "Fecha Introduccion",
+      "type": "string"
+     },
+     "nucleos": {
+      "title": "Nucleos",
+      "type": "integer"
+     },
+     "parque_id": {
+      "format": "uuid",
+      "title": "Parque Id",
+      "type": "string"
+     },
+     "parque_nombre": {
+      "title": "Parque Nombre",
+      "type": "string"
+     }
+    },
+    "required": [
+     "parque_id",
+     "parque_nombre",
+     "fecha_introduccion",
+     "nucleos",
+     "celdas"
+    ],
+    "title": "IntroduccionDeTanda",
+    "type": "object"
+   },
    "ItemVendibleActualizar": {
     "additionalProperties": false,
     "properties": {
@@ -1934,6 +1962,76 @@
      "activo"
     ],
     "title": "NucleoRespuesta",
+    "type": "object"
+   },
+   "NucleosLoteCreados": {
+    "description": "Respuesta del alta por cantidad: cuantos se crearon y donde.",
+    "properties": {
+     "advertencias": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/Advertencia"
+      },
+      "title": "Advertencias",
+      "type": "array"
+     },
+     "capacidad_max": {
+      "title": "Capacidad Max",
+      "type": "integer"
+     },
+     "creados": {
+      "title": "Creados",
+      "type": "integer"
+     },
+     "fila": {
+      "title": "Fila",
+      "type": "integer"
+     },
+     "nucleos_activos": {
+      "title": "Nucleos Activos",
+      "type": "integer"
+     },
+     "parque_id": {
+      "format": "uuid",
+      "title": "Parque Id",
+      "type": "string"
+     },
+     "posicion_desde": {
+      "title": "Posicion Desde",
+      "type": "integer"
+     },
+     "posicion_hasta": {
+      "title": "Posicion Hasta",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "parque_id",
+     "creados",
+     "fila",
+     "posicion_desde",
+     "posicion_hasta",
+     "nucleos_activos",
+     "capacidad_max"
+    ],
+    "title": "NucleosLoteCreados",
+    "type": "object"
+   },
+   "NucleosLoteCrear": {
+    "additionalProperties": false,
+    "description": "Alta de varios nucleos en un parque: solo la cantidad.\n\nEl sistema les asigna la ubicacion: una fila nueva, la siguiente a la\nmas alta del parque, con posiciones 1..cantidad.",
+    "properties": {
+     "cantidad": {
+      "maximum": 1000.0,
+      "minimum": 1.0,
+      "title": "Cantidad",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "cantidad"
+    ],
+    "title": "NucleosLoteCrear",
     "type": "object"
    },
    "OperacionCosechar": {
@@ -3076,6 +3174,68 @@
     "title": "ReservaRespuesta",
     "type": "object"
    },
+   "ResultadoDeTanda": {
+    "description": "Que salio de lo que se introdujo, contado al leer desde las celdas.",
+    "properties": {
+     "cosechadas": {
+      "title": "Cosechadas",
+      "type": "integer"
+     },
+     "descartadas_con_nucleo": {
+      "title": "Descartadas Con Nucleo",
+      "type": "integer"
+     },
+     "descartadas_sin_nucleo": {
+      "title": "Descartadas Sin Nucleo",
+      "type": "integer"
+     },
+     "despachadas": {
+      "title": "Despachadas",
+      "type": "integer"
+     },
+     "en_parque": {
+      "title": "En Parque",
+      "type": "integer"
+     },
+     "enjauladas": {
+      "title": "Enjauladas",
+      "type": "integer"
+     },
+     "enjauladas_sin_banco": {
+      "title": "Enjauladas Sin Banco",
+      "type": "integer"
+     },
+     "fecha_cosecha": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Cosecha"
+     },
+     "introducidas": {
+      "title": "Introducidas",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "introducidas",
+     "en_parque",
+     "cosechadas",
+     "enjauladas",
+     "enjauladas_sin_banco",
+     "despachadas",
+     "descartadas_con_nucleo",
+     "descartadas_sin_nucleo",
+     "fecha_cosecha"
+    ],
+    "title": "ResultadoDeTanda",
+    "type": "object"
+   },
    "SalidaDeBanco": {
     "additionalProperties": false,
     "description": "De que banco salen reinas para una linea, y cuantas.",
@@ -3185,6 +3345,19 @@
      "consumo": {
       "$ref": "#/components/schemas/MovimientoRespuesta"
      },
+     "estado": {
+      "enum": [
+       "en_curso",
+       "cosechada"
+      ],
+      "title": "Estado",
+      "type": "string"
+     },
+     "fecha_salida_estimada": {
+      "format": "date",
+      "title": "Fecha Salida Estimada",
+      "type": "string"
+     },
      "fecha_traslarve": {
       "format": "date",
       "title": "Fecha Traslarve",
@@ -3248,6 +3421,8 @@
      "raza_id",
      "madre_id",
      "fecha_traslarve",
+     "fecha_salida_estimada",
+     "estado",
      "retroactivo",
      "fila_continuadora",
      "posicion_continuadora",
@@ -3338,7 +3513,7 @@
     "type": "object"
    },
    "TandaDetalle": {
-    "description": "GET de una tanda: ademas de las celdas por estado, donde estan.\n\nSolo el detalle: el listado sigue con TandaRespuesta. Los nucleos son los\nque tienen celdas de la tanda en el parque; despues de la cosecha quedan\nlibres y la lista viene vacia. Las cosechadas sin banco son\nceldas_por_estado[\"enjaulada\"] menos la suma de bancos.",
+    "description": "GET de una tanda: ademas de las celdas por estado, donde estan.\n\nSolo el detalle: el listado sigue con TandaRespuesta. Los nucleos son los\nque tienen celdas de la tanda en el parque; despues de la cosecha quedan\nlibres y la lista viene vacia. Los bancos, las enjauladas que hay hoy en\ncada uno. introducciones y resultado no cambian al cosechar, pasar a\nbanco o despachar: salen del nucleo y la fecha que cada celda conserva.",
     "properties": {
      "bancos": {
       "items": {
@@ -3357,6 +3532,19 @@
       },
       "title": "Celdas Por Estado",
       "type": "object"
+     },
+     "estado": {
+      "enum": [
+       "en_curso",
+       "cosechada"
+      ],
+      "title": "Estado",
+      "type": "string"
+     },
+     "fecha_salida_estimada": {
+      "format": "date",
+      "title": "Fecha Salida Estimada",
+      "type": "string"
      },
      "fecha_traslarve": {
       "format": "date",
@@ -3378,6 +3566,13 @@
       "format": "uuid",
       "title": "Id",
       "type": "string"
+     },
+     "introducciones": {
+      "items": {
+       "$ref": "#/components/schemas/IntroduccionDeTanda"
+      },
+      "title": "Introducciones",
+      "type": "array"
      },
      "madre_id": {
       "anyOf": [
@@ -3414,6 +3609,9 @@
       "title": "Raza Id",
       "type": "string"
      },
+     "resultado": {
+      "$ref": "#/components/schemas/ResultadoDeTanda"
+     },
      "retroactivo": {
       "title": "Retroactivo",
       "type": "boolean"
@@ -3424,13 +3622,17 @@
      "raza_id",
      "madre_id",
      "fecha_traslarve",
+     "fecha_salida_estimada",
+     "estado",
      "retroactivo",
      "fila_continuadora",
      "posicion_continuadora",
      "celdas",
      "celdas_por_estado",
      "nucleos",
-     "bancos"
+     "bancos",
+     "introducciones",
+     "resultado"
     ],
     "title": "TandaDetalle",
     "type": "object"
@@ -3447,6 +3649,19 @@
       },
       "title": "Celdas Por Estado",
       "type": "object"
+     },
+     "estado": {
+      "enum": [
+       "en_curso",
+       "cosechada"
+      ],
+      "title": "Estado",
+      "type": "string"
+     },
+     "fecha_salida_estimada": {
+      "format": "date",
+      "title": "Fecha Salida Estimada",
+      "type": "string"
      },
      "fecha_traslarve": {
       "format": "date",
@@ -3507,6 +3722,8 @@
      "raza_id",
      "madre_id",
      "fecha_traslarve",
+     "fecha_salida_estimada",
+     "estado",
      "retroactivo",
      "fila_continuadora",
      "posicion_continuadora",
@@ -6892,6 +7109,83 @@
     ]
    }
   },
+  "/api/v1/parques/{parque_id}/nucleos": {
+   "post": {
+    "description": "Crea `cantidad` nucleos en el parque; el sistema elige fila y posicion.\n\nVan a una fila nueva (la siguiente a la mas alta del parque), en las\nposiciones 1..cantidad. Con Idempotency-Key, un reintento devuelve lo ya\ncreado y no suma nucleos dos veces (#25).",
+    "operationId": "crear_nucleos_por_cantidad_api_v1_parques__parque_id__nucleos_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "parque_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Parque Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/NucleosLoteCrear"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NucleosLoteCreados"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Crear Nucleos Por Cantidad",
+    "tags": [
+     "parques"
+    ]
+   }
+  },
   "/api/v1/pedidos": {
    "get": {
     "operationId": "listar_pedidos_api_v1_pedidos_get",
@@ -7712,6 +8006,26 @@
         }
        ],
        "title": "Hasta"
+      }
+     },
+     {
+      "in": "query",
+      "name": "estado",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "en_curso",
+          "cosechada"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Estado"
       }
      },
      {

@@ -37,7 +37,12 @@ export const rutas: RouteObject[] = [
           { path: 'estado', element: <StatusPage /> },
           { path: 'produccion/razas', lazy: catalogo('RazasPage') },
           { path: 'produccion/madres', lazy: catalogo('MadresPage') },
-          { path: 'produccion/parques', lazy: catalogo('ParquesPage') },
+          {
+            path: 'produccion/parques',
+            lazy: async () => ({
+              Component: (await import('@/pages/ParquesPage')).default,
+            }),
+          },
           {
             path: 'produccion/nucleos',
             lazy: async () => ({

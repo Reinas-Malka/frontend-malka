@@ -16,7 +16,9 @@ export type Campo = {
   /** Largo máximo (texto) o valor máximo (número). */
   max?: number
   min?: number
-  ayuda?: string
+  /** Texto debajo del campo. Puede depender de lo cargado (p. ej. la fecha
+   *  de salida de una tanda según el traslarve elegido). */
+  ayuda?: string | ((valores: Valores) => string | undefined)
   placeholder?: string
   opciones?: (valores: Valores) => Opcion[]
   /** Campos condicionales: p. ej. la condición de IVA según el tipo de cliente. */
@@ -28,6 +30,11 @@ export type Campo = {
 }
 
 export type Errores = Record<string, string>
+
+/** La ayuda del campo con los valores de ahora. */
+export function ayudaDe(campo: Campo, valores: Valores): string | undefined {
+  return typeof campo.ayuda === 'function' ? campo.ayuda(valores) : campo.ayuda
+}
 
 export function camposVisibles(
   campos: readonly Campo[],

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { NAVEGACION, primerDestino, puedeAbrir } from '../src/app/navegacion'
+import {
+  MOSTRAR_NUCLEOS_EN_EL_MENU,
+  NAVEGACION,
+  PAGINA_PRINCIPAL,
+  primerDestino,
+  puedeAbrir,
+} from '../src/app/navegacion'
 import type { Identidad, Rol } from '../src/auth/identidad'
 
 const como = (...roles: Rol[]): Identidad => ({
@@ -34,7 +40,7 @@ describe('puedeAbrir', () => {
   })
 
   it('gana el prefijo más largo', () => {
-    // /ventas no es para producción, pero los ítems vendibles sí.
+    // /ventas no es para producción, pero los productos sí.
     expect(puedeAbrir(como('produccion'), '/ventas/clientes')).toBe(false)
     expect(puedeAbrir(como('produccion'), '/ventas/items-vendibles')).toBe(true)
   })
@@ -53,9 +59,19 @@ describe('puedeAbrir', () => {
 })
 
 describe('primerDestino', () => {
-  it('es la primera sección del menú que el rol abre', () => {
-    expect(primerDestino(como('admin'))).toBe('/produccion/tandas')
+  it('es Indicadores para quien lo ve y, si no, lo primero del menú', () => {
+    for (const rol of ['admin', 'produccion', 'lectura'] as const)
+      expect(primerDestino(como(rol)), rol).toBe(PAGINA_PRINCIPAL)
+    expect(PAGINA_PRINCIPAL).toBe('/produccion/kpis')
     expect(primerDestino(como('ventas'))).toBe('/ventas/pedidos')
+  })
+
+  it('Indicadores encabeza el menú y Núcleos se oculta con una constante', () => {
+    const produccion = NAVEGACION[0].enlaces.map((e) => e.a)
+    expect(produccion[0]).toBe(PAGINA_PRINCIPAL)
+    expect(produccion.includes('/produccion/nucleos')).toBe(
+      MOSTRAR_NUCLEOS_EN_EL_MENU,
+    )
   })
 
   it('sin sesión o sin rol no hay destino', () => {

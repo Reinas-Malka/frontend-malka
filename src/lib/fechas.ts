@@ -66,6 +66,13 @@ export function diasEntre(desde: string, hasta: string): number {
   return Math.round((dia(hasta) - dia(desde)) / 86_400_000)
 }
 
+/** Una fecha AAAA-MM-DD más (o menos) tantos días, también AAAA-MM-DD. En
+ *  UTC: no se corre de día por el huso ni por el horario de verano. */
+export function sumarDias(fecha: string, dias: number): string {
+  const base = Date.parse(`${fecha.slice(0, 10)}T00:00:00Z`)
+  return new Date(base + dias * 86_400_000).toISOString().slice(0, 10)
+}
+
 /** Domingo para una fecha AAAA-MM-DD (sin depender del huso del navegador). */
 export function esDomingo(fecha: string): boolean {
   return new Date(`${fecha}T12:00:00Z`).getUTCDay() === 0
