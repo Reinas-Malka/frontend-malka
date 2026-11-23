@@ -217,6 +217,13 @@ export function borradoresSimulados({
         contenido: null,
         motivo_rechazo: null,
         version_prompt: null,
+        hash_contenido: null,
+        corrige_a: null,
+        comprobante_id: null,
+        motivo_descarte: null,
+        aprobado_por: null,
+        aprobado_en: null,
+        pdf_disponible: false,
         creado_en: ahora,
         actualizado_en: ahora,
       }

@@ -38,6 +38,13 @@ const generando = (id = 'b-1'): Borrador => ({
   contenido: null,
   motivo_rechazo: null,
   version_prompt: null,
+  hash_contenido: null,
+  corrige_a: null,
+  comprobante_id: null,
+  motivo_descarte: null,
+  aprobado_por: null,
+  aprobado_en: null,
+  pdf_disponible: false,
   creado_en: '2026-11-01T15:30:00Z',
   actualizado_en: '2026-11-01T15:30:00Z',
 })
@@ -175,6 +182,35 @@ describe('borrador con IA en el detalle del pedido', () => {
     await waitFor(() => expect(pedir).toHaveBeenCalledTimes(2))
     // Cada pedido nuevo lleva su propia Idempotency-Key.
     expect(pedir.mock.calls[1][1]).not.toBe(pedir.mock.calls[0][1])
+  })
+
+  it('un borrador aprobado o descartado (backend #154) muestra su estado', async () => {
+    const contenido = { encabezado: 'Nota', cuerpo: 'Texto', notas: '' }
+    vi.spyOn(api, 'listar').mockResolvedValue({
+      items: [
+        {
+          ...generando('b-2'),
+          estado: 'descartado',
+          contenido,
+          motivo_descarte: 'Falta el flete',
+        },
+        {
+          ...generando('b-1'),
+          estado: 'aprobado',
+          contenido,
+          pdf_disponible: true,
+        },
+      ],
+      siguiente: null,
+    })
+    abrir()
+    const zona = await seccion()
+
+    const lista = within(
+      await zona.findByRole('list', { name: 'Borradores del pedido' }),
+    )
+    expect(lista.getByText('Descartado')).toBeTruthy()
+    expect(lista.getByText('Aprobado')).toBeTruthy()
   })
 
   it('un 429 dice cuántos segundos esperar (Retry-After) y bloquea el botón', async () => {

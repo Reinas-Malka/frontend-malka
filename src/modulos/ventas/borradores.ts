@@ -24,6 +24,10 @@ export const NOMBRE_DE_ESTADO_BORRADOR: Record<EstadoBorrador, string> = {
   generando: 'Redactando',
   borrador: 'Para revisar',
   rechazado: 'No se pudo generar',
+  // La aprobación y el descarte los hace una persona (backend #154); la
+  // pantalla para hacerlo es del #17. Acá solo se muestran.
+  aprobado: 'Aprobado',
+  descartado: 'Descartado',
 }
 
 /** El motivo del rechazo en lenguaje de quien usa la pantalla. */
