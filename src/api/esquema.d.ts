@@ -846,6 +846,14 @@ export interface components {
       | 'crear_tanda'
       | 'operar_tanda'
       | 'pedir_borrador'
+      | 'crear_parque'
+      | 'crear_nucleos'
+      | 'crear_banco'
+      | 'crear_raza'
+      | 'crear_producto'
+      | 'crear_material'
+      | 'registrar_movimiento_material'
+      | 'cancelar_pedido'
     /**
      * Advertencia
      * @description Aviso que no bloquea la operacion (#29; el alta de tanda lo reusa, #27).
@@ -2051,7 +2059,8 @@ export interface components {
     }
     /**
      * PedidoAsistente
-     * @description Cuerpo de POST /api/v1/asistente: el historial, el ultimo es del usuario.
+     * @description Cuerpo de POST /api/v1/asistente: el historial. El ultimo es del
+     *     usuario o un resultado (el asistente sigue con el paso siguiente).
      */
     PedidoAsistente: {
       /** Mensajes */
@@ -2192,16 +2201,27 @@ export interface components {
      *     - id: uuid nuevo; el front lo usa como Idempotency-Key al confirmar.
      *     - metodo y ruta: el endpoint REST existente que la ejecuta.
      *     - cuerpo: el JSON exacto de ese endpoint, ya validado contra su schema;
-     *       null cuando el endpoint no lleva cuerpo (reservar un pedido).
+     *       null cuando el endpoint no lleva cuerpo (reservar un pedido) y {}
+     *       cuando todo lo asigna el sistema (crear un banco).
      *     - resumen: armado por el servidor desde el cuerpo y los nombres
      *       resueltos, nunca texto del modelo.
      *     - roles_permitidos: los del endpoint, para deshabilitar el boton si el
      *       usuario no puede confirmarla.
+     *     - paso: orden de ejecucion dentro de la respuesta (1..n).
+     *     - depende_de: propuestas de la misma respuesta que tienen que
+     *       ejecutarse antes. La ruta o el cuerpo llevan un marcador
+     *       {{ref:<id de esa propuesta>.id}} donde va el id del recurso que crea:
+     *       el front lo reemplaza con el id de la respuesta de ese paso.
      */
     Propuesta: {
       accion: components['schemas']['AccionPropuesta']
       /** Cuerpo */
       cuerpo: Record<string, never> | null
+      /**
+       * Depende De
+       * @default []
+       */
+      depende_de: string[]
       /**
        * Id
        * Format: uuid
@@ -2213,6 +2233,11 @@ export interface components {
        * @constant
        */
       metodo: 'POST'
+      /**
+       * Paso
+       * @default 1
+       */
+      paso: number
       /** Resumen */
       resumen: components['schemas']['ParResumen'][]
       /** Roles Permitidos */
@@ -2367,9 +2392,13 @@ export interface components {
     }
     /**
      * RolMensaje
+     * @description usuario y asistente: la charla. resultado: lo que paso con una
+     *     propuesta (confirmada, descartada o fallida), que el front agrega solo
+     *     despues de que el usuario la confirma o la descarta. Al modelo le llega
+     *     delimitado como dato dentro del turno del usuario, nunca como orden.
      * @enum {string}
      */
-    RolMensaje: 'usuario' | 'asistente'
+    RolMensaje: 'usuario' | 'asistente' | 'resultado'
     /**
      * SalidaDeBanco
      * @description De que banco salen reinas para una linea, y cuantas.

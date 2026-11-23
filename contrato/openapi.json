@@ -8,7 +8,15 @@
      "reservar_pedido",
      "crear_tanda",
      "operar_tanda",
-     "pedir_borrador"
+     "pedir_borrador",
+     "crear_parque",
+     "crear_nucleos",
+     "crear_banco",
+     "crear_raza",
+     "crear_producto",
+     "crear_material",
+     "registrar_movimiento_material",
+     "cancelar_pedido"
     ],
     "title": "AccionPropuesta",
     "type": "string"
@@ -2945,7 +2953,7 @@
    },
    "PedidoAsistente": {
     "additionalProperties": false,
-    "description": "Cuerpo de POST /api/v1/asistente: el historial, el ultimo es del usuario.",
+    "description": "Cuerpo de POST /api/v1/asistente: el historial. El ultimo es del\nusuario o un resultado (el asistente sigue con el paso siguiente).",
     "properties": {
      "mensajes": {
       "items": {
@@ -3230,7 +3238,7 @@
     "type": "object"
    },
    "Propuesta": {
-    "description": "Una escritura armada y validada por el servidor, todavia sin ejecutar.\n\n- id: uuid nuevo; el front lo usa como Idempotency-Key al confirmar.\n- metodo y ruta: el endpoint REST existente que la ejecuta.\n- cuerpo: el JSON exacto de ese endpoint, ya validado contra su schema;\n  null cuando el endpoint no lleva cuerpo (reservar un pedido).\n- resumen: armado por el servidor desde el cuerpo y los nombres\n  resueltos, nunca texto del modelo.\n- roles_permitidos: los del endpoint, para deshabilitar el boton si el\n  usuario no puede confirmarla.",
+    "description": "Una escritura armada y validada por el servidor, todavia sin ejecutar.\n\n- id: uuid nuevo; el front lo usa como Idempotency-Key al confirmar.\n- metodo y ruta: el endpoint REST existente que la ejecuta.\n- cuerpo: el JSON exacto de ese endpoint, ya validado contra su schema;\n  null cuando el endpoint no lleva cuerpo (reservar un pedido) y {}\n  cuando todo lo asigna el sistema (crear un banco).\n- resumen: armado por el servidor desde el cuerpo y los nombres\n  resueltos, nunca texto del modelo.\n- roles_permitidos: los del endpoint, para deshabilitar el boton si el\n  usuario no puede confirmarla.\n- paso: orden de ejecucion dentro de la respuesta (1..n).\n- depende_de: propuestas de la misma respuesta que tienen que\n  ejecutarse antes. La ruta o el cuerpo llevan un marcador\n  {{ref:<id de esa propuesta>.id}} donde va el id del recurso que crea:\n  el front lo reemplaza con el id de la respuesta de ese paso.",
     "properties": {
      "accion": {
       "$ref": "#/components/schemas/AccionPropuesta"
@@ -3246,6 +3254,15 @@
       ],
       "title": "Cuerpo"
      },
+     "depende_de": {
+      "default": [],
+      "items": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "title": "Depende De",
+      "type": "array"
+     },
      "id": {
       "format": "uuid",
       "title": "Id",
@@ -3256,6 +3273,12 @@
       "default": "POST",
       "title": "Metodo",
       "type": "string"
+     },
+     "paso": {
+      "default": 1,
+      "minimum": 1.0,
+      "title": "Paso",
+      "type": "integer"
      },
      "resumen": {
       "items": {
@@ -3648,9 +3671,11 @@
     "type": "object"
    },
    "RolMensaje": {
+    "description": "usuario y asistente: la charla. resultado: lo que paso con una\npropuesta (confirmada, descartada o fallida), que el front agrega solo\ndespues de que el usuario la confirma o la descarta. Al modelo le llega\ndelimitado como dato dentro del turno del usuario, nunca como orden.",
     "enum": [
      "usuario",
-     "asistente"
+     "asistente",
+     "resultado"
     ],
     "title": "RolMensaje",
     "type": "string"
