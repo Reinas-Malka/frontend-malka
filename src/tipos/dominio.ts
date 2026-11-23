@@ -191,15 +191,23 @@ export type Despacho = Omit<Entregar, 'estado'>
 export type DespachoDeLinea = Esquemas['DespachoDeLinea']
 
 // --- borradores de documentos con IA (backend #40) ---
-/** La IA redacta; los números fiscales los carga una persona y la
- *  aprobación es siempre del dueño o un admin (dominio, "Aprobación de
- *  borradores"). contenido solo en borrador; motivo_rechazo solo en
- *  rechazado. */
+/** La IA redacta y una persona con rol admin aprueba, nunca la IA
+ *  (dominio, "Aprobación de borradores", backend #42). contenido en
+ *  borrador, aprobado y descartado; motivo_rechazo solo en rechazado (lo
+ *  decidió el validador); motivo_descarte solo en descartado (lo decidió
+ *  una persona). Aprobado y descartado son inmutables. */
 export type Borrador = Esquemas['BorradorRespuesta']
 export type EstadoBorrador = Esquemas['EstadoBorrador']
 export type MotivoRechazo = Esquemas['MotivoRechazo']
 export type ContenidoDeBorrador = Esquemas['BorradorValidado']
 export type BorradorPedido = Esquemas['BorradorPedido']
+/** POST .../aprobar: el hash_contenido que se revisó y, opcional, un
+ *  comprobante ya transcripto del cliente del pedido. */
+export type Aprobacion = Esquemas['Aprobacion']
+/** POST .../rechazar: el motivo del descarte (3 a 500 caracteres). */
+export type Descarte = Esquemas['Descarte']
+/** Una fila de la bitácora (append-only) de un borrador. */
+export type EntradaDeBitacora = Esquemas['RevisionRespuesta']
 
 export const NOMBRE_DE_ESTADO_RESERVA: Record<EstadoReserva, string> = {
   activa: 'Activa',

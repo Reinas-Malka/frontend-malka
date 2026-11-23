@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Info, Loader2, Pencil, RotateCcw, Sparkles } from 'lucide-react'
-import { useId, useState } from 'react'
+import { type ReactNode, useId, useState } from 'react'
 import { borradores } from '@/api/borradores'
 import { describirError } from '@/api/client'
 import type { Pagina } from '@/api/recurso'
@@ -18,23 +18,32 @@ import {
   type PedidoDelDocumento,
   TOPE_DE_CONSULTAS,
 } from '@/modulos/ventas/borradores'
+import {
+  AvisoDeCorreccion,
+  BorradorAprobado,
+  BorradorDescartado,
+} from '@/modulos/ventas/BorradorCerrado'
+import { DecisionDelBorrador } from '@/modulos/ventas/DecisionDelBorrador'
 import { DocumentoDelBorrador } from '@/modulos/ventas/DocumentoDelBorrador'
 import type { Borrador, ContenidoDeBorrador } from '@/tipos/dominio'
 
-/** Generar otro desde un rechazo; undefined si quien mira no puede. */
+/** Generar otro (desde un rechazo o un descarte) o una corrección de un
+ *  aprobado (con su id); undefined si quien mira no puede. */
 export type AccionDeGenerar = {
-  alGenerar: () => void
+  alGenerar: (corrigeA?: string) => void
   cargando: boolean
   deshabilitado: boolean
 }
 
 /** Un borrador: mientras se redacta lo consulta cada 2 s (con tope), y
- *  después muestra el documento para revisar o por qué se rechazó. */
+ *  después muestra el documento para revisar (con aprobar y descartar),
+ *  por qué se rechazó, o cómo quedó aprobado o descartado. */
 export function DetalleDeBorrador({
   id,
   claveDelListado,
   origen,
   generar,
+  alElegir,
 }: {
   id: string
   /** El listado del pedido: se actualiza con el estado que llega. */
@@ -42,10 +51,14 @@ export function DetalleDeBorrador({
   /** El pedido: de ahí sale el detalle calculado por el sistema. */
   origen: PedidoDelDocumento
   generar?: AccionDeGenerar
+  /** Mirar otro borrador del pedido (el original de una corrección). */
+  alElegir?: (id: string) => void
 }) {
   const consultas = useQueryClient()
   // Desde qué consulta se cuenta el tope: "Seguir esperando" lo corre.
   const [desde, setDesde] = useState(0)
+  // Un aviso que sobrevive a la recarga: el borrador cambió o ya se cerró.
+  const [aviso, setAviso] = useState<string | null>(null)
   const detalle = useQuery({
     queryKey: claveDeBorrador(id),
     queryFn: async () => {
@@ -82,10 +95,33 @@ export function DetalleDeBorrador({
   // Cuántas veces llegó el borrador: el mismo contador que usa el intervalo.
   const consultadas =
     consultas.getQueryState(claveDeBorrador(id))?.dataUpdateCount ?? 0
+  const marco = (vista: ReactNode) => (
+    <div className="space-y-3">
+      {aviso ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-start justify-between gap-2 rounded-control border border-aviso/40 bg-aviso/10 p-3 text-sm text-texto"
+        >
+          <p>{aviso}</p>
+          <Button
+            variante="fantasma"
+            tamano="chico"
+            onClick={() => setAviso(null)}
+          >
+            Entendido
+          </Button>
+        </div>
+      ) : null}
+      {borrador.corrige_a ? (
+        <AvisoDeCorreccion corrigeA={borrador.corrige_a} alElegir={alElegir} />
+      ) : null}
+      {vista}
+    </div>
+  )
 
   if (borrador.estado === 'generando') {
     const agotado = consultadas - desde >= TOPE_DE_CONSULTAS
-    return (
+    return marco(
       <div
         role="status"
         className="flex flex-col items-start gap-2 rounded-tarjeta border border-borde bg-panel p-4 text-sm text-texto"
@@ -112,12 +148,12 @@ export function DetalleDeBorrador({
             La IA está redactando el borrador. Tarda unos segundos.
           </p>
         )}
-      </div>
+      </div>,
     )
   }
 
   if (borrador.estado === 'rechazado')
-    return (
+    return marco(
       <div className="flex flex-col items-start gap-2 rounded-tarjeta border border-peligro/40 bg-peligro/10 p-4 text-sm text-texto">
         <h3 className="font-semibold">No se pudo generar este borrador</h3>
         <p>
@@ -133,13 +169,13 @@ export function DetalleDeBorrador({
               variante="secundario"
               cargando={generar.cargando}
               disabled={generar.deshabilitado}
-              onClick={generar.alGenerar}
+              onClick={() => generar.alGenerar()}
             >
               <Sparkles className="size-4" aria-hidden /> Generar otro borrador
             </Button>
           </>
         ) : null}
-      </div>
+      </div>,
     )
 
   if (!borrador.contenido)
@@ -149,27 +185,59 @@ export function DetalleDeBorrador({
         reintentar={() => void detalle.refetch()}
       />
     )
-  return (
+  if (borrador.estado === 'aprobado')
+    return marco(
+      <BorradorAprobado
+        borrador={borrador}
+        origen={origen}
+        generar={generar}
+      />,
+    )
+  if (borrador.estado === 'descartado')
+    return marco(
+      <BorradorDescartado
+        borrador={borrador}
+        origen={origen}
+        generar={generar}
+      />,
+    )
+  return marco(
     <RevisionDeBorrador
-      key={borrador.id}
+      // Si el texto cambió en el servidor, la revisión arranca de nuevo.
+      key={`${borrador.id}-${borrador.hash_contenido ?? ''}`}
       contenido={borrador.contenido}
       origen={origen}
       editable={generar !== undefined}
-    />
+      decision={(conCambiosLocales) => (
+        <DecisionDelBorrador
+          borrador={borrador}
+          clienteId={origen.pedido.cliente_id}
+          conCambiosLocales={conCambiosLocales}
+          alRecargar={(mensaje) => {
+            setAviso(mensaje)
+            void detalle.refetch()
+          }}
+        />
+      )}
+    />,
   )
 }
 
-/** El documento para leer y, quien vende, retocar el texto antes de
- *  aprobar. Los cambios quedan solo en la pantalla: todavía no hay dónde
- *  guardarlos. Copiar copia lo que se ve, con los cambios. */
+/** El documento para leer y, quien vende, retocar el texto para copiarlo.
+ *  Los cambios quedan solo en la pantalla (el backend no guarda ediciones):
+ *  lo que se aprueba es el texto guardado, así que con cambios no se
+ *  aprueba. Copiar copia lo que se ve, con los cambios. */
 function RevisionDeBorrador({
   contenido,
   origen,
   editable,
+  decision,
 }: {
   contenido: ContenidoDeBorrador
   origen: PedidoDelDocumento
   editable: boolean
+  /** Aprobar y descartar, sabiendo si hay cambios locales. */
+  decision: (conCambiosLocales: boolean) => ReactNode
 }) {
   const ids = useId()
   const [texto, setTexto] = useState(contenido)
@@ -188,8 +256,8 @@ function RevisionDeBorrador({
       <p className="flex items-start gap-2 text-sm text-aviso-texto">
         <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
         <span>
-          Revisá el texto. La aprobación todavía no está disponible: lo que
-          cambies queda solo en esta pantalla y se pierde al salir.
+          Revisá el texto antes de aprobarlo. Si lo cambiás acá, el cambio queda
+          solo en esta pantalla para copiarlo: se aprueba el texto guardado.
         </span>
       </p>
       {cambiado ? <Badge tono="aviso">Con cambios sin guardar</Badge> : null}
@@ -245,6 +313,7 @@ function RevisionDeBorrador({
           ) : null}
         </div>
       ) : null}
+      {decision(cambiado)}
     </div>
   )
 }

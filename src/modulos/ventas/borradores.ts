@@ -1,8 +1,16 @@
-/** Lo que la pantalla dice de un borrador con IA (#16), sin React. */
-import { esApiError } from '@/api/client'
-import { segundosHastaMedianocheEnArgentina } from '@/lib/fechas'
+/** Lo que la pantalla dice de un borrador con IA (#16) y de su aprobación
+ *  (#17), sin React. */
+import { describirError, esApiError } from '@/api/client'
+import type { Rol } from '@/auth/identidad'
+import { nombreDeComprobante } from '@/lib/comprobantes'
+import {
+  formatearFecha,
+  segundosHastaMedianocheEnArgentina,
+  ZONA_ARGENTINA,
+} from '@/lib/fechas'
 import { formatearImporte } from '@/lib/importes'
 import type {
+  Comprobante,
   ContenidoDeBorrador,
   EstadoBorrador,
   MotivoRechazo,
@@ -14,6 +22,13 @@ export const CLAVE_BORRADORES = 'borradores'
 export const claveDeBorrador = (id: string) =>
   [CLAVE_BORRADORES, 'detalle', id] as const
 
+export const claveDeRevisiones = (id: string) =>
+  [CLAVE_BORRADORES, 'revisiones', id] as const
+
+/** Aprueba siempre una persona con rol admin, nunca la IA (backend #42).
+ *  Descartar es de admin y ventas, como pedir un borrador. */
+export const ROLES_APROBACION: readonly Rol[] = ['admin']
+
 /** Cada cuánto se consulta un borrador en generando, y hasta cuántas veces
  *  seguidas (2 minutos): el worker tarda segundos; si pasa el tope, se
  *  ofrece seguir esperando en lugar de consultar para siempre. */
@@ -21,13 +36,110 @@ export const CONSULTA_CADA_MS = 2000
 export const TOPE_DE_CONSULTAS = 60
 
 export const NOMBRE_DE_ESTADO_BORRADOR: Record<EstadoBorrador, string> = {
-  generando: 'Redactando',
+  generando: 'Generando',
   borrador: 'Para revisar',
   rechazado: 'No se pudo generar',
-  // La aprobación y el descarte los hace una persona (backend #154); la
-  // pantalla para hacerlo es del #17. Acá solo se muestran.
   aprobado: 'Aprobado',
   descartado: 'Descartado',
+}
+
+export const TONO_DE_ESTADO_BORRADOR: Record<
+  EstadoBorrador,
+  'neutro' | 'miel' | 'aviso' | 'ok' | 'peligro'
+> = {
+  generando: 'aviso',
+  borrador: 'miel',
+  rechazado: 'peligro',
+  aprobado: 'ok',
+  descartado: 'neutro',
+}
+
+/** El motivo de un descarte: lo pide el schema Descarte del backend. */
+export const MOTIVO_DE_DESCARTE = { minimo: 3, maximo: 500 } as const
+
+/** El error del motivo (ya sin espacios en los bordes), o null si sirve. */
+export function errorDeMotivo(motivo: string): string | null {
+  const largo = motivo.trim().length
+  if (largo === 0) return 'Escribí por qué se descarta.'
+  if (largo < MOTIVO_DE_DESCARTE.minimo)
+    return `Escribí al menos ${MOTIVO_DE_DESCARTE.minimo} caracteres.`
+  if (largo > MOTIVO_DE_DESCARTE.maximo)
+    return `Como mucho ${MOTIVO_DE_DESCARTE.maximo} caracteres.`
+  return null
+}
+
+/** "01/11": el día de un borrador, en Argentina. */
+export function diaYMes(fecha: string): string {
+  return new Intl.DateTimeFormat('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: ZONA_ARGENTINA,
+  }).format(new Date(fecha))
+}
+
+/** "Factura A 0001-00000128 · 13/11/2026": tipo, punto de venta y número
+ *  con el relleno de ceros, y la fecha de emisión. */
+export const etiquetaDeComprobante = (c: Comprobante) =>
+  `${nombreDeComprobante(c)} · ${formatearFecha(c.fecha_emision)}`
+
+/** Los primeros 12 caracteres del hash: la versión que lleva el pie del PDF. */
+export const versionCorta = (hash: string | null) => (hash ?? '').slice(0, 12)
+
+/** Qué hacer con un error de aprobar o descartar:
+ *  - recargar: el borrador cambió o ya se cerró; se recarga y se avisa
+ *    afuera del diálogo;
+ *  - comprobante: el comprobante elegido no sirve; se elige otro;
+ *  - reintentar: el servicio no respondió; se puede volver a intentar con
+ *    la misma clave (no se aprobó nada).
+ *  El mensaje va en lenguaje claro, sin códigos. */
+export type ErrorDeDecision = {
+  tipo: 'recargar' | 'comprobante' | 'reintentar' | 'otro'
+  mensaje: string
+}
+
+const MENSAJES_DE_DECISION: Record<string, ErrorDeDecision> = {
+  version_desactualizada: {
+    tipo: 'recargar',
+    mensaje: 'El borrador cambió, volvé a cargarlo.',
+  },
+  transicion_invalida: {
+    tipo: 'recargar',
+    mensaje:
+      'Este borrador ya no está para revisar: alguien lo aprobó o lo descartó mientras lo mirabas.',
+  },
+  borrador_inmutable: {
+    tipo: 'recargar',
+    mensaje:
+      'Este borrador ya quedó cerrado y no se puede cambiar. Si hay que corregirlo, generá una corrección.',
+  },
+  comprobante_inexistente: {
+    tipo: 'comprobante',
+    mensaje:
+      'El comprobante elegido ya no existe. Elegí otro o aprobá sin comprobante.',
+  },
+  comprobante_de_otro_cliente: {
+    tipo: 'comprobante',
+    mensaje:
+      'El comprobante elegido es de otro cliente. Elegí uno del cliente de este pedido.',
+  },
+  almacenamiento_no_disponible: {
+    tipo: 'reintentar',
+    mensaje:
+      'No se pudo guardar el PDF en este momento, así que no se aprobó nada. Volvé a intentar en un rato.',
+  },
+}
+
+export function errorDeDecision(error: unknown): ErrorDeDecision {
+  if (esApiError(error)) {
+    const conocido = MENSAJES_DE_DECISION[error.codigo]
+    if (conocido) return conocido
+    if (error.status === null || error.status >= 500)
+      return {
+        tipo: 'reintentar',
+        mensaje: `${describirError(error).mensaje} No se guardó nada: volvé a intentar.`,
+      }
+  }
+  return { tipo: 'otro', mensaje: describirError(error).mensaje }
 }
 
 /** El motivo del rechazo en lenguaje de quien usa la pantalla. */
