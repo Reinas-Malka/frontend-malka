@@ -27,6 +27,8 @@ const TONO_DE_BORRADOR: Record<EstadoBorrador, 'aviso' | 'ok' | 'peligro'> = {
   generando: 'aviso',
   borrador: 'ok',
   rechazado: 'peligro',
+  aprobado: 'ok',
+  descartado: 'peligro',
 }
 
 /** Después de un 429: hasta cuándo esperar y la hora del último tic. */

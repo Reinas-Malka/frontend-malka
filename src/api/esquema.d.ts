@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+  '/api/v1/asistente': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Conversar Con Asistente */
+    post: operations['conversar_con_asistente_api_v1_asistente_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/bancos': {
     parameters: {
       query?: never
@@ -157,6 +174,74 @@ export interface paths {
     }
     /** Obtener Borrador */
     get: operations['obtener_borrador_api_v1_documentos_borradores__borrador_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/documentos/borradores/{borrador_id}/aprobar': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Aprobar Borrador */
+    post: operations['aprobar_borrador_api_v1_documentos_borradores__borrador_id__aprobar_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/documentos/borradores/{borrador_id}/pdf': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Descargar Pdf */
+    get: operations['descargar_pdf_api_v1_documentos_borradores__borrador_id__pdf_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/documentos/borradores/{borrador_id}/rechazar': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Rechazar Borrador */
+    post: operations['rechazar_borrador_api_v1_documentos_borradores__borrador_id__rechazar_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/documentos/borradores/{borrador_id}/revisiones': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Revisiones Del Borrador */
+    get: operations['revisiones_del_borrador_api_v1_documentos_borradores__borrador_id__revisiones_get']
     put?: never
     post?: never
     delete?: never
@@ -751,6 +836,17 @@ export type webhooks = Record<string, never>
 export interface components {
   schemas: {
     /**
+     * AccionPropuesta
+     * @enum {string}
+     */
+    AccionPropuesta:
+      | 'crear_cliente'
+      | 'crear_pedido'
+      | 'reservar_pedido'
+      | 'crear_tanda'
+      | 'operar_tanda'
+      | 'pedir_borrador'
+    /**
      * Advertencia
      * @description Aviso que no bloquea la operacion (#29; el alta de tanda lo reusa, #27).
      *
@@ -776,6 +872,17 @@ export interface components {
      * @enum {string}
      */
     Alicuota: '0' | '0.025' | '0.05' | '0.105' | '0.21' | '0.27'
+    /**
+     * Aprobacion
+     * @description POST .../aprobar: la version (hash_contenido) que vio quien aprueba y,
+     *     si ya existe, el comprobante que ARCA emitio para el pedido (#108).
+     */
+    Aprobacion: {
+      /** Comprobante Id */
+      comprobante_id?: string | null
+      /** Hash Contenido */
+      hash_contenido: string
+    }
     /**
      * BancoActualizar
      * @description Se puede renombrar y reactivar; la capacidad queda fija desde el alta.
@@ -832,8 +939,13 @@ export interface components {
     /**
      * BorradorPedido
      * @description POST /api/v1/documentos/borradores: de que pedido redactar.
+     *
+     *     corrige_a: el borrador aprobado del mismo pedido que este corrige. El
+     *     aprobado no se toca (es inmutable); el nuevo lo referencia.
      */
     BorradorPedido: {
+      /** Corrige A */
+      corrige_a?: string | null
       /**
        * Pedido Id
        * Format: uuid
@@ -850,19 +962,33 @@ export interface components {
        * Format: date-time
        */
       actualizado_en: string
+      /** Aprobado En */
+      aprobado_en: string | null
+      /** Aprobado Por */
+      aprobado_por: string | null
+      /** Comprobante Id */
+      comprobante_id: string | null
       contenido: components['schemas']['BorradorValidado'] | null
+      /** Corrige A */
+      corrige_a: string | null
       /**
        * Creado En
        * Format: date-time
        */
       creado_en: string
       estado: components['schemas']['EstadoBorrador']
+      /** Hash Contenido */
+      hash_contenido: string | null
       /**
        * Id
        * Format: uuid
        */
       id: string
+      /** Motivo Descarte */
+      motivo_descarte: string | null
       motivo_rechazo: components['schemas']['MotivoRechazo'] | null
+      /** Pdf Disponible */
+      pdf_disponible: boolean
       /**
        * Pedido Id
        * Format: uuid
@@ -1056,12 +1182,30 @@ export interface components {
       | 'exento'
       | 'consumidor_final'
       | 'cliente_exterior'
+    /**
+     * Consulta
+     * @description Una herramienta de lectura que uso el asistente ("Consulté disponibilidad").
+     */
+    Consulta: {
+      /** Resumen */
+      resumen: string
+      /** Tool */
+      tool: string
+    }
     /** DescargaPreparada */
     DescargaPreparada: {
       /** Expira En Segundos */
       expira_en_segundos: number
       /** Url Descarga */
       url_descarga: string
+    }
+    /**
+     * Descarte
+     * @description POST .../rechazar: por que el borrador no sirve.
+     */
+    Descarte: {
+      /** Motivo */
+      motivo: string
     }
     /**
      * DespachoDeLinea
@@ -1229,7 +1373,8 @@ export interface components {
      * EstadoBorrador
      * @enum {string}
      */
-    EstadoBorrador: 'generando' | 'borrador' | 'rechazado'
+    EstadoBorrador:
+      'generando' | 'borrador' | 'rechazado' | 'aprobado' | 'descartado'
     /**
      * EstadoEmbarque
      * @enum {string}
@@ -1429,6 +1574,12 @@ export interface components {
       stock: string
       /** Unidad */
       unidad: string
+    }
+    /** MensajeAsistente */
+    MensajeAsistente: {
+      rol: components['schemas']['RolMensaje']
+      /** Texto */
+      texto: string
     }
     /**
      * Moneda
@@ -1850,6 +2001,16 @@ export interface components {
       /** Siguiente */
       siguiente?: string | null
     }
+    /**
+     * ParResumen
+     * @description Un renglon del resumen que el front muestra antes de confirmar.
+     */
+    ParResumen: {
+      /** Etiqueta */
+      etiqueta: string
+      /** Valor */
+      valor: string
+    }
     /** ParqueActualizar */
     ParqueActualizar: {
       /** Activo */
@@ -1887,6 +2048,14 @@ export interface components {
       nucleos_activos: number
       /** Ubicacion */
       ubicacion: string
+    }
+    /**
+     * PedidoAsistente
+     * @description Cuerpo de POST /api/v1/asistente: el historial, el ultimo es del usuario.
+     */
+    PedidoAsistente: {
+      /** Mensajes */
+      mensajes: components['schemas']['MensajeAsistente'][]
     }
     /**
      * PedidoCrear
@@ -2016,6 +2185,41 @@ export interface components {
       /** Total */
       total: string
     }
+    /**
+     * Propuesta
+     * @description Una escritura armada y validada por el servidor, todavia sin ejecutar.
+     *
+     *     - id: uuid nuevo; el front lo usa como Idempotency-Key al confirmar.
+     *     - metodo y ruta: el endpoint REST existente que la ejecuta.
+     *     - cuerpo: el JSON exacto de ese endpoint, ya validado contra su schema;
+     *       null cuando el endpoint no lleva cuerpo (reservar un pedido).
+     *     - resumen: armado por el servidor desde el cuerpo y los nombres
+     *       resueltos, nunca texto del modelo.
+     *     - roles_permitidos: los del endpoint, para deshabilitar el boton si el
+     *       usuario no puede confirmarla.
+     */
+    Propuesta: {
+      accion: components['schemas']['AccionPropuesta']
+      /** Cuerpo */
+      cuerpo: Record<string, never> | null
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /**
+       * Metodo
+       * @default POST
+       * @constant
+       */
+      metodo: 'POST'
+      /** Resumen */
+      resumen: components['schemas']['ParResumen'][]
+      /** Roles Permitidos */
+      roles_permitidos: string[]
+      /** Ruta */
+      ruta: string
+    }
     /** RazaActualizar */
     RazaActualizar: {
       /** Activo */
@@ -2084,6 +2288,21 @@ export interface components {
        */
       raza_id: string
     }
+    /** RespuestaAsistente */
+    RespuestaAsistente: {
+      /**
+       * Consultas
+       * @default []
+       */
+      consultas: components['schemas']['Consulta'][]
+      /**
+       * Propuestas
+       * @default []
+       */
+      propuestas: components['schemas']['Propuesta'][]
+      /** Texto */
+      texto: string
+    }
     /**
      * ResultadoDeTanda
      * @description Que salio de lo que se introdujo, contado al leer desde las celdas.
@@ -2108,6 +2327,49 @@ export interface components {
       /** Introducidas */
       introducidas: number
     }
+    /**
+     * RevisionRespuesta
+     * @description Una fila de la bitacora: quien, cuando y sobre que version.
+     */
+    RevisionRespuesta: {
+      /**
+       * Accion
+       * @enum {string}
+       */
+      accion: 'aprobado' | 'descartado'
+      /**
+       * Borrador Id
+       * Format: uuid
+       */
+      borrador_id: string
+      /** Comprobante Id */
+      comprobante_id: string | null
+      /** Hash Contenido */
+      hash_contenido: string
+      /** Hash Snapshot */
+      hash_snapshot: string | null
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /**
+       * Momento
+       * Format: date-time
+       */
+      momento: string
+      /** Motivo */
+      motivo: string | null
+      /** Usuario */
+      usuario: string
+      /** Version Prompt */
+      version_prompt: string | null
+    }
+    /**
+     * RolMensaje
+     * @enum {string}
+     */
+    RolMensaje: 'usuario' | 'asistente'
     /**
      * SalidaDeBanco
      * @description De que banco salen reinas para una linea, y cuantas.
@@ -2389,6 +2651,53 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  conversar_con_asistente_api_v1_asistente_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PedidoAsistente']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RespuestaAsistente']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+      /** @description Se paso el limite de IA del criadero */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Bedrock no esta disponible */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+    }
+  }
   listar_bancos_api_v1_bancos_get: {
     parameters: {
       query?: {
@@ -2943,6 +3252,146 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['BorradorRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  aprobar_borrador_api_v1_documentos_borradores__borrador_id__aprobar_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path: {
+        borrador_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Aprobacion']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BorradorRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  descargar_pdf_api_v1_documentos_borradores__borrador_id__pdf_get: {
+    parameters: {
+      query?: {
+        en_linea?: boolean
+      }
+      header?: never
+      path: {
+        borrador_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DescargaPreparada']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  rechazar_borrador_api_v1_documentos_borradores__borrador_id__rechazar_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path: {
+        borrador_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Descarte']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BorradorRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  revisiones_del_borrador_api_v1_documentos_borradores__borrador_id__revisiones_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        borrador_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RevisionRespuesta'][]
         }
       }
       /** @description Validation Error */
