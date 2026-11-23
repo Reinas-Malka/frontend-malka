@@ -32,14 +32,23 @@ import { useListado } from '@/hooks/useRecurso'
 import {
   CLAVE_TANDAS,
   ETAPA,
+  FILTRO_DE_ESTADO_POR_DEFECTO,
+  OPCIONES_DE_ESTADO,
   ROLES_PRODUCCION,
   aTandaCrear,
   camposDelAlta,
   edadEnDias,
   etapasDe,
+  leerFiltroDeEstado,
   leerFiltrosDeTandas,
+  textoDeSalida,
   valoresIniciales,
 } from '@/modulos/produccion/tandas'
+import {
+  estaAtrasada,
+  estadoDeTanda,
+  fechaDeSalidaEstimada,
+} from '@/lib/tandas'
 import { TODOS } from '@/modulos/ventas/pedidos'
 import type { Tanda, TandaCreada } from '@/tipos/dominio'
 import { errorDePeriodo, formatearFecha } from '@/lib/fechas'
@@ -62,7 +71,7 @@ function CeldasPorEtapa({ tanda }: { tanda: Tanda }) {
 /** Lo que se le dice a quien cargó la tanda: cuántas celdas se crearon y,
  *  si las cúpulas no alcanzaban, que el stock quedó negativo (no bloquea). */
 function resumenDelAlta(creada: TandaCreada): string {
-  const base = `Tanda creada con ${creada.celdas} celdas trasladadas.`
+  const base = `Tanda creada con ${creada.celdas} celdas trasladadas. ${textoDeSalida(creada)}.`
   return creada.advertencias.some((a) => a.code === 'stock_negativo')
     ? `${base} El stock de cúpulas quedó negativo (${Number(creada.stock).toLocaleString('es-AR')}): revisá si falta cargar una compra.`
     : `${base} Quedan ${Number(creada.stock).toLocaleString('es-AR')} cúpulas.`
@@ -77,8 +86,11 @@ export default function TandasPage() {
   const [aviso, setAviso] = useState<{ texto: string; negativo: boolean }>()
   const [params, setParams] = useSearchParams()
   const filtros = leerFiltrosDeTandas(params)
+  const estado = leerFiltroDeEstado(params)
   const errorDelPeriodo = errorDePeriodo(filtros)
-  const hayFiltros = Boolean(filtros.raza_id || filtros.desde || filtros.hasta)
+  const hayFiltros = Boolean(
+    filtros.raza_id || filtros.desde || filtros.hasta || filtros.estado,
+  )
 
   // De a una página: las siguientes llegan con "Cargar más". Los filtros los
   // aplica el backend: cada combinación es otra consulta.
@@ -90,17 +102,27 @@ export default function TandasPage() {
     // Un período al revés no se pide.
     enabled: errorDelPeriodo === null,
   })
-  const filtrar = (clave: 'raza' | 'desde' | 'hasta', valor: string) =>
+  const filtrar = (
+    clave: 'raza' | 'desde' | 'hasta' | 'estado',
+    valor: string,
+  ) =>
     setParams(
       (actuales) => {
         const nuevos = new URLSearchParams(actuales)
-        if (!valor || valor === TODOS) nuevos.delete(clave)
+        // En curso es lo que se ve sin ?estado: no hace falta en la URL.
+        if (
+          !valor ||
+          valor === TODOS ||
+          (clave === 'estado' && valor === FILTRO_DE_ESTADO_POR_DEFECTO)
+        )
+          nuevos.delete(clave)
         else nuevos.set(clave, valor)
         return nuevos
       },
       { replace: true },
     )
-  const limpiar = () => setParams({}, { replace: true })
+  // "Todas" de verdad: sin ?estado volvería a mostrar solo las en curso.
+  const limpiar = () => setParams({ estado: 'todas' }, { replace: true })
   const listaRazas = useListado('razas', razas)
   const listaMateriales = useListado('materiales', materiales)
   const listaMadres = useListado('madres', madres)
@@ -142,6 +164,11 @@ export default function TandasPage() {
               (retroactiva)
             </span>
           ) : null}
+          {estaAtrasada(t) ? (
+            <Badge tono="aviso" className="ml-2">
+              Atrasada
+            </Badge>
+          ) : null}
         </span>
       ),
       orden: (a, b) => a.fecha_traslarve.localeCompare(b.fecha_traslarve),
@@ -156,6 +183,20 @@ export default function TandasPage() {
       titulo: 'Edad',
       render: (t) => <span className="tabular-nums">{edadEnDias(t)} días</span>,
       orden: (a, b) => edadEnDias(a) - edadEnDias(b),
+    },
+    {
+      clave: 'fecha_salida_estimada',
+      titulo: 'Sale aprox.',
+      render: (t) =>
+        estadoDeTanda(t) === 'cosechada' ? (
+          <span className="text-texto-suave">Cosechada</span>
+        ) : (
+          <span className="tabular-nums">
+            {formatearFecha(fechaDeSalidaEstimada(t))}
+          </span>
+        ),
+      orden: (a, b) =>
+        fechaDeSalidaEstimada(a).localeCompare(fechaDeSalidaEstimada(b)),
     },
     {
       clave: 'celdas',
@@ -190,7 +231,12 @@ export default function TandasPage() {
   const error =
     (!listado.data && listado.error) ||
     listas.slice(1).find((l) => l.isError)?.error
-  const filas = listado.data?.pages.flatMap((pagina) => pagina.items) ?? []
+  // El backend filtra por ?estado desde feat/observaciones-produccion; hasta
+  // entonces lo ignora y se filtra acá la página que llegó (con el estado
+  // derivado de las celdas). Con el backend nuevo esto no saca nada.
+  const filas = (
+    listado.data?.pages.flatMap((pagina) => pagina.items) ?? []
+  ).filter((t) => !filtros.estado || estadoDeTanda(t) === filtros.estado)
 
   const nuevo = (
     <Button onClick={() => setAlta(crypto.randomUUID())}>
@@ -202,7 +248,7 @@ export default function TandasPage() {
     <section className="space-y-seccion">
       <EncabezadoDePagina
         titulo="Tandas"
-        descripcion="Cada traslarve, con la raza, su edad y cuántas celdas hay en cada estado. Filtrá por raza o por fecha de traslarve. Se da de alta por cuadros: el sistema crea una celda por cúpula."
+        descripcion="Cada traslarve, con la raza, su edad, cuándo sale (≈ día 26) y cuántas celdas hay en cada estado. Se ven las en curso: cambiá el estado para ver las cosechadas o todas. Se da de alta por cuadros: el sistema crea una celda por cúpula."
         acciones={escribe ? nuevo : undefined}
       />
 
@@ -219,7 +265,21 @@ export default function TandasPage() {
         </p>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-3 lg:max-w-3xl">
+      <div className="grid gap-3 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-4">
+        <Field label="Estado" htmlFor="filtro-estado">
+          <Select value={estado} onValueChange={(v) => filtrar('estado', v)}>
+            <SelectTrigger id="filtro-estado">
+              <SelectValor />
+            </SelectTrigger>
+            <SelectContenido>
+              {OPCIONES_DE_ESTADO.map((o) => (
+                <SelectOpcion key={o.valor} value={o.valor}>
+                  {o.etiqueta}
+                </SelectOpcion>
+              ))}
+            </SelectContenido>
+          </Select>
+        </Field>
         <Field label="Raza" htmlFor="filtro-raza">
           <Select
             value={filtros.raza_id ?? TODOS}
@@ -271,7 +331,7 @@ export default function TandasPage() {
           Corregí las fechas para ver las tandas.
         </Vacio>
       ) : cargando ? (
-        <Cargando columnas={5} />
+        <Cargando columnas={6} />
       ) : error ? (
         <ErrorDePantalla
           error={describirError(error)}
@@ -287,7 +347,12 @@ export default function TandasPage() {
             vacio={
               hayFiltros ? (
                 <Vacio
-                  titulo="Ninguna tanda con estos filtros"
+                  titulo={
+                    filtros.estado === 'en_curso' &&
+                    !(filtros.raza_id || filtros.desde || filtros.hasta)
+                      ? 'No hay tandas en curso'
+                      : 'Ninguna tanda con estos filtros'
+                  }
                   accion={
                     <Button variante="secundario" onClick={limpiar}>
                       Ver todas las tandas

@@ -150,7 +150,7 @@ describe('contenido de ejemplo', () => {
     ])
       expect(cuerpo.split('\n\n')).toContain(seccion)
     expect(cuerpo).toContain(
-      '50 reinas de raza Carniola (ítem Reina fecundada)',
+      '50 reinas de raza Carniola (producto Reina fecundada)',
     )
     expect(cuerpo).toContain(
       '20/11/2026, con destino a Nueva Zelanda (NZ), en condición CPT',

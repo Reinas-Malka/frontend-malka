@@ -5,10 +5,20 @@
 import type { Rol } from '@/auth/identidad'
 import type { Campo, Opcion, Valores } from '@/components/catalogo/campos'
 import type { FiltrosDeTandas } from '@/api/tandas'
-import { diasEntre, esDomingo, hoyEnArgentina, leerPeriodo } from '@/lib/fechas'
+import {
+  diasEntre,
+  esDomingo,
+  esFechaValida,
+  formatearFecha,
+  hoyEnArgentina,
+  leerPeriodo,
+} from '@/lib/fechas'
+import { fechaDeSalidaEstimada } from '@/lib/tandas'
 import {
   CUPULAS_POR_CUADRO,
+  ESTADOS_TANDA,
   type EstadoCelda,
+  type EstadoTanda,
   type Madre,
   type Material,
   type Raza,
@@ -127,6 +137,11 @@ export function camposDelAlta(
       etiqueta: 'Fecha de traslarve',
       tipo: 'fecha',
       requerido: true,
+      // Al elegir la fecha ya se ve cuándo sale (prueba del 07/11).
+      ayuda: (valores) =>
+        esFechaValida(valores.fecha_traslarve)
+          ? textoDeSalida({ fecha_traslarve: valores.fecha_traslarve })
+          : undefined,
       validar: (v, valores) => {
         if (v > hoyEnArgentina()) return 'La fecha no puede ser futura.'
         if (esDomingo(v) && valores.retroactivo !== 'si')
@@ -216,12 +231,44 @@ export function aTandaCrear(v: Valores): TandaCrear {
     madre_id: v.madre_id && v.madre_id !== SIN_MADRE ? v.madre_id : null,
   }
 }
-/** Los filtros del listado viven en la URL (?raza=&desde=&hasta=): se
- *  comparten y sobreviven a ir al detalle y volver. Una fecha mal escrita
- *  se ignora en vez de mandarla y recibir un 422. */
+/** "Sale aprox. el 03/12/2026": traslarve + 26 días (≈ D26), o la fecha que
+ *  ya calcula el backend. */
+export function textoDeSalida(
+  tanda: Parameters<typeof fechaDeSalidaEstimada>[0],
+): string {
+  return `Sale aprox. el ${formatearFecha(fechaDeSalidaEstimada(tanda))}`
+}
+
+/** El filtro de estado del listado: en curso, cosechadas o todas. */
+export type FiltroDeEstado = EstadoTanda | 'todas'
+export const FILTRO_DE_ESTADO_POR_DEFECTO: FiltroDeEstado = 'en_curso'
+export const OPCIONES_DE_ESTADO: { valor: FiltroDeEstado; etiqueta: string }[] =
+  [
+    { valor: 'en_curso', etiqueta: 'En curso' },
+    { valor: 'cosechada', etiqueta: 'Cosechadas' },
+    { valor: 'todas', etiqueta: 'Todas' },
+  ]
+
+const esEstadoDeTanda = (valor: string | null): valor is EstadoTanda =>
+  ESTADOS_TANDA.some((e) => e === valor)
+
+/** ?estado= de la URL; sin él (o con un valor que no existe), En curso. */
+export function leerFiltroDeEstado(params: URLSearchParams): FiltroDeEstado {
+  const estado = params.get('estado')
+  if (estado === 'todas') return 'todas'
+  return esEstadoDeTanda(estado) ? estado : FILTRO_DE_ESTADO_POR_DEFECTO
+}
+
+/** Los filtros del listado viven en la URL (?raza=&desde=&hasta=&estado=):
+ *  se comparten y sobreviven a ir al detalle y volver. Una fecha mal
+ *  escrita se ignora en vez de mandarla y recibir un 422. Sin ?estado se
+ *  ven las tandas en curso: una tanda vieja o cosechada sigue estando, en
+ *  "Cosechadas" o "Todas". */
 export function leerFiltrosDeTandas(params: URLSearchParams): FiltrosDeTandas {
+  const estado = leerFiltroDeEstado(params)
   return {
     raza_id: params.get('raza') || undefined,
     ...leerPeriodo(params),
+    estado: estado === 'todas' ? undefined : estado,
   }
 }

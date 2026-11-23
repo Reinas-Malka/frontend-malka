@@ -120,7 +120,9 @@ describe('borrador con IA en el detalle del pedido', () => {
       zona.getByRole('article', { name: 'Texto del borrador' }),
     )
     expect(
-      texto.getByText(/20 reinas de raza Carniola \(ítem Reina fecundada\)/),
+      texto.getByText(
+        /20 reinas de raza Carniola \(producto Reina fecundada\)/,
+      ),
     ).toBeTruthy()
     // Las secciones del cuerpo y, debajo, el detalle que calcula el sistema.
     expect(texto.getByRole('heading', { name: 'OBJETO' })).toBeTruthy()

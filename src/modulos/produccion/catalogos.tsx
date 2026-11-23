@@ -1,5 +1,6 @@
 /** Catálogos de producción (backend #30). Cada uno es solo configuración:
  *  la pantalla es components/catalogo/PaginaCatalogo. */
+import { Plus } from 'lucide-react'
 import { Link } from 'react-router'
 import type { components } from '@/api/esquema'
 import {
@@ -11,13 +12,17 @@ import {
   razas,
 } from '@/api/recursos'
 import type { ConfigCatalogo } from '@/components/catalogo/PaginaCatalogo'
-import type {
-  Banco,
-  Madre,
-  Material,
-  Nucleo,
-  Parque,
-  Raza,
+import { Button } from '@/components/ui/button'
+import {
+  CAPACIDAD_BANCO_POR_DEFECTO,
+  type Banco,
+  type BancoActualizar,
+  type BancoCrear,
+  type Madre,
+  type Material,
+  type Nucleo,
+  type Parque,
+  type Raza,
 } from '@/tipos/dominio'
 
 type Esquemas = components['schemas']
@@ -50,7 +55,13 @@ export const catalogoRazas: ConfigCatalogo<
     },
   ],
   campos: [
-    { nombre: 'nombre', etiqueta: 'Nombre', requerido: true, max: MAX_NOMBRE },
+    {
+      nombre: 'nombre',
+      etiqueta: 'Nombre',
+      requerido: true,
+      max: MAX_NOMBRE,
+      codigosDeError: ['raza_duplicada'],
+    },
     {
       nombre: 'descripcion',
       etiqueta: 'Descripción',
@@ -100,6 +111,7 @@ export const catalogoMadres: ConfigCatalogo<
       requerido: true,
       max: 50,
       placeholder: 'A-12',
+      codigosDeError: ['madre_duplicada'],
     },
   ],
   nombreDeFila: (m) => m.identificacion,
@@ -110,11 +122,13 @@ export const catalogoMadres: ConfigCatalogo<
   rolesEscritura: ['admin', 'produccion'],
 }
 
-export const catalogoParques: ConfigCatalogo<
+type ConfigParques = ConfigCatalogo<
   Parque,
   Esquemas['ParqueCrear'],
   Esquemas['ParqueActualizar']
-> = {
+>
+
+export const catalogoParques: ConfigParques = {
   clave: 'parques',
   titulo: 'Parques de fecundación',
   descripcion:
@@ -145,7 +159,13 @@ export const catalogoParques: ConfigCatalogo<
     },
   ],
   campos: [
-    { nombre: 'nombre', etiqueta: 'Nombre', requerido: true, max: MAX_NOMBRE },
+    {
+      nombre: 'nombre',
+      etiqueta: 'Nombre',
+      requerido: true,
+      max: MAX_NOMBRE,
+      codigosDeError: ['parque_duplicado'],
+    },
     {
       nombre: 'ubicacion',
       etiqueta: 'Ubicación',
@@ -186,18 +206,47 @@ export const catalogoParques: ConfigCatalogo<
   rolesEscritura: ['admin', 'produccion'],
 }
 
-// Confirmada por la clienta el 16/10; igual que el default del backend.
-const CAPACIDAD_BANCO_POR_DEFECTO = 276
+/** Parques con la acción "Agregar núcleos" en cada fila activa (backend
+ *  #155): la pantalla la pasa solo si quien mira puede escribir. */
+export function catalogoParquesCon(
+  alAgregarNucleos?: (parque: Parque) => void,
+): ConfigParques {
+  if (!alAgregarNucleos) return catalogoParques
+  return {
+    ...catalogoParques,
+    columnas: [
+      ...catalogoParques.columnas,
+      {
+        clave: 'capacidad_max',
+        titulo: 'Agregar',
+        render: (p) =>
+          p.activo ? (
+            <Button
+              variante="secundario"
+              tamano="chico"
+              aria-label={`Agregar núcleos a ${p.nombre}`}
+              onClick={() => alAgregarNucleos(p)}
+            >
+              <Plus aria-hidden className="size-4" /> Núcleos
+            </Button>
+          ) : null,
+      },
+    ],
+  }
+}
 
+/** Bancos. Prueba del 07/11: la capacidad no se edita (276 reinas, fija
+ *  desde el alta) y el identificador no se pide al crear: lo asigna el
+ *  sistema (B-01, B-02…). Al editar se puede renombrar, como admite el
+ *  backend, por si el cartel del banco dice otra cosa. */
 export const catalogoBancos: ConfigCatalogo<
   Banco,
-  Esquemas['BancoCrear'],
-  Esquemas['BancoActualizar']
+  BancoCrear,
+  BancoActualizar
 > = {
   clave: 'bancos',
   titulo: 'Bancos',
-  descripcion:
-    'Donde se guardan las reinas ya enjauladas, listas para despacho. No confundir con el parque de fecundación.',
+  descripcion: `Donde se guardan las reinas ya enjauladas, listas para despacho. Cada banco tiene capacidad para ${CAPACIDAD_BANCO_POR_DEFECTO} reinas. No confundir con el parque de fecundación.`,
   singular: 'banco',
   recurso: bancos,
   columnas: [
@@ -212,6 +261,11 @@ export const catalogoBancos: ConfigCatalogo<
       render: (b) => `${b.reinas_en_banco} / ${b.capacidad_max}`,
       orden: (a, b) => a.reinas_en_banco - b.reinas_en_banco,
     },
+    {
+      clave: 'capacidad_max',
+      titulo: 'Capacidad',
+      render: (b) => `${b.capacidad_max} reinas`,
+    },
   ],
   campos: [
     {
@@ -219,38 +273,20 @@ export const catalogoBancos: ConfigCatalogo<
       etiqueta: 'Identificador',
       requerido: true,
       max: 50,
-      placeholder: 'B-01',
-    },
-    {
-      nombre: 'capacidad_max',
-      etiqueta: 'Capacidad (reinas)',
-      tipo: 'numero',
-      requerido: true,
-      min: 1,
-      max: MAX_CAPACIDAD,
-      validar: (v) =>
-        Number.isInteger(Number(v))
-          ? null
-          : 'La capacidad es un número entero de reinas.',
+      ayuda:
+        'Lo asignó el sistema al crearlo. Cambialo solo si el banco tiene otro cartel.',
+      codigosDeError: ['banco_duplicado'],
+      // En el alta no se pide: lo asigna el sistema.
+      visible: (v) => v.modo === 'edicion',
     },
   ],
-  valoresIniciales: {
-    identificador: '',
-    capacidad_max: String(CAPACIDAD_BANCO_POR_DEFECTO),
-  },
+  explicacionDelAlta: `El sistema le asigna el siguiente identificador (B-01, B-02…) y capacidad para ${CAPACIDAD_BANCO_POR_DEFECTO} reinas. La capacidad no se cambia después.`,
   nombreDeFila: (b) => b.identificador,
-  valoresDeFila: (b) => ({
-    identificador: b.identificador,
-    capacidad_max: String(b.capacidad_max),
-  }),
-  aCrear: (v) => ({
-    identificador: v.identificador.trim(),
-    capacidad_max: Number(v.capacidad_max),
-  }),
-  aActualizar: (v) => ({
-    identificador: v.identificador.trim(),
-    capacidad_max: Number(v.capacidad_max),
-  }),
+  valoresDeFila: (b) => ({ modo: 'edicion', identificador: b.identificador }),
+  // Sin identificador ni capacidad: los pone el backend (#155).
+  aCrear: () => ({}),
+  // Solo el identificador: el PATCH no acepta capacidad_max (422).
+  aActualizar: (v) => ({ identificador: v.identificador.trim() }),
   reactivacion: { activo: true },
   rolesEscritura: ['admin', 'produccion'],
 }
@@ -289,7 +325,13 @@ export const catalogoMateriales: ConfigCatalogo<
     },
   ],
   campos: [
-    { nombre: 'nombre', etiqueta: 'Nombre', requerido: true, max: MAX_NOMBRE },
+    {
+      nombre: 'nombre',
+      etiqueta: 'Nombre',
+      requerido: true,
+      max: MAX_NOMBRE,
+      codigosDeError: ['material_duplicado'],
+    },
     {
       nombre: 'unidad',
       etiqueta: 'Unidad',

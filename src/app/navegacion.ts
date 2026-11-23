@@ -30,7 +30,8 @@ export type Grupo = { titulo: string; enlaces: Enlace[] }
 export const ACCESOS: readonly { prefijo: string; roles: readonly Rol[] }[] = [
   { prefijo: '/produccion', roles: ['admin', 'produccion', 'lectura'] },
   { prefijo: '/ventas', roles: ['admin', 'ventas', 'lectura'] },
-  // Los carga producción y los usa ventas para cotizar.
+  // Los productos (ítems vendibles): los carga producción y los usa ventas
+  // para cotizar.
   { prefijo: '/ventas/items-vendibles', roles: ROLES },
   // La lee cualquier rol (routers/disponibilidad.py): producción también.
   { prefijo: '/ventas/disponibilidad', roles: ROLES },
@@ -56,6 +57,16 @@ export function puedeAbrir(identidad: Identidad | null, ruta: string): boolean {
   return puede(identidad, rolesPara(ruta))
 }
 
+/** ¿Se ve "Núcleos" en el menú? La clienta lo va a revisar (prueba del
+ *  07/11: "no parece muy necesario"): ocultarlo es poner false acá. La ruta
+ *  sigue andando (el enlace desde cada parque lleva a sus núcleos). */
+export const MOSTRAR_NUCLEOS_EN_EL_MENU = true
+
+/** La página de entrada (prueba del 07/11: "Indicadores debería ser la
+ *  página principal"). Quien no la abre (ventas) entra a lo primero que su
+ *  rol ve en el menú. */
+export const PAGINA_PRINCIPAL = '/produccion/kpis'
+
 /** Menú lateral. Un solo lugar: el router y el layout leen de acá.
  *  Solo lo que usa el criadero: la guía de estilo y la subida suelta de
  *  documentos tienen ruta pero no enlace (la carga real va en cada embarque). */
@@ -63,11 +74,13 @@ export const NAVEGACION: Grupo[] = [
   {
     titulo: 'Producción',
     enlaces: [
+      { a: PAGINA_PRINCIPAL, texto: 'Indicadores', icono: ChartColumn },
       { a: '/produccion/tandas', texto: 'Tandas', icono: Layers },
-      { a: '/produccion/kpis', texto: 'Indicadores', icono: ChartColumn },
       { a: '/produccion/razas', texto: 'Razas', icono: Dna },
       { a: '/produccion/parques', texto: 'Parques', icono: Trees },
-      { a: '/produccion/nucleos', texto: 'Núcleos', icono: Grid3x3 },
+      ...(MOSTRAR_NUCLEOS_EN_EL_MENU
+        ? [{ a: '/produccion/nucleos', texto: 'Núcleos', icono: Grid3x3 }]
+        : []),
       { a: '/produccion/bancos', texto: 'Bancos', icono: Warehouse },
       { a: '/produccion/materiales', texto: 'Materiales', icono: Package },
     ],
@@ -79,7 +92,7 @@ export const NAVEGACION: Grupo[] = [
       { a: '/ventas/comprobantes', texto: 'Comprobantes', icono: Receipt },
       { a: '/ventas/disponibilidad', texto: 'Disponibilidad', icono: Boxes },
       { a: '/ventas/clientes', texto: 'Clientes', icono: Users },
-      { a: '/ventas/items-vendibles', texto: 'Ítems vendibles', icono: Tag },
+      { a: '/ventas/items-vendibles', texto: 'Productos', icono: Tag },
     ],
   },
   {
@@ -94,9 +107,12 @@ export const NAVEGACION: Grupo[] = [
   },
 ]
 
-/** Adónde lleva el inicio: la primera sección del menú que el rol abre.
- *  null sin sesión o sin rol (el layout muestra el aviso). */
+/** Adónde lleva el inicio: Indicadores para quien lo abre (admin,
+ *  producción y lectura); si no, la primera sección del menú que el rol
+ *  abre (Pedidos para ventas). null sin sesión o sin rol (el layout
+ *  muestra el aviso). */
 export function primerDestino(identidad: Identidad | null): string | null {
+  if (puedeAbrir(identidad, PAGINA_PRINCIPAL)) return PAGINA_PRINCIPAL
   const enlace = NAVEGACION.flatMap((grupo) => grupo.enlaces).find(({ a }) =>
     puedeAbrir(identidad, a),
   )

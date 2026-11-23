@@ -5,7 +5,6 @@ import {
   catalogoBancos,
   catalogoMadres,
   catalogoMateriales,
-  catalogoParques,
   catalogoRazas,
 } from '@/modulos/produccion/catalogos'
 import {
@@ -16,7 +15,6 @@ import {
 export const RazasPage = () => <PaginaCatalogo config={catalogoRazas} />
 export const MadresPage = () => <PaginaCatalogo config={catalogoMadres} />
 export const BancosPage = () => <PaginaCatalogo config={catalogoBancos} />
-export const ParquesPage = () => <PaginaCatalogo config={catalogoParques} />
 export const MaterialesPage = () => (
   <PaginaCatalogo config={catalogoMateriales} />
 )

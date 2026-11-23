@@ -33,10 +33,34 @@ export type Nucleo = Esquemas['NucleoRespuesta']
 
 /** Banco: reinas enjauladas listas para despacho (dominio del 16/10). */
 export type Banco = Esquemas['BancoRespuesta']
+/** POST /api/v1/bancos (#155): sin identificador, el backend asigna el
+ *  siguiente B-NN; sin capacidad, 276. openapi-typescript marca como
+ *  obligatorio todo campo con default, así que se aflojan acá. */
+export type BancoCrear = Omit<
+  Esquemas['BancoCrear'],
+  'identificador' | 'capacidad_max'
+> & { identificador?: string | null; capacidad_max?: number }
+/** PATCH /api/v1/bancos/{id}: solo identificador y activo; la capacidad no
+ *  se edita (422 si viene). */
+export type BancoActualizar = Esquemas['BancoActualizar']
+
+/** POST /api/v1/parques/{id}/nucleos (#155): varios núcleos de una vez, en
+ *  una fila nueva del parque. */
+export type NucleosLoteCrear = Esquemas['NucleosLoteCrear']
+export type NucleosLoteCreados = Esquemas['NucleosLoteCreados']
+
+/** en_curso: todavía no se cosechó. cosechada: ya se hizo la cosecha (una
+ *  sola vez por tanda). Lo deriva el backend de las celdas al leer (#155). */
+export type EstadoTanda = Esquemas['TandaRespuesta']['estado']
+export const ESTADOS_TANDA = [
+  'en_curso',
+  'cosechada',
+] as const satisfies readonly EstadoTanda[]
 
 /** Tanda (backend #27): la identifica la raza y la madre es opcional
  *  (dominio del 16/10). Trae sus celdas contadas al leer: el total y
- *  cuántas hay en cada estado, nunca una columna. */
+ *  cuántas hay en cada estado, nunca una columna; su estado y la fecha de
+ *  salida estimada (traslarve + 26 días, backend #155). */
 export type Tanda = Esquemas['TandaRespuesta']
 
 /** POST /api/v1/tandas: cuadros (1, 2 o 3), nunca un número de cúpulas. */
@@ -52,6 +76,11 @@ export type TandaCreada = Esquemas['TandaCreada']
 export type TandaDetalle = Esquemas['TandaDetalle']
 export type NucleoDeTanda = Esquemas['NucleoDeTanda']
 export type BancoDeTanda = Esquemas['BancoDeTanda']
+/** Dónde y cuándo se introdujo: un parque en una fecha (#155). No se pierde
+ *  al cosechar: sale del núcleo y la fecha que la celda conserva. */
+export type IntroduccionDeTanda = Esquemas['IntroduccionDeTanda']
+/** Qué salió de lo introducido, contado desde las celdas (#155). */
+export type ResultadoDeTanda = Esquemas['ResultadoDeTanda']
 
 /** POST /api/v1/tandas/{id}/operaciones: siempre por lote (dominio del
  *  23/10), nunca celda por celda. El campo accion elige la operación. */
@@ -282,3 +311,7 @@ export const NOMBRE_DE_ESTADO_EMBARQUE: Record<EstadoEmbarque, string> = {
 }
 
 export const CUPULAS_POR_CUADRO = 135 // constante del dominio: un solo lugar
+
+/** Reinas que entran en un banco: confirmada por la clienta el 16/10, igual
+ *  que el DEFAULT del backend. Se fija al crear el banco y no se edita. */
+export const CAPACIDAD_BANCO_POR_DEFECTO = 276

@@ -49,10 +49,37 @@ export type ErrorParaMostrar = {
   codigo?: string
   mensaje: string
   requestId?: string | null
+  /** Un error que resuelve quien carga (un dato duplicado, un conflicto de
+   *  negocio): se muestra el mensaje solo, sin código ni request id. */
+  esperable?: boolean
+}
+
+/** Los códigos de dato repetido del backend: raza_duplicada,
+ *  banco_duplicado, awb_duplicado… (409 de los repositorios). */
+const DUPLICADO = /_duplicad[oa]$/
+
+/** ¿Es un error que la persona puede resolver sola? Un dato duplicado o
+ *  cualquier 4xx del backend (409 de negocio, 422 de validación, 404, 403):
+ *  el mensaje ya dice qué pasó. Los 5xx y los errores sin status (red,
+ *  timeout, configuración) son inesperados y llevan código y request id
+ *  para reportarlos. El 401 no llega a la pantalla: manda al login. */
+export function esErrorEsperable(error: unknown): boolean {
+  if (!esApiError(error)) return false
+  if (DUPLICADO.test(error.codigo)) return true
+  return error.status !== null && error.status >= 400 && error.status < 500
+}
+
+/** El detalle técnico de un error para reportarlo ("error_interno ·
+ *  req-77"), o null si es esperable: ese se muestra solo con su mensaje. */
+export function detalleTecnico(error: unknown): string | null {
+  if (!esApiError(error) || esErrorEsperable(error)) return null
+  return [error.codigo, error.requestId].filter(Boolean).join(' · ') || null
 }
 
 /** Lo que una pantalla muestra de un error cualquiera (ApiError o no). */
 export function describirError(error: unknown): ErrorParaMostrar {
+  if (esApiError(error) && esErrorEsperable(error))
+    return { mensaje: error.mensaje, esperable: true }
   if (esApiError(error)) {
     return {
       codigo: error.codigo,

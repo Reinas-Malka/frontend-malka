@@ -1,4 +1,5 @@
-/** Catálogos de ventas: ítems vendibles (backend #30) y clientes (#32). */
+/** Catálogos de ventas: productos (ítems vendibles del backend #30) y
+ *  clientes (#32). */
 import { Link } from 'react-router'
 import type { components } from '@/api/esquema'
 import { clientes, itemsVendibles } from '@/api/recursos'
@@ -7,6 +8,7 @@ import type { ConfigCatalogo } from '@/components/catalogo/PaginaCatalogo'
 import { Badge } from '@/components/ui/badge'
 import { esCuitValido, normalizarCuit } from '@/lib/cuit'
 import { PAISES_EXTRANJEROS, PAIS_LOCAL, nombreDePais } from '@/lib/paises'
+import { capitalizar } from '@/lib/textos'
 import type {
   Alicuota,
   Cliente,
@@ -34,15 +36,19 @@ export const catalogoItemsVendibles: ConfigCatalogo<
   Esquemas['ItemVendibleActualizar']
 > = {
   clave: 'items-vendibles',
-  titulo: 'Ítems vendibles',
+  // En el backend es "ítem vendible"; en pantalla, "producto" (prueba del
+  // 07/11: "ítems vendibles" no se entendía).
+  titulo: 'Productos',
   descripcion:
-    'Qué se vende y con qué alícuota de IVA. La raza se elige en cada línea del pedido.',
-  singular: 'ítem',
+    'Los nombres con los que vendés las reinas, por ejemplo Reina fecundada o Reina virgen; cada línea de un pedido lleva un producto y una raza. Cada producto tiene su alícuota de IVA.',
+  singular: 'producto',
   recurso: itemsVendibles,
   columnas: [
     {
       clave: 'nombre',
       titulo: 'Nombre',
+      // Se muestra con mayúscula inicial; el dato queda como se cargó.
+      render: (i) => capitalizar(i.nombre),
       orden: (a, b) => a.nombre.localeCompare(b.nombre),
     },
     {
@@ -52,7 +58,14 @@ export const catalogoItemsVendibles: ConfigCatalogo<
     },
   ],
   campos: [
-    { nombre: 'nombre', etiqueta: 'Nombre', requerido: true, max: 100 },
+    {
+      nombre: 'nombre',
+      etiqueta: 'Nombre',
+      requerido: true,
+      max: 100,
+      placeholder: 'Reina fecundada',
+      codigosDeError: ['item_vendible_duplicado'],
+    },
     {
       nombre: 'alicuota',
       etiqueta: 'Alícuota de IVA',
@@ -62,7 +75,7 @@ export const catalogoItemsVendibles: ConfigCatalogo<
     },
   ],
   valoresIniciales: { nombre: '', alicuota: '0.21' },
-  nombreDeFila: (i) => i.nombre,
+  nombreDeFila: (i) => capitalizar(i.nombre),
   valoresDeFila: (i) => ({
     nombre: i.nombre,
     alicuota:
@@ -205,6 +218,7 @@ export const catalogoClientes: ConfigCatalogo<
       max: 50,
       ayuda:
         'Nacional: CUIT de 11 dígitos (con o sin guiones). Exportación: el identificador fiscal del país.',
+      codigosDeError: ['cliente_duplicado'],
       validar: (v, valores) =>
         esExportacion(valores) || esCuitValido(v)
           ? null

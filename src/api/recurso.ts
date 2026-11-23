@@ -69,7 +69,9 @@ const LIMITE_POR_DEFECTO = 50
  *  factura sugerida de un cliente) después de cada alta o edición. */
 export function recursoSimulado<T extends { id: string }, Crear, Actualizar>(
   semilla: readonly T[],
-  construir: (datos: Crear, id: string) => T,
+  /** Arma la fila nueva; recibe las que ya hay por si el servidor asigna
+   *  algo a partir de ellas (el identificador B-NN de un banco). */
+  construir: (datos: Crear, id: string, existentes: readonly T[]) => T,
   derivar: (fila: T) => T = (fila) => fila,
   /** Los filtros propios del listado (p. ej. ?parque_id= en núcleos), como
    *  los aplica el backend. incluir_inactivos ya lo resuelve el recurso. */
@@ -129,7 +131,7 @@ export function recursoSimulado<T extends { id: string }, Crear, Actualizar>(
         ? altasPorClave.get(claveIdempotencia)
         : undefined
       if (previa) return previa
-      const nueva = derivar(construir(datos, crypto.randomUUID()))
+      const nueva = derivar(construir(datos, crypto.randomUUID(), filas))
       filas = [...filas, nueva]
       if (claveIdempotencia) altasPorClave.set(claveIdempotencia, nueva)
       return nueva

@@ -57,7 +57,8 @@ export const ACCIONES: Record<
     guardar: 'Descartar celdas',
   },
   introducir: {
-    boton: 'Introducir',
+    // El parque se elige acá: que se lea en el botón (prueba del 07/11).
+    boton: 'Introducir en un parque',
     titulo: 'Introducir en un parque',
     descripcion:
       'Elegís el parque y la cantidad: el sistema reparte las celdas parejo entre sus núcleos activos, primero los más libres.',

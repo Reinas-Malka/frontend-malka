@@ -44,6 +44,9 @@ export type ConfigCatalogo<T extends Fila, C, A> = {
   rolesEscritura: readonly Rol[]
   /** Filtros que aplica el backend (p. ej. { parque_id } en núcleos). */
   filtros?: Record<string, string>
+  /** Texto arriba del formulario de alta: lo que el sistema completa solo
+   *  (p. ej. el identificador y la capacidad de un banco). */
+  explicacionDelAlta?: string
 }
 
 type Edicion<T> = { modo: 'alta'; clave: string } | { modo: 'edicion'; fila: T }
@@ -239,6 +242,9 @@ export function PaginaCatalogo<T extends Fila, C, A>({
               edicion.modo === 'alta'
                 ? `Agregar ${singular}`
                 : `Editar ${config.nombreDeFila(edicion.fila)}`
+            }
+            descripcion={
+              edicion.modo === 'alta' ? config.explicacionDelAlta : undefined
             }
           >
             <FormularioRecurso

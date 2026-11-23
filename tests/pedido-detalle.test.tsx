@@ -140,7 +140,14 @@ describe('detalle del pedido', () => {
     abrir(RESERVADO)
 
     expect((await titulo()).textContent).toBe('Pedido de Bee Kingdom NZ Ltd')
-    expect(screen.getByText(/Nueva Zelanda \(NZ\) · CPT · USD/)).toBeTruthy()
+    expect(
+      screen.getByText(/Nueva Zelanda \(NZ\) · CPT · en dólares \(USD\)/),
+    ).toBeTruthy()
+    // El tamaño en reinas por raza, no en "líneas".
+    expect(screen.getByText('50 reinas · Carniola')).toBeTruthy()
+    expect(
+      screen.getByRole('columnheader', { name: 'Precio por reina (US$)' }),
+    ).toBeTruthy()
     expect(screen.getByText('Reservado')).toBeTruthy()
 
     const [, linea] = screen.getAllByRole('row')
@@ -150,8 +157,8 @@ describe('detalle del pedido', () => {
     // El neto de la línea y los totales los manda el backend (#113).
     expect(within(linea).getByText('1.925,00')).toBeTruthy()
     // Exportación: neto y total iguales, IVA en cero.
-    expect(screen.getAllByText('USD 1.925,00')).toHaveLength(2)
-    expect(screen.getByText('USD 0,00')).toBeTruthy()
+    expect(screen.getAllByText('US$ 1.925,00')).toHaveLength(2)
+    expect(screen.getByText('US$ 0,00')).toBeTruthy()
     expect(screen.getByText('Exportación: sin IVA.')).toBeTruthy()
   })
 
@@ -159,9 +166,9 @@ describe('detalle del pedido', () => {
     abrir(PARA_RESERVAR)
     await titulo()
 
-    expect(screen.getByText('ARS 900.000,00')).toBeTruthy()
-    expect(screen.getByText('ARS 189.000,00')).toBeTruthy()
-    expect(screen.getByText('ARS 1.089.000,00')).toBeTruthy()
+    expect(screen.getByText('$ 900.000,00')).toBeTruthy()
+    expect(screen.getByText('$ 189.000,00')).toBeTruthy()
+    expect(screen.getByText('$ 1.089.000,00')).toBeTruthy()
     expect(screen.queryByText('Exportación: sin IVA.')).toBeNull()
   })
 
@@ -495,10 +502,10 @@ describe('detalle del pedido', () => {
       target: { value: '2026-12-01' },
     })
     const linea = within(alta.getByRole('group', { name: 'Línea 1' }))
-    await elegir(usuario, linea, 'Ítem', 'Reina fecundada')
+    await elegir(usuario, linea, 'Producto', 'Reina fecundada')
     await elegir(usuario, linea, 'Raza', 'Carniola')
     await usuario.type(linea.getByLabelText('Cantidad'), '12')
-    await usuario.type(linea.getByLabelText('Precio (ARS)'), '45000')
+    await usuario.type(linea.getByLabelText('Precio por reina ($)'), '45000')
     await usuario.click(alta.getByRole('button', { name: 'Crear pedido' }))
     await screen.findByText('Pedido creado en borrador.')
 

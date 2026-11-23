@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { describirError, esApiError } from '@/api/client'
+import { describirError, detalleTecnico, esApiError } from '@/api/client'
 import { itemsVendibles, razas } from '@/api/recursos'
 import type { Errores } from '@/components/catalogo/campos'
 import { Button } from '@/components/ui/button'
@@ -16,8 +16,10 @@ import {
   SelectValor,
 } from '@/components/ui/select'
 import { useListado } from '@/hooks/useRecurso'
+import { NOMBRE_DE_MONEDA, SIMBOLO_DE_MONEDA } from '@/lib/importes'
 import { MAX_LINEAS, MONEDAS_POR_TIPO } from '@/lib/pedidos'
 import { PAISES_EXTRANJEROS } from '@/lib/paises'
+import { capitalizar } from '@/lib/textos'
 import { catalogoRazas } from '@/modulos/produccion/catalogos'
 import { catalogoItemsVendibles } from '@/modulos/ventas/catalogos'
 import {
@@ -28,6 +30,7 @@ import {
   claveDeLinea,
   clientesConBajas,
   erroresDelAlta,
+  explicacionDeMoneda,
   lineaVacia,
   validarAlta,
   type CabeceraDePedido,
@@ -54,7 +57,7 @@ type Props = {
 }
 
 /** Alta de un pedido: la cabecera según el tipo de cliente y las líneas
- *  (ítem, raza, cantidad y precio). Valida con lib/pedidos.ts antes de
+ *  (producto, raza, cantidad y precio). Valida con lib/pedidos.ts antes de
  *  mandar, y si el backend igual rechaza, marca el campo o la línea. */
 export function FormularioDePedido({ alGuardar, alCancelar }: Props) {
   // Mismas claves que las pantallas de catálogo: comparten la caché.
@@ -87,9 +90,11 @@ export function FormularioDePedido({ alGuardar, alCancelar }: Props) {
     )
   if (cargando) return <Cargando columnas={4} filas={3} />
 
-  // Solo lo activo: a un cliente, ítem o raza dado de baja no se le vende.
+  // Solo lo activo: a un cliente, producto o raza dado de baja no se le vende.
   const activos = clientes.data?.filter((c) => c.activo) ?? []
-  const itemsActivos = items.filas.filter((i) => i.activo)
+  const itemsActivos = items.filas
+    .filter((i) => i.activo)
+    .map((i) => ({ id: i.id, nombre: capitalizar(i.nombre) }))
   const razasActivas = lasRazas.filas.filter((r) => r.activo)
   const cliente = activos.find((c) => c.id === cabecera.cliente_id)
   const exportacion = cliente?.tipo === 'exportacion'
@@ -155,9 +160,8 @@ export function FormularioDePedido({ alGuardar, alCancelar }: Props) {
           esApiError(error)
             ? {
                 mensaje: error.mensaje,
-                detalle: [error.codigo, error.requestId]
-                  .filter(Boolean)
-                  .join(' · '),
+                // Código y request id solo si es inesperado (5xx, red).
+                detalle: detalleTecnico(error),
               }
             : { mensaje: 'No se pudo crear el pedido.', detalle: null },
         )
@@ -178,10 +182,14 @@ export function FormularioDePedido({ alGuardar, alCancelar }: Props) {
           label="Cliente"
           htmlFor="pedido-cliente"
           error={errores.cliente_id}
+          // La moneda depende del tipo de cliente: se explica acá, antes de
+          // elegirlo, y cambia al elegirlo.
           ayuda={
             cliente && !exportacion
-              ? 'Venta nacional: en ARS, sin destino ni incoterm.'
-              : undefined
+              ? `${explicacionDeMoneda('nacional')} Sin destino ni incoterm.`
+              : exportacion
+                ? undefined
+                : explicacionDeMoneda(undefined)
           }
         >
           <Select value={cabecera.cliente_id} onValueChange={elegirCliente}>
@@ -224,18 +232,28 @@ export function FormularioDePedido({ alGuardar, alCancelar }: Props) {
 
       {exportacion ? (
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Moneda" htmlFor="pedido-moneda" error={errores.moneda}>
+          <Field
+            label="Moneda"
+            htmlFor="pedido-moneda"
+            error={errores.moneda}
+            ayuda={explicacionDeMoneda('exportacion')}
+          >
             <Select
               value={cabecera.moneda}
               onValueChange={(v) => cambiarCabecera('moneda', v as Moneda)}
             >
-              <SelectTrigger id="pedido-moneda">
+              <SelectTrigger
+                id="pedido-moneda"
+                aria-describedby={
+                  errores.moneda ? 'pedido-moneda-error' : 'pedido-moneda-ayuda'
+                }
+              >
                 <SelectValor />
               </SelectTrigger>
               <SelectContenido>
                 {MONEDAS_POR_TIPO.exportacion.map((m) => (
                   <SelectOpcion key={m} value={m}>
-                    {m}
+                    {`${m} · ${NOMBRE_DE_MONEDA[m]} (${SIMBOLO_DE_MONEDA[m]})`}
                   </SelectOpcion>
                 ))}
               </SelectContenido>
@@ -301,6 +319,14 @@ export function FormularioDePedido({ alGuardar, alCancelar }: Props) {
       ) : null}
 
       <div className="space-y-3">
+        <div>
+          <h3 className="text-sm font-medium text-texto">Reinas del pedido</h3>
+          <p className="text-xs text-texto-suave">
+            Cada línea es una raza con su producto, cantidad y precio por reina.
+            Para un pedido de 200 Buckfast y 100 Italiana, cargá la primera y
+            tocá «Agregar otra raza».
+          </p>
+        </div>
         {lineas.map((linea, n) => (
           <LineaDelFormulario
             key={linea.clave}
@@ -322,11 +348,10 @@ export function FormularioDePedido({ alGuardar, alCancelar }: Props) {
         <Button
           type="button"
           variante="secundario"
-          tamano="chico"
           disabled={lineas.length >= MAX_LINEAS}
           onClick={agregarLinea}
         >
-          <Plus aria-hidden className="size-4" /> Agregar línea
+          <Plus aria-hidden className="size-4" /> Agregar otra raza
         </Button>
       </div>
 
@@ -358,7 +383,7 @@ export function FormularioDePedido({ alGuardar, alCancelar }: Props) {
 
 type Opcion = { id: string; nombre: string }
 
-/** Una línea: un fieldset con su número, así cada campo se nombra "Ítem"
+/** Una línea: un fieldset con su número, así cada campo se nombra "Producto"
  *  dentro de "Línea 2" sin ids repetidos. */
 function LineaDelFormulario({
   n,
@@ -412,11 +437,11 @@ function LineaDelFormulario({
       </legend>
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_6rem_9rem_auto] sm:items-start">
         <Field
-          label="Ítem"
+          label="Producto"
           htmlFor={id('item_vendible_id')}
           error={error('item_vendible_id')}
         >
-          {desplegable('item_vendible_id', items, 'Elegí el ítem')}
+          {desplegable('item_vendible_id', items, 'Elegí el producto')}
         </Field>
         <Field label="Raza" htmlFor={id('raza_id')} error={error('raza_id')}>
           {desplegable('raza_id', razas, 'Elegí la raza')}
@@ -436,7 +461,7 @@ function LineaDelFormulario({
           />
         </Field>
         <Field
-          label={`Precio (${moneda})`}
+          label={`Precio por reina (${SIMBOLO_DE_MONEDA[moneda]})`}
           htmlFor={id('precio_unitario')}
           error={error('precio_unitario')}
         >

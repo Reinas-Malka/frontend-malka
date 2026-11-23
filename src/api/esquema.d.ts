@@ -182,6 +182,74 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/documentos/borradores/{borrador_id}/aprobar': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Aprobar Borrador */
+    post: operations['aprobar_borrador_api_v1_documentos_borradores__borrador_id__aprobar_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/documentos/borradores/{borrador_id}/pdf': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Descargar Pdf */
+    get: operations['descargar_pdf_api_v1_documentos_borradores__borrador_id__pdf_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/documentos/borradores/{borrador_id}/rechazar': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Rechazar Borrador */
+    post: operations['rechazar_borrador_api_v1_documentos_borradores__borrador_id__rechazar_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/documentos/borradores/{borrador_id}/revisiones': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Revisiones Del Borrador */
+    get: operations['revisiones_del_borrador_api_v1_documentos_borradores__borrador_id__revisiones_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/documentos/descarga': {
     parameters: {
       query?: never
@@ -510,6 +578,30 @@ export interface paths {
     patch: operations['actualizar_parque_api_v1_parques__parque_id__patch']
     trace?: never
   }
+  '/api/v1/parques/{parque_id}/nucleos': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Crear Nucleos Por Cantidad
+     * @description Crea `cantidad` nucleos en el parque; el sistema elige fila y posicion.
+     *
+     *     Van a una fila nueva (la siguiente a la mas alta del parque), en las
+     *     posiciones 1..cantidad. Con Idempotency-Key, un reintento devuelve lo ya
+     *     creado y no suma nucleos dos veces (#25).
+     */
+    post: operations['crear_nucleos_por_cantidad_api_v1_parques__parque_id__nucleos_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/pedidos': {
     parameters: {
       query?: never
@@ -780,12 +872,26 @@ export interface components {
      * @enum {string}
      */
     Alicuota: '0' | '0.025' | '0.05' | '0.105' | '0.21' | '0.27'
-    /** BancoActualizar */
+    /**
+     * Aprobacion
+     * @description POST .../aprobar: la version (hash_contenido) que vio quien aprueba y,
+     *     si ya existe, el comprobante que ARCA emitio para el pedido (#108).
+     */
+    Aprobacion: {
+      /** Comprobante Id */
+      comprobante_id?: string | null
+      /** Hash Contenido */
+      hash_contenido: string
+    }
+    /**
+     * BancoActualizar
+     * @description Se puede renombrar y reactivar; la capacidad queda fija desde el alta.
+     *
+     *     extra="forbid": un PATCH con capacidad_max es 422.
+     */
     BancoActualizar: {
       /** Activo */
       activo?: boolean | null
-      /** Capacidad Max */
-      capacidad_max?: number | null
       /** Identificador */
       identificador?: string | null
     }
@@ -797,7 +903,7 @@ export interface components {
        */
       capacidad_max: number
       /** Identificador */
-      identificador: string
+      identificador?: string | null
     }
     /**
      * BancoDeTanda
@@ -833,8 +939,13 @@ export interface components {
     /**
      * BorradorPedido
      * @description POST /api/v1/documentos/borradores: de que pedido redactar.
+     *
+     *     corrige_a: el borrador aprobado del mismo pedido que este corrige. El
+     *     aprobado no se toca (es inmutable); el nuevo lo referencia.
      */
     BorradorPedido: {
+      /** Corrige A */
+      corrige_a?: string | null
       /**
        * Pedido Id
        * Format: uuid
@@ -851,19 +962,33 @@ export interface components {
        * Format: date-time
        */
       actualizado_en: string
+      /** Aprobado En */
+      aprobado_en: string | null
+      /** Aprobado Por */
+      aprobado_por: string | null
+      /** Comprobante Id */
+      comprobante_id: string | null
       contenido: components['schemas']['BorradorValidado'] | null
+      /** Corrige A */
+      corrige_a: string | null
       /**
        * Creado En
        * Format: date-time
        */
       creado_en: string
       estado: components['schemas']['EstadoBorrador']
+      /** Hash Contenido */
+      hash_contenido: string | null
       /**
        * Id
        * Format: uuid
        */
       id: string
+      /** Motivo Descarte */
+      motivo_descarte: string | null
       motivo_rechazo: components['schemas']['MotivoRechazo'] | null
+      /** Pdf Disponible */
+      pdf_disponible: boolean
       /**
        * Pedido Id
        * Format: uuid
@@ -1075,6 +1200,14 @@ export interface components {
       url_descarga: string
     }
     /**
+     * Descarte
+     * @description POST .../rechazar: por que el borrador no sirve.
+     */
+    Descarte: {
+      /** Motivo */
+      motivo: string
+    }
+    /**
      * DespachoDeLinea
      * @description Respuesta de GET /api/v1/pedidos/{id}/despachos: lo que salio.
      *
@@ -1240,7 +1373,8 @@ export interface components {
      * EstadoBorrador
      * @enum {string}
      */
-    EstadoBorrador: 'generando' | 'borrador' | 'rechazado'
+    EstadoBorrador:
+      'generando' | 'borrador' | 'rechazado' | 'aprobado' | 'descartado'
     /**
      * EstadoEmbarque
      * @enum {string}
@@ -1286,6 +1420,31 @@ export interface components {
       | 'FOB'
       | 'CFR'
       | 'CIF'
+    /**
+     * IntroduccionDeTanda
+     * @description Donde y cuando se introdujo la tanda: un parque en una fecha.
+     *
+     *     Sale del nucleo y la fecha que la celda conserva despues de cosecharse,
+     *     pasar a banco o despacharse: no se pierde con el resto del ciclo.
+     */
+    IntroduccionDeTanda: {
+      /** Celdas */
+      celdas: number
+      /**
+       * Fecha Introduccion
+       * Format: date
+       */
+      fecha_introduccion: string
+      /** Nucleos */
+      nucleos: number
+      /**
+       * Parque Id
+       * Format: uuid
+       */
+      parque_id: string
+      /** Parque Nombre */
+      parque_nombre: string
+    }
     /** ItemVendibleActualizar */
     ItemVendibleActualizar: {
       /** Activo */
@@ -1605,6 +1764,45 @@ export interface components {
       parque_id: string
       /** Posicion */
       posicion: number
+    }
+    /**
+     * NucleosLoteCreados
+     * @description Respuesta del alta por cantidad: cuantos se crearon y donde.
+     */
+    NucleosLoteCreados: {
+      /**
+       * Advertencias
+       * @default []
+       */
+      advertencias: components['schemas']['Advertencia'][]
+      /** Capacidad Max */
+      capacidad_max: number
+      /** Creados */
+      creados: number
+      /** Fila */
+      fila: number
+      /** Nucleos Activos */
+      nucleos_activos: number
+      /**
+       * Parque Id
+       * Format: uuid
+       */
+      parque_id: string
+      /** Posicion Desde */
+      posicion_desde: number
+      /** Posicion Hasta */
+      posicion_hasta: number
+    }
+    /**
+     * NucleosLoteCrear
+     * @description Alta de varios nucleos en un parque: solo la cantidad.
+     *
+     *     El sistema les asigna la ubicacion: una fila nueva, la siguiente a la
+     *     mas alta del parque, con posiciones 1..cantidad.
+     */
+    NucleosLoteCrear: {
+      /** Cantidad */
+      cantidad: number
     }
     /**
      * OperacionCosechar
@@ -2106,6 +2304,68 @@ export interface components {
       texto: string
     }
     /**
+     * ResultadoDeTanda
+     * @description Que salio de lo que se introdujo, contado al leer desde las celdas.
+     */
+    ResultadoDeTanda: {
+      /** Cosechadas */
+      cosechadas: number
+      /** Descartadas Con Nucleo */
+      descartadas_con_nucleo: number
+      /** Descartadas Sin Nucleo */
+      descartadas_sin_nucleo: number
+      /** Despachadas */
+      despachadas: number
+      /** En Parque */
+      en_parque: number
+      /** Enjauladas */
+      enjauladas: number
+      /** Enjauladas Sin Banco */
+      enjauladas_sin_banco: number
+      /** Fecha Cosecha */
+      fecha_cosecha: string | null
+      /** Introducidas */
+      introducidas: number
+    }
+    /**
+     * RevisionRespuesta
+     * @description Una fila de la bitacora: quien, cuando y sobre que version.
+     */
+    RevisionRespuesta: {
+      /**
+       * Accion
+       * @enum {string}
+       */
+      accion: 'aprobado' | 'descartado'
+      /**
+       * Borrador Id
+       * Format: uuid
+       */
+      borrador_id: string
+      /** Comprobante Id */
+      comprobante_id: string | null
+      /** Hash Contenido */
+      hash_contenido: string
+      /** Hash Snapshot */
+      hash_snapshot: string | null
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string
+      /**
+       * Momento
+       * Format: date-time
+       */
+      momento: string
+      /** Motivo */
+      motivo: string | null
+      /** Usuario */
+      usuario: string
+      /** Version Prompt */
+      version_prompt: string | null
+    }
+    /**
      * RolMensaje
      * @enum {string}
      */
@@ -2169,6 +2429,16 @@ export interface components {
         [key: string]: number
       }
       consumo: components['schemas']['MovimientoRespuesta']
+      /**
+       * Estado
+       * @enum {string}
+       */
+      estado: 'en_curso' | 'cosechada'
+      /**
+       * Fecha Salida Estimada
+       * Format: date
+       */
+      fecha_salida_estimada: string
       /**
        * Fecha Traslarve
        * Format: date
@@ -2241,8 +2511,9 @@ export interface components {
      *
      *     Solo el detalle: el listado sigue con TandaRespuesta. Los nucleos son los
      *     que tienen celdas de la tanda en el parque; despues de la cosecha quedan
-     *     libres y la lista viene vacia. Las cosechadas sin banco son
-     *     celdas_por_estado["enjaulada"] menos la suma de bancos.
+     *     libres y la lista viene vacia. Los bancos, las enjauladas que hay hoy en
+     *     cada uno. introducciones y resultado no cambian al cosechar, pasar a
+     *     banco o despachar: salen del nucleo y la fecha que cada celda conserva.
      */
     TandaDetalle: {
       /** Bancos */
@@ -2253,6 +2524,16 @@ export interface components {
       celdas_por_estado: {
         [key: string]: number
       }
+      /**
+       * Estado
+       * @enum {string}
+       */
+      estado: 'en_curso' | 'cosechada'
+      /**
+       * Fecha Salida Estimada
+       * Format: date
+       */
+      fecha_salida_estimada: string
       /**
        * Fecha Traslarve
        * Format: date
@@ -2265,6 +2546,8 @@ export interface components {
        * Format: uuid
        */
       id: string
+      /** Introducciones */
+      introducciones: components['schemas']['IntroduccionDeTanda'][]
       /** Madre Id */
       madre_id: string | null
       /** Nucleos */
@@ -2276,6 +2559,7 @@ export interface components {
        * Format: uuid
        */
       raza_id: string
+      resultado: components['schemas']['ResultadoDeTanda']
       /** Retroactivo */
       retroactivo: boolean
     }
@@ -2287,6 +2571,16 @@ export interface components {
       celdas_por_estado: {
         [key: string]: number
       }
+      /**
+       * Estado
+       * @enum {string}
+       */
+      estado: 'en_curso' | 'cosechada'
+      /**
+       * Fecha Salida Estimada
+       * Format: date
+       */
+      fecha_salida_estimada: string
       /**
        * Fecha Traslarve
        * Format: date
@@ -2958,6 +3252,146 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['BorradorRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  aprobar_borrador_api_v1_documentos_borradores__borrador_id__aprobar_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path: {
+        borrador_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Aprobacion']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BorradorRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  descargar_pdf_api_v1_documentos_borradores__borrador_id__pdf_get: {
+    parameters: {
+      query?: {
+        en_linea?: boolean
+      }
+      header?: never
+      path: {
+        borrador_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DescargaPreparada']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  rechazar_borrador_api_v1_documentos_borradores__borrador_id__rechazar_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path: {
+        borrador_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Descarte']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BorradorRespuesta']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  revisiones_del_borrador_api_v1_documentos_borradores__borrador_id__revisiones_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        borrador_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RevisionRespuesta'][]
         }
       }
       /** @description Validation Error */
@@ -4214,6 +4648,44 @@ export interface operations {
       }
     }
   }
+  crear_nucleos_por_cantidad_api_v1_parques__parque_id__nucleos_post: {
+    parameters: {
+      query?: never
+      header?: {
+        /** @description UUID nuevo por operacion; el mismo en cada reintento (24 h). */
+        'Idempotency-Key'?: string | null
+      }
+      path: {
+        parque_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['NucleosLoteCrear']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['NucleosLoteCreados']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   listar_pedidos_api_v1_pedidos_get: {
     parameters: {
       query?: {
@@ -4624,6 +5096,7 @@ export interface operations {
         raza_id?: string | null
         desde?: string | null
         hasta?: string | null
+        estado?: ('en_curso' | 'cosechada') | null
         /** @description Cantidad maxima de items (1 a 100). */
         limite?: number
         /** @description El campo `siguiente` de la pagina anterior. */

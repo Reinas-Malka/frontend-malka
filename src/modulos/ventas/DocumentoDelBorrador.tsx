@@ -17,7 +17,7 @@ import type { ContenidoDeBorrador } from '@/tipos/dominio'
 const columnas = (moneda: string): Columna<FilaDelDetalle>[] => [
   {
     clave: 'item',
-    titulo: 'Ítem',
+    titulo: 'Producto',
     render: (l) => <span className="font-medium text-texto">{l.item}</span>,
   },
   {

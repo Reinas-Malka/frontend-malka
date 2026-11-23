@@ -24,18 +24,21 @@ import {
   SelectValor,
 } from '@/components/ui/select'
 import { DataTable, type Columna } from '@/components/ui/table'
+import { formatearMonto } from '@/lib/importes'
 import { nombreDePais } from '@/lib/paises'
 import { FormularioDePedido } from '@/modulos/ventas/FormularioDePedido'
 import { EstadoDePedido } from '@/modulos/ventas/insignias'
 import {
   CLAVE_CLIENTES_CON_BAJAS,
   CLAVE_PEDIDOS,
+  CLAVE_RAZAS_CON_BAJAS,
   ROLES_VENTAS,
   TODOS,
   type DesdeElListado,
   clientesConBajas,
   leerFiltros,
-  resumenDeLineas,
+  razasConBajas,
+  tamanoDelPedido,
 } from '@/modulos/ventas/pedidos'
 import {
   ESTADOS_PEDIDO,
@@ -47,6 +50,7 @@ import { formatearFecha } from '@/lib/fechas'
 
 function columnas(
   nombreDe: (id: string) => string,
+  nombreDeRaza: (id: string) => string,
   desde: DesdeElListado,
 ): Columna<Pedido>[] {
   return [
@@ -91,10 +95,16 @@ function columnas(
     },
     {
       clave: 'items',
-      titulo: 'Tamaño',
-      render: resumenDeLineas,
+      titulo: 'Reinas',
+      render: (p) => tamanoDelPedido(p, nombreDeRaza),
     },
-    { clave: 'moneda', titulo: 'Moneda' },
+    {
+      clave: 'total',
+      titulo: 'Total',
+      className: 'text-right font-mono tabular-nums',
+      // Con el símbolo de la moneda del pedido: $ (ARS), US$ o €.
+      render: (p) => formatearMonto(p.total, p.moneda),
+    },
   ]
 }
 
@@ -112,6 +122,11 @@ export default function PedidosPage() {
   const clientes = useQuery({
     queryKey: CLAVE_CLIENTES_CON_BAJAS,
     queryFn: clientesConBajas,
+  })
+  // Para el desglose por raza de cada pedido ("200 Buckfast, 100 Italiana").
+  const razas = useQuery({
+    queryKey: CLAVE_RAZAS_CON_BAJAS,
+    queryFn: razasConBajas,
   })
   // Los filtros los aplica el backend; cada combinación es otra consulta.
   const listado = useInfiniteQuery({
@@ -153,8 +168,12 @@ export default function PedidosPage() {
 
   const nombres = new Map(clientes.data?.map((c) => [c.id, c.nombre]))
   const nombreDe = (id: string) => nombres.get(id) ?? 'Cliente desconocido'
+  const nombresDeRaza = new Map(razas.data?.map((r) => [r.id, r.nombre]))
+  const nombreDeRaza = (id: string) =>
+    nombresDeRaza.get(id) ?? 'raza desconocida'
   const filas = listado.data?.pages.flatMap((pagina) => pagina.items) ?? []
-  const error = (!listado.data && listado.error) || clientes.error
+  const error =
+    (!listado.data && listado.error) || clientes.error || razas.error
 
   return (
     <section className="space-y-seccion">
@@ -213,7 +232,7 @@ export default function PedidosPage() {
         {aviso}
       </p>
 
-      {listado.isPending || clientes.isPending ? (
+      {listado.isPending || clientes.isPending || razas.isPending ? (
         <Cargando columnas={6} />
       ) : error ? (
         <ErrorDePantalla
@@ -221,13 +240,14 @@ export default function PedidosPage() {
           reintentar={() => {
             void listado.refetch()
             void clientes.refetch()
+            void razas.refetch()
           }}
         />
       ) : (
         <div className="space-y-3">
           <DataTable
             // El detalle recibe los filtros para volver a esta misma vista.
-            columnas={columnas(nombreDe, {
+            columnas={columnas(nombreDe, nombreDeRaza, {
               filtros: params.size ? `?${params}` : undefined,
             })}
             filas={filas}
@@ -245,8 +265,9 @@ export default function PedidosPage() {
                 />
               ) : (
                 <Vacio titulo="Todavía no hay pedidos">
-                  Un pedido lleva el cliente y sus líneas (ítem, raza, cantidad
-                  y precio). Arranca en borrador.
+                  Un pedido lleva el cliente y las reinas que pide: por cada
+                  raza, el producto, la cantidad y el precio. Arranca en
+                  borrador.
                 </Vacio>
               )
             }

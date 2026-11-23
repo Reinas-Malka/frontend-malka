@@ -1,7 +1,7 @@
 /** Importes: el Decimal del backend viaja como texto ("1500.50") y nunca
  *  pasa por un float, que pierde centavos. Las cuentas se hacen en
  *  centavos con BigInt. */
-import type { Pedido, PedidoItem } from '@/tipos/dominio'
+import type { Moneda, Pedido, PedidoItem } from '@/tipos/dominio'
 
 /** "1500.5" → 150050n. Solo para importes que ya validó el backend. */
 function aCentavos(importe: string): bigint {
@@ -22,6 +22,26 @@ export function formatearImporte(importe: string): string {
   const [enteros, decimales] = deCentavos(aCentavos(importe)).split('.')
   const conMiles = enteros.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
   return `${conMiles},${decimales}`
+}
+
+/** Cómo se escribe cada moneda delante de un precio. "US$" y no "$" para
+ *  el dólar: en Argentina "$" son pesos. */
+export const SIMBOLO_DE_MONEDA: Record<Moneda, string> = {
+  ARS: '$',
+  USD: 'US$',
+  EUR: '€',
+}
+
+/** El nombre de la moneda en una frase: "en dólares (USD)". */
+export const NOMBRE_DE_MONEDA: Record<Moneda, string> = {
+  ARS: 'pesos',
+  USD: 'dólares',
+  EUR: 'euros',
+}
+
+/** "1500.5" en USD → "US$ 1.500,50": el importe con el símbolo de su moneda. */
+export function formatearMonto(importe: string, moneda: Moneda): string {
+  return `${SIMBOLO_DE_MONEDA[moneda]} ${formatearImporte(importe)}`
 }
 
 // --- totales del pedido: solo para la API simulada y la semilla ---

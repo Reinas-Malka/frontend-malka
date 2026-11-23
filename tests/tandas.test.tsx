@@ -22,7 +22,7 @@ import {
 } from 'vitest'
 import { tandasSimuladas } from '../src/api/tandas'
 import type { Rol } from '../src/auth/identidad'
-import { validarValores } from '../src/components/catalogo/campos'
+import { ayudaDe, validarValores } from '../src/components/catalogo/campos'
 import { DATOS_SIMULADOS } from '../src/datos/simulados'
 import {
   aTandaCrear,
@@ -30,9 +30,17 @@ import {
   cupulasDe,
   edadEnDias,
   etapasDe,
+  leerFiltrosDeTandas,
   materialDeCupulas,
+  textoDeSalida,
   valoresIniciales,
 } from '../src/modulos/produccion/tandas'
+import {
+  DIAS_HASTA_LA_SALIDA,
+  estaAtrasada,
+  estadoDeTanda,
+  fechaDeSalidaEstimada,
+} from '../src/lib/tandas'
 import type { Tanda } from '../src/tipos/dominio'
 
 const TENANT = '11111111-1111-4111-8111-111111111111'
@@ -52,6 +60,8 @@ const tanda = (cambios: Partial<Tanda> = {}): Tanda => ({
   posicion_continuadora: null,
   celdas: 270,
   celdas_por_estado: { trasladada: 270 },
+  estado: 'en_curso',
+  fecha_salida_estimada: '2025-11-16',
   ...cambios,
 })
 
@@ -176,6 +186,88 @@ describe('reglas de la pantalla de tandas', () => {
   })
 })
 
+describe('fecha de salida, estado y atraso (prueba del 07/11)', () => {
+  it('sale aprox. el traslarve + 26 días (≈ D26 del dominio)', () => {
+    expect(DIAS_HASTA_LA_SALIDA).toBe(26)
+    expect(fechaDeSalidaEstimada({ fecha_traslarve: MARTES })).toBe(
+      '2025-11-16',
+    )
+    // Cruza fin de año sin correrse de día.
+    expect(fechaDeSalidaEstimada({ fecha_traslarve: '2025-12-20' })).toBe(
+      '2026-01-15',
+    )
+    expect(textoDeSalida({ fecha_traslarve: MARTES })).toBe(
+      'Sale aprox. el 16/11/2025',
+    )
+  })
+
+  it('si el backend trae fecha_salida_estimada, manda esa', () => {
+    expect(
+      fechaDeSalidaEstimada({
+        fecha_traslarve: MARTES,
+        fecha_salida_estimada: '2025-11-20',
+      }),
+    ).toBe('2025-11-20')
+  })
+
+  it('al elegir la fecha de traslarve, el alta dice cuándo sale', () => {
+    const fecha = camposDelAlta(razas, materiales, madres).find(
+      (c) => c.nombre === 'fecha_traslarve',
+    )!
+    expect(ayudaDe(fecha, alta())).toBe('Sale aprox. el 16/11/2025')
+    expect(ayudaDe(fecha, alta({ fecha_traslarve: '' }))).toBeUndefined()
+  })
+
+  it('el estado es el del backend; si no viene, sale de las celdas', () => {
+    expect(estadoDeTanda(tanda({ estado: 'cosechada' }))).toBe('cosechada')
+    const sinEstado = { ...tanda(), estado: undefined }
+    expect(estadoDeTanda(sinEstado)).toBe('en_curso')
+    expect(
+      estadoDeTanda({ ...sinEstado, celdas_por_estado: { enjaulada: 3 } }),
+    ).toBe('cosechada')
+  })
+
+  it('atrasada: pasó el día 26, sigue en curso y tiene celdas pendientes', () => {
+    expect(estaAtrasada(tanda(), '2025-11-16')).toBe(false)
+    expect(estaAtrasada(tanda(), '2025-11-17')).toBe(true)
+    expect(
+      estaAtrasada(
+        tanda({ celdas_por_estado: { introducida: 200, descartada: 70 } }),
+        '2025-12-01',
+      ),
+    ).toBe(true)
+    // Cosechada, o sin nada pendiente, no está atrasada.
+    expect(estaAtrasada(tanda({ estado: 'cosechada' }), '2025-12-01')).toBe(
+      false,
+    )
+    expect(
+      estaAtrasada(
+        tanda({ celdas_por_estado: { descartada: 270 } }),
+        '2025-12-01',
+      ),
+    ).toBe(false)
+  })
+
+  it('el filtro de estado vive en la URL: sin él, en curso', () => {
+    const de = (q: string) => leerFiltrosDeTandas(new URLSearchParams(q)).estado
+    expect(de('')).toBe('en_curso')
+    expect(de('estado=cosechada')).toBe('cosechada')
+    expect(de('estado=todas')).toBeUndefined()
+    expect(de('estado=inventado')).toBe('en_curso')
+  })
+
+  it('la simulación filtra por estado como el backend', async () => {
+    const api = tandasSimuladas()
+    const enCurso = (await api.listar({ estado: 'en_curso' })).items
+    const cosechadas = (await api.listar({ estado: 'cosechada' })).items
+    expect(enCurso.length + cosechadas.length).toBe(
+      DATOS_SIMULADOS.tandas.length,
+    )
+    expect(cosechadas.every((t) => t.estado === 'cosechada')).toBe(true)
+    expect(enCurso.every((t) => t.estado === 'en_curso')).toBe(true)
+  })
+})
+
 describe('tandas simuladas (mismas reglas que el backend)', () => {
   const datos = aTandaCrear(alta())
 
@@ -250,10 +342,12 @@ describe('pantalla de tandas', () => {
   afterAll(() => vi.unstubAllEnvs())
   afterEach(cleanup)
 
-  function montar(roles: Rol[]) {
+  const enCurso = DATOS_SIMULADOS.tandas.filter((t) => t.estado === 'en_curso')
+
+  function montar(roles: Rol[], ruta = '/produccion/tandas') {
     const router = createMemoryRouter(
       [{ path: '/produccion/tandas', element: <TandasPage /> }],
-      { initialEntries: ['/produccion/tandas'] },
+      { initialEntries: [ruta] },
     )
     render(
       <ProveedorDeSesionFijo
@@ -268,13 +362,15 @@ describe('pantalla de tandas', () => {
         </QueryClientProvider>
       </ProveedorDeSesionFijo>,
     )
+    return router
   }
 
   it('lista las tandas con su edad y celdas por estado; lectura no da de alta', async () => {
     montar(['lectura'])
 
+    // Por defecto, solo las en curso.
     expect((await screen.findAllByLabelText('Celdas por estado')).length).toBe(
-      DATOS_SIMULADOS.tandas.length,
+      enCurso.length,
     )
     expect(screen.getAllByText(/\d+ días/).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/en el parque/).length).toBeGreaterThan(0)
@@ -299,13 +395,50 @@ describe('pantalla de tandas', () => {
     )
 
     expect(
-      await screen.findByText(/Tanda creada con 270 celdas trasladadas/),
+      await screen.findByText(
+        /Tanda creada con 270 celdas trasladadas\. Sale aprox\. el 16\/11\/2025\./,
+      ),
     ).toBeTruthy()
     // La tabla se refresca sola: la tanda nueva aparece con sus 270 celdas.
     await waitFor(() => {
       const listas = screen.getAllByLabelText('Celdas por estado')
-      expect(listas).toHaveLength(DATOS_SIMULADOS.tandas.length + 1)
+      expect(listas).toHaveLength(enCurso.length + 1)
       expect(listas.map((l) => l.textContent)).toContain('270 trasladadas')
     })
+  })
+
+  it('filtra por estado en la URL y marca las atrasadas', async () => {
+    const usuario = userEvent.setup()
+    const router = montar(['lectura'])
+    // Las en curso (las de la semilla y la que dio de alta el test anterior)
+    // ya pasaron el día 26 sin cosechar.
+    const visibles = (await screen.findAllByLabelText('Celdas por estado'))
+      .length
+    expect(screen.getAllByText('Atrasada')).toHaveLength(visibles)
+    expect(
+      screen.getAllByRole('columnheader', { name: 'Sale aprox.' }),
+    ).toBeTruthy()
+
+    await usuario.click(screen.getByRole('combobox', { name: 'Estado' }))
+    await usuario.click(
+      await screen.findByRole('option', { name: 'Cosechadas' }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getAllByLabelText('Celdas por estado')).toHaveLength(
+        DATOS_SIMULADOS.tandas.length - enCurso.length,
+      ),
+    )
+    expect(router.state.location.search).toBe('?estado=cosechada')
+    expect(screen.queryByText('Atrasada')).toBeNull()
+
+    await usuario.click(screen.getByRole('combobox', { name: 'Estado' }))
+    await usuario.click(await screen.findByRole('option', { name: 'Todas' }))
+    await waitFor(() =>
+      expect(screen.getAllByLabelText('Celdas por estado')).toHaveLength(
+        DATOS_SIMULADOS.tandas.length - enCurso.length + visibles,
+      ),
+    )
+    expect(router.state.location.search).toBe('?estado=todas')
   })
 })

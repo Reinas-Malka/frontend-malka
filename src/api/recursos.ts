@@ -5,17 +5,21 @@ import type { components } from '@/api/esquema'
 import { recursoHttp, recursoSimulado, type Recurso } from '@/api/recurso'
 import { usaDatosSimulados } from '@/datos/cliente'
 import { DATOS_SIMULADOS } from '@/datos/simulados'
-import type {
-  Alicuota,
-  Banco,
-  Cliente,
-  CondicionIva,
-  ItemVendible,
-  Madre,
-  Material,
-  Nucleo,
-  Parque,
-  Raza,
+import { siguienteIdentificadorDeBanco } from '@/lib/bancos'
+import {
+  CAPACIDAD_BANCO_POR_DEFECTO,
+  type Alicuota,
+  type Banco,
+  type BancoActualizar,
+  type BancoCrear,
+  type Cliente,
+  type CondicionIva,
+  type ItemVendible,
+  type Madre,
+  type Material,
+  type Nucleo,
+  type Parque,
+  type Raza,
 } from '@/tipos/dominio'
 
 type Esquemas = components['schemas']
@@ -25,7 +29,7 @@ const simulado = usaDatosSimulados(import.meta.env.VITE_DATOS_SIMULADOS)
 function elegir<T extends { id: string }, C, A>(
   ruta: string,
   semilla: readonly T[],
-  construir: (datos: C, id: string) => T,
+  construir: (datos: C, id: string, existentes: readonly T[]) => T,
   derivar?: (fila: T) => T,
   filtrar?: (fila: T, filtros: Record<string, string | undefined>) => boolean,
 ): Recurso<T, C, A> {
@@ -90,17 +94,21 @@ export const nucleos = elegir<
   (n, { parque_id }) => !parque_id || n.parque_id === parque_id,
 )
 
-/** Banco (16/10): las reinas se cuentan desde las celdas; uno nuevo arranca vacío. */
-export const bancos = elegir<
-  Banco,
-  Esquemas['BancoCrear'],
-  Esquemas['BancoActualizar']
->('/api/v1/bancos', DATOS_SIMULADOS.bancos, (d, id) => ({
-  id,
-  ...d,
-  reinas_en_banco: 0,
-  activo: true,
-}))
+/** Banco (16/10): las reinas se cuentan desde las celdas; uno nuevo arranca
+ *  vacío. Como el backend (#155): sin identificador, el siguiente B-NN; sin
+ *  capacidad, 276. */
+export const bancos = elegir<Banco, BancoCrear, BancoActualizar>(
+  '/api/v1/bancos',
+  DATOS_SIMULADOS.bancos,
+  (d, id, existentes) => ({
+    id,
+    identificador:
+      d.identificador?.trim() || siguienteIdentificadorDeBanco(existentes),
+    capacidad_max: d.capacidad_max ?? CAPACIDAD_BANCO_POR_DEFECTO,
+    reinas_en_banco: 0,
+    activo: true,
+  }),
+)
 
 export const materiales = elegir<
   Material,

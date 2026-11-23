@@ -21,12 +21,17 @@ import {
 } from 'vitest'
 import type { Rol } from '../src/auth/identidad'
 import { DATOS_SIMULADOS } from '../src/datos/simulados'
-import { formatearFecha } from '../src/lib/fechas'
+import { formatearFecha, hoyEnArgentina } from '../src/lib/fechas'
 
 const TENANT = '11111111-1111-4111-8111-111111111111'
 // Cosechada, en el parque (Buckfast, en Monte Chico) y recién traslarvada.
 const [COSECHADA, EN_PARQUE, RECIEN] = DATOS_SIMULADOS.tandas
-const ACCIONES = ['Descartar', 'Introducir', 'Cosechar', 'Pasar a banco']
+const ACCIONES = [
+  'Descartar',
+  'Introducir en un parque',
+  'Cosechar',
+  'Pasar a banco',
+]
 
 describe('detalle de la tanda', () => {
   let TandasPage: ComponentType
@@ -107,6 +112,13 @@ describe('detalle de la tanda', () => {
     await usuario.click(await screen.findByRole('option', { name: opcion }))
   }
 
+  /** El número de una fila del bloque "Resultado de la tanda". */
+  const filaDeResultado = (nombre: string | RegExp) => {
+    const bloque = screen.getByRole('region', { name: 'Resultado de la tanda' })
+    const dt = within(bloque).getByText(nombre, { selector: 'dt' })
+    return dt.nextElementSibling?.textContent ?? null
+  }
+
   /** El cartel con lo que devolvió la última operación. */
   const resultado = () =>
     screen.findByText(/^(Se |Pasaron |Pasó )/, { selector: 'p' })
@@ -171,7 +183,7 @@ describe('detalle de la tanda', () => {
   it('producción ve solo las operaciones que tienen sentido', async () => {
     abrir(RECIEN)
     await screen.findByRole('heading', { level: 1 })
-    expect(acciones()).toEqual(['Descartar', 'Introducir'])
+    expect(acciones()).toEqual(['Descartar', 'Introducir en un parque'])
     cleanup()
 
     abrir(EN_PARQUE, ['admin'])
@@ -184,7 +196,11 @@ describe('detalle de la tanda', () => {
     await screen.findByRole('heading', { level: 1 })
 
     // Introducir: parque y cantidad; los núcleos los elige el sistema.
-    let modal = await operar(usuario, 'Introducir', 'Introducir en un parque')
+    let modal = await operar(
+      usuario,
+      'Introducir en un parque',
+      'Introducir en un parque',
+    )
     await elegir(usuario, modal, 'Parque', /Parque La Loma/)
     expect(
       (modal.getByLabelText('Celdas a introducir') as HTMLInputElement).value,
@@ -219,6 +235,13 @@ describe('detalle de la tanda', () => {
     expect(
       await screen.findByText('Ya se cosechó: los núcleos quedaron libres.'),
     ).toBeTruthy()
+    // Dónde entró no se pierde con la cosecha (prueba del 07/11).
+    const [, mes, dia] = hoyEnArgentina().split('-')
+    expect(
+      screen.getByText(
+        `Introducida el ${dia}/${mes} en Parque La Loma: 120 celdas en 15 núcleos (8 por núcleo)`,
+      ),
+    ).toBeTruthy()
     expect(
       screen.getByText('95 reinas cosechadas todavía sin banco.'),
     ).toBeTruthy()
@@ -241,6 +264,17 @@ describe('detalle de la tanda', () => {
     )
     expect(within(bancos).getByText('95 reinas')).toBeTruthy()
     expect(acciones()).toEqual(['Descartar'])
+
+    // El resultado: qué entró, qué salió y a dónde fue.
+    await waitFor(() => expect(filaDeResultado('En el banco B-01')).toBe('95'))
+    expect(filaDeResultado('Introducidas en el parque')).toBe('120')
+    expect(filaDeResultado(/^Cosechadas el /)).toBe('95')
+    expect(filaDeResultado('Despachadas')).toBe('0')
+    expect(filaDeResultado('Descartadas en el parque (con núcleo)')).toBe('25')
+    expect(
+      filaDeResultado('Descartadas antes de introducir (sin núcleo)'),
+    ).toBe('1')
+    expect(filaDeResultado('Todavía en el parque')).toBe('0')
 
     const detalle = await api.obtener(RECIEN.id)
     expect(detalle.celdas_por_estado).toEqual({
@@ -277,7 +311,11 @@ describe('detalle de la tanda', () => {
     const { usuario } = abrir(RECIEN)
     await screen.findByRole('heading', { level: 1 })
 
-    const modal = await operar(usuario, 'Introducir', 'Introducir en un parque')
+    const modal = await operar(
+      usuario,
+      'Introducir en un parque',
+      'Introducir en un parque',
+    )
     await elegir(usuario, modal, 'Parque', /Parque Vacío/)
     await usuario.click(
       modal.getByRole('button', { name: 'Introducir celdas' }),
@@ -293,7 +331,10 @@ describe('detalle de la tanda', () => {
   })
 
   it('desde el listado, la fecha de traslarve lleva al detalle', async () => {
-    const { usuario } = montar('/produccion/tandas', ['lectura'])
+    // La cosechada no está entre las en curso (el filtro por defecto).
+    const { usuario } = montar('/produccion/tandas?estado=cosechada', [
+      'lectura',
+    ])
 
     await usuario.click(
       await screen.findByRole('link', {
@@ -324,7 +365,7 @@ describe('detalle de la tanda', () => {
         fecha_traslarve: '2026-10-20',
         cuadros: 1,
       })
-    const { usuario } = montar('/produccion/tandas', ['lectura'])
+    const { usuario } = montar('/produccion/tandas?estado=todas', ['lectura'])
 
     await waitFor(() =>
       expect(screen.getAllByLabelText('Celdas por estado')).toHaveLength(

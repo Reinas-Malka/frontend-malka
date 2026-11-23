@@ -43,7 +43,9 @@ export function Vacio({
 }
 
 /** Error con el formato único del backend (issue #5): código, mensaje y
- *  request_id visible, para buscarlo en CloudWatch. Acepta un ApiError. */
+ *  request_id visible, para buscarlo en CloudWatch. Acepta un ApiError.
+ *  Un error esperable (dato duplicado, conflicto de negocio) muestra solo
+ *  su mensaje: no es una falla del sistema ni hay nada que reportar. */
 export function ErrorDePantalla({
   error,
   reintentar,
@@ -51,6 +53,20 @@ export function ErrorDePantalla({
   error: ErrorParaMostrar | null
   reintentar?: () => void
 }) {
+  if (error?.esperable)
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-start gap-2 rounded-tarjeta border border-aviso/40 bg-aviso/10 p-4"
+      >
+        <p className="text-sm font-medium text-texto">{error.mensaje}</p>
+        {reintentar ? (
+          <Button variante="secundario" onClick={reintentar}>
+            Reintentar
+          </Button>
+        ) : null}
+      </div>
+    )
   return (
     <div
       role="alert"

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { DATOS_SIMULADOS } from '../src/datos/simulados'
-import { formatearImporte, totalesDelPedido } from '../src/lib/importes'
+import {
+  formatearImporte,
+  formatearMonto,
+  totalesDelPedido,
+} from '../src/lib/importes'
 import type { Alicuota } from '../src/tipos/dominio'
 
 const [PARA_RESERVAR, RESERVADO] = DATOS_SIMULADOS.pedidos
@@ -75,5 +79,13 @@ describe('totales del pedido (calcular_totales_pedido del backend)', () => {
     expect(PARA_RESERVAR.items[0].neto).toBe('900000.00')
     // En dólares: exportación, sin IVA.
     expect(RESERVADO).toMatchObject({ iva: '0.00', total: '1925.00' })
+  })
+})
+
+describe('formatearMonto', () => {
+  it('pone el símbolo de la moneda: $ pesos, US$ dólares, € euros', () => {
+    expect(formatearMonto('1925', 'USD')).toBe('US$ 1.925,00')
+    expect(formatearMonto('1500.5', 'EUR')).toBe('€ 1.500,50')
+    expect(formatearMonto('900000', 'ARS')).toBe('$ 900.000,00')
   })
 })
