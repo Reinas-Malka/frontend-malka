@@ -42,6 +42,8 @@ const propuesta = (cambios: Partial<Propuesta> = {}): Propuesta => ({
     },
   ],
   roles_permitidos: ['admin', 'ventas'],
+  paso: 1,
+  depende_de: [],
   ...cambios,
 })
 

@@ -1,10 +1,14 @@
-import { CircleCheck, CircleX } from 'lucide-react'
+import { CircleCheck, CircleX, TriangleAlert } from 'lucide-react'
 import { Link } from 'react-router'
 import { NOMBRE_DE_ROL, puede, ROLES, type Rol } from '@/auth/identidad'
 import { useSesion } from '@/auth/useSesion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { esPropuestaEjecutable, tituloDeAccion } from '@/lib/asistente'
+import {
+  esAccionFinal,
+  esPropuestaEjecutable,
+  tituloDeAccion,
+} from '@/lib/asistente'
 import type { PropuestaEnChat } from '@/modulos/asistente/conversacion'
 
 const esRol = (valor: string): valor is Rol => ROLES.includes(valor as Rol)
@@ -15,6 +19,9 @@ type Props = {
   alDescartar: (id: string) => void
   /** Al seguir el enlace a lo creado (en el teléfono, cierra el panel). */
   alNavegar: () => void
+  /** En un plan: el número de paso, sin Descartar propio (se descarta el
+   *  plan entero) y, si todavía no se puede, por qué. */
+  enPlan?: { bloqueo: string | null }
 }
 
 /** Una escritura propuesta por el asistente: qué es (resumen armado por el
@@ -26,6 +33,7 @@ export function TarjetaDePropuesta({
   alConfirmar,
   alDescartar,
   alNavegar,
+  enPlan,
 }: Props) {
   const { identidad } = useSesion()
   const { propuesta, estado } = item
@@ -36,20 +44,33 @@ export function TarjetaDePropuesta({
   const idTitulo = `propuesta-${propuesta.id}`
   const idMotivo = `motivo-${propuesta.id}`
   const abierta = estado === 'pendiente' || estado === 'fallida'
+  // Cancelar un pedido no tiene vuelta atrás: la tarjeta lo advierte.
+  const final = esAccionFinal(propuesta.accion)
+  const idAviso = `aviso-${propuesta.id}`
   const motivo = !ejecutable
     ? 'Esta propuesta no se puede confirmar desde acá.'
     : !tienePermiso
       ? `Tu rol no puede confirmarla: lo puede hacer ${roles.map((r) => NOMBRE_DE_ROL[r]).join(' o ') || 'otro rol'}.`
-      : null
+      : (enPlan?.bloqueo ?? null)
 
   return (
     <article
       aria-labelledby={idTitulo}
-      className="space-y-3 rounded-tarjeta border border-miel-600/40 bg-fondo p-3"
+      className={
+        final
+          ? 'space-y-3 rounded-tarjeta border border-peligro/50 bg-peligro/5 p-3'
+          : 'space-y-3 rounded-tarjeta border border-miel-600/40 bg-fondo p-3'
+      }
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id={idTitulo} className="text-sm font-semibold text-texto">
-          {titulo}
+        <h3
+          id={idTitulo}
+          className="flex items-center gap-1.5 text-sm font-semibold text-texto"
+        >
+          {final ? (
+            <TriangleAlert aria-hidden className="size-4 text-peligro-texto" />
+          ) : null}
+          {enPlan ? `Paso ${propuesta.paso}: ${titulo}` : titulo}
         </h3>
         {estado === 'confirmada' ? (
           <Badge tono="ok">Confirmada</Badge>
@@ -69,6 +90,12 @@ export function TarjetaDePropuesta({
             </div>
           ))}
         </dl>
+      ) : null}
+
+      {final && abierta ? (
+        <p id={idAviso} className="text-sm font-medium text-peligro-texto">
+          Atención: no se puede deshacer.
+        </p>
       ) : null}
 
       {estado === 'confirmada' ? (
@@ -117,20 +144,31 @@ export function TarjetaDePropuesta({
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
             <Button
+              variante={final ? 'peligro' : 'primario'}
               cargando={estado === 'confirmando'}
               disabled={motivo !== null}
-              aria-describedby={motivo ? idMotivo : undefined}
+              aria-describedby={
+                [motivo ? idMotivo : null, final ? idAviso : null]
+                  .filter(Boolean)
+                  .join(' ') || undefined
+              }
               onClick={() => alConfirmar(propuesta.id)}
             >
-              {estado === 'fallida' ? 'Reintentar' : 'Confirmar'}
+              {estado === 'fallida'
+                ? 'Reintentar'
+                : enPlan
+                  ? 'Confirmar este paso'
+                  : 'Confirmar'}
             </Button>
-            <Button
-              variante="secundario"
-              disabled={estado === 'confirmando'}
-              onClick={() => alDescartar(propuesta.id)}
-            >
-              Descartar
-            </Button>
+            {enPlan ? null : (
+              <Button
+                variante="secundario"
+                disabled={estado === 'confirmando'}
+                onClick={() => alDescartar(propuesta.id)}
+              >
+                Descartar
+              </Button>
+            )}
           </div>
           {motivo ? (
             <p id={idMotivo} className="text-xs text-texto-suave">

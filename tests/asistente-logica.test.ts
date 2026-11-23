@@ -29,6 +29,8 @@ const propuesta = (cambios: Partial<Propuesta> = {}): Propuesta => ({
   cuerpo: { cliente_id: 'c-1' },
   resumen: [{ etiqueta: 'Cliente', valor: 'Apícola Don Emilio' }],
   roles_permitidos: ['admin', 'ventas'],
+  paso: 1,
+  depende_de: [],
   ...cambios,
 })
 

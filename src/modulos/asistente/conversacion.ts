@@ -23,6 +23,11 @@ export type PropuestaEnChat = {
   estado: EstadoDePropuesta
   enlace?: Enlace | null
   error?: ErrorDePropuesta | null
+  /** El id que devolvió el endpoint: reemplaza los marcadores de los pasos
+   *  que dependen de este. */
+  idCreado?: string | null
+  /** Cómo terminó, en una línea, para el mensaje "resultado". */
+  detalle?: string
 }
 
 export type MensajeDelUsuario = { id: string; rol: 'usuario'; texto: string }
@@ -33,11 +38,22 @@ export type MensajeDelAsistente = {
   consultas: ConsultaDelAsistente[]
   propuestas: PropuestaEnChat[]
 }
-export type MensajeDelChat = MensajeDelUsuario | MensajeDelAsistente
+/** Lo que pasó con una propuesta (confirmada, fallida o descartada). Se
+ *  muestra como una línea discreta y viaja en el próximo pedido: así el
+ *  asistente puede seguir con el paso siguiente. */
+export type MensajeDeResultado = { id: string; rol: 'resultado'; texto: string }
+export type MensajeDelChat =
+  MensajeDelUsuario | MensajeDelAsistente | MensajeDeResultado
 
 export const mensajeDelUsuario = (texto: string): MensajeDelUsuario => ({
   id: crypto.randomUUID(),
   rol: 'usuario',
+  texto,
+})
+
+export const mensajeDeResultado = (texto: string): MensajeDeResultado => ({
+  id: crypto.randomUUID(),
+  rol: 'resultado',
   texto,
 })
 
@@ -72,6 +88,17 @@ export function conPropuesta(
   )
 }
 
+/** El mensaje del asistente que trae esa propuesta (y su plan). */
+export function mensajeDe(
+  historial: readonly MensajeDelChat[],
+  id: string,
+): MensajeDelAsistente | undefined {
+  return historial.find(
+    (m): m is MensajeDelAsistente =>
+      m.rol === 'asistente' && m.propuestas.some((p) => p.propuesta.id === id),
+  )
+}
+
 export function buscarPropuesta(
   historial: readonly MensajeDelChat[],
   id: string,
@@ -93,7 +120,7 @@ const esMensaje = (valor: unknown): valor is MensajeDelChat => {
   if (typeof valor !== 'object' || valor === null) return false
   const m = valor as Record<string, unknown>
   if (typeof m.id !== 'string' || typeof m.texto !== 'string') return false
-  if (m.rol === 'usuario') return true
+  if (m.rol === 'usuario' || m.rol === 'resultado') return true
   return (
     m.rol === 'asistente' &&
     Array.isArray(m.consultas) &&

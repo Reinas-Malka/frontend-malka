@@ -14,7 +14,7 @@ import { request } from '@/api/client'
 import type { components } from '@/api/esquema'
 import { asistenteSimulado } from '@/api/asistenteSimulado'
 import { usaDatosSimulados } from '@/datos/cliente'
-import { esPropuestaEjecutable, propuestaInvalida } from '@/lib/asistente'
+import { estaListaParaEjecutar, propuestaInvalida } from '@/lib/asistente'
 
 type Esquemas = components['schemas']
 
@@ -39,7 +39,8 @@ export interface ApiAsistente {
    *  si el historial no valida. */
   conversar(mensajes: MensajeAlAsistente[]): Promise<RespuestaAsistente>
   /** Ejecuta la propuesta con su id como Idempotency-Key: la misma
-   *  propuesta confirmada dos veces se guarda una sola. */
+   *  propuesta confirmada dos veces se guarda una sola. Recibe la propuesta
+   *  con los marcadores de un plan ya reemplazados (conReferencias). */
   confirmar(propuesta: Propuesta): Promise<unknown>
 }
 
@@ -57,7 +58,8 @@ export function asistenteHttp(): ApiAsistente {
         timeoutMs: TIMEOUT_CONVERSAR_MS,
       }),
     confirmar: async (propuesta) => {
-      if (!esPropuestaEjecutable(propuesta)) throw propuestaInvalida()
+      // Ya con los marcadores reemplazados: ruta exacta, sin {{ref:...}}.
+      if (!estaListaParaEjecutar(propuesta)) throw propuestaInvalida()
       return request<unknown>(propuesta.ruta, {
         metodo: propuesta.metodo,
         // Reservar un pedido no lleva cuerpo: va sin body, como en api/pedidos.ts.

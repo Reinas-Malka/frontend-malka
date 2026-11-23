@@ -14,12 +14,26 @@ import { borradores } from '@/api/borradores'
 import { ApiError } from '@/api/client'
 import { disponibilidad } from '@/api/disponibilidad'
 import { pedidos } from '@/api/pedidos'
-import { clientes, itemsVendibles, razas } from '@/api/recursos'
+import {
+  PIDE_PARQUE,
+  proponerParqueConNucleos,
+} from '@/api/asistenteSimuladoPlan'
+import { movimientos } from '@/api/movimientos'
+import { nucleosDeParque } from '@/api/nucleosDeParque'
+import {
+  bancos,
+  clientes,
+  itemsVendibles,
+  materiales,
+  parques,
+  razas,
+} from '@/api/recursos'
 import { tandas } from '@/api/tandas'
 import {
-  esPropuestaEjecutable,
+  estaListaParaEjecutar,
   idDeLaRuta,
   propuestaInvalida,
+  SEGUIR,
 } from '@/lib/asistente'
 import { hoyEnArgentina } from '@/lib/fechas'
 import {
@@ -53,6 +67,9 @@ const CANTIDAD_MAXIMA = 500
 const PRECIO_DE_EJEMPLO = '15000.00'
 const DIAS_HASTA_LA_ENTREGA = 7
 const ROLES_VENTAS = ['admin', 'ventas']
+
+type CuerpoDe<R extends { crear: (datos: never, clave?: string) => unknown }> =
+  Parameters<R['crear']>[0]
 
 const cuerpoComo = <T>(propuesta: Propuesta): T =>
   (propuesta.cuerpo ?? {}) as unknown as T
@@ -90,6 +107,36 @@ const fuentesDeLaDemo: FuentesDelAsistente = {
           String(cuerpoComo<{ pedido_id: string }>(p).pedido_id),
           p.id,
         )
+      case 'crear_parque':
+        return parques.crear(cuerpoComo<CuerpoDe<typeof parques>>(p), p.id)
+      case 'crear_nucleos':
+        return nucleosDeParque.crear(
+          idDe(p),
+          cuerpoComo<{ cantidad: number }>(p),
+          p.id,
+        )
+      case 'crear_banco':
+        return bancos.crear(cuerpoComo<CuerpoDe<typeof bancos>>(p), p.id)
+      case 'crear_raza':
+        return razas.crear(cuerpoComo<CuerpoDe<typeof razas>>(p), p.id)
+      case 'crear_producto':
+        return itemsVendibles.crear(
+          cuerpoComo<CuerpoDe<typeof itemsVendibles>>(p),
+          p.id,
+        )
+      case 'crear_material':
+        return materiales.crear(
+          cuerpoComo<CuerpoDe<typeof materiales>>(p),
+          p.id,
+        )
+      case 'registrar_movimiento_material':
+        return movimientos.registrar(
+          idDe(p),
+          cuerpoComo<Parameters<typeof movimientos.registrar>[1]>(p),
+          p.id,
+        )
+      case 'cancelar_pedido':
+        return pedidos.cancelar(idDe(p), p.id)
       default:
         return Promise.reject(propuestaInvalida())
     }
@@ -246,6 +293,8 @@ async function proponerPedido(
       },
     ],
     roles_permitidos: ROLES_VENTAS,
+    paso: 1,
+    depende_de: [],
   }
   return respuesta(
     `Te armé el pedido para ${cliente.nombre}: ${cantidad} ${reinas(cantidad)} ${raza.nombre} con entrega el ${entrega}.\nRevisalo en la tarjeta: no se guarda nada hasta que lo confirmes.`,
@@ -260,6 +309,7 @@ const AYUDA = [
   '- ¿Qué disponibilidad hay de Carniola?',
   '- ¿Cómo vienen los pedidos?',
   '- Crear un pedido de 10 reinas Buckfast',
+  '- Creá un parque Casa Santi, ubicación Grand Bell, capacidad 100, con 10 núcleos',
 ].join('\n')
 
 const PIDE_PEDIDO =
@@ -267,14 +317,28 @@ const PIDE_PEDIDO =
 const PIDE_DISPONIBILIDAD = /disponib|stock|cuantas reinas|hay reinas|enjaulad/
 
 function responder(
-  texto: string,
+  original: string,
   fuentes: FuentesDelAsistente,
 ): Promise<RespuestaAsistente> {
+  const texto = sinAcentos(original)
+  if (PIDE_PARQUE.test(texto))
+    return Promise.resolve(proponerParqueConNucleos(original))
   if (PIDE_PEDIDO.test(texto)) return proponerPedido(texto, fuentes)
   if (PIDE_DISPONIBILIDAD.test(texto))
     return contarDisponibilidad(texto, fuentes)
   if (/\bpedidos?\b/.test(texto)) return listarPedidos(fuentes)
   return Promise.resolve(respuesta(AYUDA))
+}
+
+/** Lo que dice la simulación después de un resultado (o de "Seguir"). */
+function despuesDelResultado(resultado: string): string {
+  if (/Falló|falló/.test(resultado))
+    return 'Algo no se pudo guardar: mirá el detalle en la tarjeta. Si querés, lo corregimos.'
+  if (/descartó/.test(resultado))
+    return 'Listo, no se guardó nada. ¿Querés cambiar algo?'
+  if (/Confirmado/.test(resultado))
+    return 'Listo, quedó guardado. ¿Seguimos con algo más?'
+  return 'No hay ningún paso pendiente. ¿Qué más necesitás?'
 }
 
 const esperar = (ms: number) =>
@@ -293,17 +357,25 @@ export function asistenteSimulado({
   return {
     conversar: async (mensajes) => {
       const ultimo = mensajes.at(-1)
-      if (!ultimo || ultimo.rol !== 'usuario')
+      // Como el backend: el último es del usuario o un resultado.
+      if (!ultimo || ultimo.rol === 'asistente')
         throw new ApiError({
           status: 422,
           codigo: 'ultimo_mensaje_no_es_del_usuario',
-          mensaje: 'El último mensaje tiene que ser del usuario.',
+          mensaje:
+            'El último mensaje tiene que ser del usuario o un resultado.',
         })
       await esperar(demoraMs)
-      return responder(sinAcentos(ultimo.texto), fuentes)
+      const anterior = mensajes.at(-2)
+      const tras = ultimo.rol === 'resultado' ? ultimo : anterior
+      if (ultimo.rol === 'resultado' || ultimo.texto === SEGUIR)
+        return respuesta(
+          despuesDelResultado(tras?.rol === 'resultado' ? tras.texto : ''),
+        )
+      return responder(ultimo.texto, fuentes)
     },
     confirmar: async (propuesta) => {
-      if (!esPropuestaEjecutable(propuesta)) throw propuestaInvalida()
+      if (!estaListaParaEjecutar(propuesta)) throw propuestaInvalida()
       await esperar(demoraMs / 2)
       return fuentes.ejecutar(propuesta)
     },

@@ -1,4 +1,13 @@
-import { Bot, Loader2, RotateCcw, Search, Send, X } from 'lucide-react'
+import {
+  ArrowRight,
+  Bot,
+  CornerDownRight,
+  Loader2,
+  RotateCcw,
+  Search,
+  Send,
+  X,
+} from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { asistente, type ApiAsistente } from '@/api/asistente'
 import { useSesion } from '@/auth/useSesion'
@@ -9,6 +18,8 @@ import {
   claveDelHistorial,
   type MensajeDelChat,
 } from '@/modulos/asistente/conversacion'
+import { esPlan } from '@/modulos/asistente/plan'
+import { PlanDePropuestas } from '@/modulos/asistente/PlanDePropuestas'
 import { TarjetaDePropuesta } from '@/modulos/asistente/TarjetaDePropuesta'
 import { TextoDelAsistente } from '@/modulos/asistente/TextoDelAsistente'
 import { useConversacion } from '@/modulos/asistente/useConversacion'
@@ -133,12 +144,21 @@ export default function PanelAsistente({
             key={mensaje.id}
             mensaje={mensaje}
             alConfirmar={(id) => void chat.confirmar(id)}
+            alConfirmarTodo={(id) => void chat.confirmarTodo(id)}
             alDescartar={chat.descartar}
             alNavegar={() => {
               if (!ancha) alCerrar()
             }}
           />
         ))}
+        {chat.puedeSeguir ? (
+          <div className="flex justify-start">
+            <Button variante="secundario" tamano="chico" onClick={chat.seguir}>
+              Seguir
+              <ArrowRight aria-hidden className="size-4" />
+            </Button>
+          </div>
+        ) : null}
         <div ref={fin} />
       </div>
 
@@ -237,11 +257,13 @@ function Bienvenida({
 function Mensaje({
   mensaje,
   alConfirmar,
+  alConfirmarTodo,
   alDescartar,
   alNavegar,
 }: {
   mensaje: MensajeDelChat
   alConfirmar: (id: string) => void
+  alConfirmarTodo: (idDeUnPaso: string) => void
   alDescartar: (id: string) => void
   alNavegar: () => void
 }) {
@@ -253,6 +275,19 @@ function Mensaje({
           {mensaje.texto}
         </p>
       </div>
+    )
+  if (mensaje.rol === 'resultado')
+    return (
+      <p
+        role="note"
+        className="flex items-start gap-1.5 whitespace-pre-line text-xs text-texto-suave"
+      >
+        <CornerDownRight aria-hidden className="mt-0.5 size-3 shrink-0" />
+        <span className="break-words">
+          <span className="sr-only">Resultado: </span>
+          {mensaje.texto}
+        </span>
+      </p>
     )
   return (
     <div className="space-y-2">
@@ -271,15 +306,25 @@ function Mensaje({
           ))}
         </ul>
       ) : null}
-      {mensaje.propuestas.map((item) => (
-        <TarjetaDePropuesta
-          key={item.propuesta.id}
-          item={item}
+      {esPlan(mensaje) ? (
+        <PlanDePropuestas
+          mensaje={mensaje}
           alConfirmar={alConfirmar}
+          alConfirmarTodo={alConfirmarTodo}
           alDescartar={alDescartar}
           alNavegar={alNavegar}
         />
-      ))}
+      ) : (
+        mensaje.propuestas.map((item) => (
+          <TarjetaDePropuesta
+            key={item.propuesta.id}
+            item={item}
+            alConfirmar={alConfirmar}
+            alDescartar={alDescartar}
+            alNavegar={alNavegar}
+          />
+        ))
+      )}
     </div>
   )
 }
