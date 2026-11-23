@@ -18,23 +18,19 @@ import {
   NOMBRE_DE_ESTADO_BORRADOR,
   type PedidoDelDocumento,
   segundosDeEspera,
+  TONO_DE_ESTADO_BORRADOR,
 } from '@/modulos/ventas/borradores'
 import { DetalleDeBorrador } from '@/modulos/ventas/DetalleDeBorrador'
 import { ROLES_VENTAS } from '@/modulos/ventas/pedidos'
-import type { Borrador, EstadoBorrador } from '@/tipos/dominio'
-
-const TONO_DE_BORRADOR: Record<EstadoBorrador, 'aviso' | 'ok' | 'peligro'> = {
-  generando: 'aviso',
-  borrador: 'ok',
-  rechazado: 'peligro',
-}
+import type { Borrador } from '@/tipos/dominio'
 
 /** Después de un 429: hasta cuándo esperar y la hora del último tic. */
 type Espera = { hasta: number; ahora: number; diario: boolean }
 
 /** El borrador del documento del pedido, redactado por la IA (#16). Lo
- *  piden admin y ventas; lo leen todos. Aprobarlo es del #17: acá solo se
- *  genera, se espera y se revisa. */
+ *  piden admin y ventas; lo leen todos. Lo aprueba una persona con rol
+ *  admin o lo descarta alguien de administración o ventas (#17, en
+ *  DetalleDeBorrador). */
 export function BorradorConIA(origen: PedidoDelDocumento) {
   const { pedido } = origen
   const { identidad } = useSesion()
@@ -50,12 +46,24 @@ export function BorradorConIA(origen: PedidoDelDocumento) {
   const [espera, setEspera] = useState<Espera | null>(null)
   // La clave se fija en el primer intento y se repite hasta que sale bien:
   // si una respuesta se perdió, el backend devuelve el mismo borrador y no
-  // gasta otra llamada a la IA. Y un doble clic no manda dos pedidos.
-  const clave = useRef<string | null>(null)
+  // gasta otra llamada a la IA. Y un doble clic no manda dos pedidos. Es
+  // por intento: una corrección de otro borrador es otro pedido.
+  const clave = useRef<{ corrigeA: string | null; valor: string } | null>(null)
   const enCurso = useRef(false)
 
   const generar = useMutation({
-    mutationFn: (conClave: string) => borradores.pedir(pedido.id, conClave),
+    mutationFn: ({
+      conClave,
+      corrigeA,
+    }: {
+      conClave: string
+      corrigeA: string | null
+    }) =>
+      borradores.pedir(
+        pedido.id,
+        conClave,
+        corrigeA ? { corrigeA } : undefined,
+      ),
     onSuccess: (nuevo) => {
       clave.current = null
       consultas.setQueryData(claveDeBorrador(nuevo.id), nuevo)
@@ -83,11 +91,12 @@ export function BorradorConIA(origen: PedidoDelDocumento) {
       enCurso.current = false
     },
   })
-  const pedirBorrador = () => {
+  const pedirBorrador = (corrigeA: string | null = null) => {
     if (enCurso.current) return
     enCurso.current = true
-    clave.current ??= crypto.randomUUID()
-    generar.mutate(clave.current)
+    if (clave.current?.corrigeA !== corrigeA)
+      clave.current = { corrigeA, valor: crypto.randomUUID() }
+    generar.mutate({ conClave: clave.current.valor, corrigeA })
   }
 
   // La cuenta regresiva del 429: un tic por segundo hasta que se puede.
@@ -136,7 +145,7 @@ export function BorradorConIA(origen: PedidoDelDocumento) {
             variante="secundario"
             cargando={generar.isPending}
             disabled={esperando}
-            onClick={pedirBorrador}
+            onClick={() => pedirBorrador()}
           >
             <Sparkles className="size-4" aria-hidden /> Generar borrador
           </Button>
@@ -147,7 +156,8 @@ export function BorradorConIA(origen: PedidoDelDocumento) {
         <span>
           El texto lo redacta una IA a partir del pedido. Los números fiscales
           de la factura (número, CAE, IVA y total facturados) los carga una
-          persona desde el comprobante de ARCA.
+          persona desde el comprobante de ARCA. Lo aprueba siempre una persona
+          de administración, nunca la IA.
         </span>
       </p>
 
@@ -195,7 +205,7 @@ export function BorradorConIA(origen: PedidoDelDocumento) {
                   <span className="font-mono text-xs tabular-nums">
                     {formatearFechaHora(b.creado_en, ZONA_ARGENTINA)}
                   </span>
-                  <Badge tono={TONO_DE_BORRADOR[b.estado]}>
+                  <Badge tono={TONO_DE_ESTADO_BORRADOR[b.estado]}>
                     {NOMBRE_DE_ESTADO_BORRADOR[b.estado]}
                   </Badge>
                 </button>
@@ -208,6 +218,7 @@ export function BorradorConIA(origen: PedidoDelDocumento) {
             claveDelListado={claveDelListado}
             origen={origen}
             generar={accion}
+            alElegir={setElegido}
           />
         </div>
       )}
@@ -221,7 +232,9 @@ function ErrorAlGenerar({ error }: { error: unknown }) {
   const mensaje =
     esApiError(error) && error.codigo === 'pedido_inexistente'
       ? 'Este pedido ya no existe: no se puede redactar su documento.'
-      : `${describirError(error).mensaje} Volvé a intentar en un rato.`
+      : esApiError(error) && error.codigo === 'correccion_invalida'
+        ? 'Solo se puede corregir un borrador aprobado de este pedido.'
+        : `${describirError(error).mensaje} Volvé a intentar en un rato.`
   return (
     <div
       role="alert"

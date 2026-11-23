@@ -36,8 +36,15 @@ const generando = (id = 'b-1'): Borrador => ({
   pedido_id: PEDIDO.id,
   estado: 'generando',
   contenido: null,
+  hash_contenido: null,
   motivo_rechazo: null,
+  motivo_descarte: null,
   version_prompt: null,
+  corrige_a: null,
+  comprobante_id: null,
+  aprobado_por: null,
+  aprobado_en: null,
+  pdf_disponible: false,
   creado_en: '2026-11-01T15:30:00Z',
   actualizado_en: '2026-11-01T15:30:00Z',
 })
@@ -106,7 +113,7 @@ describe('borrador con IA en el detalle del pedido', () => {
     expect(
       await zona.findByText(/La IA está redactando el borrador/),
     ).toBeTruthy()
-    expect(zona.getByText('Redactando')).toBeTruthy()
+    expect(zona.getByText('Generando')).toBeTruthy()
     // El worker simulado tarda 2 s; la consulta siguiente ya lo trae.
     await avanzar(2000)
     await avanzar(2000)
@@ -140,9 +147,8 @@ describe('borrador con IA en el detalle del pedido', () => {
     // Siempre a la vista: lo redacta una IA y lo fiscal lo carga una persona.
     expect(zona.getByText(/lo redacta una IA/)).toBeTruthy()
     expect(zona.getByText(/números fiscales/)).toBeTruthy()
-    expect(
-      zona.getByText(/La aprobación todavía no está disponible/),
-    ).toBeTruthy()
+    expect(zona.getByText(/se aprueba el texto guardado/)).toBeTruthy()
+    expect(zona.getByText(/nunca la IA/)).toBeTruthy()
   })
 
   it('un rechazo explica el motivo en castellano y ofrece generar otro', async () => {
