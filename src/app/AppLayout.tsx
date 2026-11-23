@@ -6,6 +6,7 @@ import { NOMBRE_DE_ROL } from '@/auth/identidad'
 import { useSesion } from '@/auth/useSesion'
 import { Button } from '@/components/ui/button'
 import { BannerDatosSimulados } from '@/datos/BannerDatosSimulados'
+import { BotonAsistente } from '@/modulos/asistente/BotonAsistente'
 import { cn } from '@/lib/utils'
 import { SinPermisoPage } from '@/pages/SinPermisoPage'
 
@@ -110,6 +111,7 @@ export function AppLayout() {
           )}
         </main>
       </div>
+      <BotonAsistente />
     </div>
   )
 }

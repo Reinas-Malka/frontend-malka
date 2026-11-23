@@ -183,6 +183,35 @@ describe('borrador con IA en el detalle del pedido', () => {
     expect(pedir.mock.calls[1][1]).not.toBe(pedir.mock.calls[0][1])
   })
 
+  it('un borrador aprobado o descartado (backend #154) muestra su estado', async () => {
+    const contenido = { encabezado: 'Nota', cuerpo: 'Texto', notas: '' }
+    vi.spyOn(api, 'listar').mockResolvedValue({
+      items: [
+        {
+          ...generando('b-2'),
+          estado: 'descartado',
+          contenido,
+          motivo_descarte: 'Falta el flete',
+        },
+        {
+          ...generando('b-1'),
+          estado: 'aprobado',
+          contenido,
+          pdf_disponible: true,
+        },
+      ],
+      siguiente: null,
+    })
+    abrir()
+    const zona = await seccion()
+
+    const lista = within(
+      await zona.findByRole('list', { name: 'Borradores del pedido' }),
+    )
+    expect(lista.getByText('Descartado')).toBeTruthy()
+    expect(lista.getByText('Aprobado')).toBeTruthy()
+  })
+
   it('un 429 dice cuántos segundos esperar (Retry-After) y bloquea el botón', async () => {
     vi.spyOn(api, 'pedir').mockRejectedValueOnce(
       new ApiError({
