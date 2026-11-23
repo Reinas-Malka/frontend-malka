@@ -38,6 +38,34 @@
     "title": "Alicuota",
     "type": "string"
    },
+   "Aprobacion": {
+    "additionalProperties": false,
+    "description": "POST .../aprobar: la version (hash_contenido) que vio quien aprueba y,\nsi ya existe, el comprobante que ARCA emitio para el pedido (#108).",
+    "properties": {
+     "comprobante_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Comprobante Id"
+     },
+     "hash_contenido": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Hash Contenido",
+      "type": "string"
+     }
+    },
+    "required": [
+     "hash_contenido"
+    ],
+    "title": "Aprobacion",
+    "type": "object"
+   },
    "BancoActualizar": {
     "additionalProperties": false,
     "description": "Se puede renombrar y reactivar; la capacidad queda fija desde el alta.\n\nextra=\"forbid\": un PATCH con capacidad_max es 422.",
@@ -158,8 +186,20 @@
    },
    "BorradorPedido": {
     "additionalProperties": false,
-    "description": "POST /api/v1/documentos/borradores: de que pedido redactar.",
+    "description": "POST /api/v1/documentos/borradores: de que pedido redactar.\n\ncorrige_a: el borrador aprobado del mismo pedido que este corrige. El\naprobado no se toca (es inmutable); el nuevo lo referencia.",
     "properties": {
+     "corrige_a": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Corrige A"
+     },
      "pedido_id": {
       "format": "uuid",
       "title": "Pedido Id",
@@ -180,6 +220,41 @@
       "title": "Actualizado En",
       "type": "string"
      },
+     "aprobado_en": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aprobado En"
+     },
+     "aprobado_por": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aprobado Por"
+     },
+     "comprobante_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Comprobante Id"
+     },
      "contenido": {
       "anyOf": [
        {
@@ -190,6 +265,18 @@
        }
       ]
      },
+     "corrige_a": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Corrige A"
+     },
      "creado_en": {
       "format": "date-time",
       "title": "Creado En",
@@ -198,10 +285,32 @@
      "estado": {
       "$ref": "#/components/schemas/EstadoBorrador"
      },
+     "hash_contenido": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hash Contenido"
+     },
      "id": {
       "format": "uuid",
       "title": "Id",
       "type": "string"
+     },
+     "motivo_descarte": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo Descarte"
      },
      "motivo_rechazo": {
       "anyOf": [
@@ -212,6 +321,10 @@
         "type": "null"
        }
       ]
+     },
+     "pdf_disponible": {
+      "title": "Pdf Disponible",
+      "type": "boolean"
      },
      "pedido_id": {
       "format": "uuid",
@@ -237,6 +350,13 @@
      "contenido",
      "motivo_rechazo",
      "version_prompt",
+     "hash_contenido",
+     "corrige_a",
+     "comprobante_id",
+     "motivo_descarte",
+     "aprobado_por",
+     "aprobado_en",
+     "pdf_disponible",
      "creado_en",
      "actualizado_en"
     ],
@@ -669,6 +789,23 @@
     "title": "DescargaPreparada",
     "type": "object"
    },
+   "Descarte": {
+    "additionalProperties": false,
+    "description": "POST .../rechazar: por que el borrador no sirve.",
+    "properties": {
+     "motivo": {
+      "maxLength": 500,
+      "minLength": 3,
+      "title": "Motivo",
+      "type": "string"
+     }
+    },
+    "required": [
+     "motivo"
+    ],
+    "title": "Descarte",
+    "type": "object"
+   },
    "DespachoDeLinea": {
     "description": "Respuesta de GET /api/v1/pedidos/{id}/despachos: lo que salio.\n\nCuantas reinas de una linea salieron de un banco y que dia, contadas\ndesde las celdas despachadas (migracion 0013). Es la misma forma que la\nSalidaDeBanco del cuerpo de entregar, con el identificador del banco\npara mostrarlo sin otro request.",
     "properties": {
@@ -1031,7 +1168,9 @@
     "enum": [
      "generando",
      "borrador",
-     "rechazado"
+     "rechazado",
+     "aprobado",
+     "descartado"
     ],
     "title": "EstadoBorrador",
     "type": "string"
@@ -3236,6 +3375,101 @@
     "title": "ResultadoDeTanda",
     "type": "object"
    },
+   "RevisionRespuesta": {
+    "description": "Una fila de la bitacora: quien, cuando y sobre que version.",
+    "properties": {
+     "accion": {
+      "enum": [
+       "aprobado",
+       "descartado"
+      ],
+      "title": "Accion",
+      "type": "string"
+     },
+     "borrador_id": {
+      "format": "uuid",
+      "title": "Borrador Id",
+      "type": "string"
+     },
+     "comprobante_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Comprobante Id"
+     },
+     "hash_contenido": {
+      "title": "Hash Contenido",
+      "type": "string"
+     },
+     "hash_snapshot": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hash Snapshot"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "momento": {
+      "format": "date-time",
+      "title": "Momento",
+      "type": "string"
+     },
+     "motivo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo"
+     },
+     "usuario": {
+      "title": "Usuario",
+      "type": "string"
+     },
+     "version_prompt": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version Prompt"
+     }
+    },
+    "required": [
+     "id",
+     "borrador_id",
+     "accion",
+     "usuario",
+     "momento",
+     "hash_contenido",
+     "hash_snapshot",
+     "version_prompt",
+     "motivo",
+     "comprobante_id"
+    ],
+    "title": "RevisionRespuesta",
+    "type": "object"
+   },
    "SalidaDeBanco": {
     "additionalProperties": false,
     "description": "De que banco salen reinas para una linea, y cuantas.",
@@ -4851,6 +5085,268 @@
      }
     ],
     "summary": "Obtener Borrador",
+    "tags": [
+     "borradores"
+    ]
+   }
+  },
+  "/api/v1/documentos/borradores/{borrador_id}/aprobar": {
+   "post": {
+    "operationId": "aprobar_borrador_api_v1_documentos_borradores__borrador_id__aprobar_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "borrador_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Borrador Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Aprobacion"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BorradorRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Aprobar Borrador",
+    "tags": [
+     "borradores"
+    ]
+   }
+  },
+  "/api/v1/documentos/borradores/{borrador_id}/pdf": {
+   "get": {
+    "operationId": "descargar_pdf_api_v1_documentos_borradores__borrador_id__pdf_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "borrador_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Borrador Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "en_linea",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "En Linea",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DescargaPreparada"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Descargar Pdf",
+    "tags": [
+     "borradores"
+    ]
+   }
+  },
+  "/api/v1/documentos/borradores/{borrador_id}/rechazar": {
+   "post": {
+    "operationId": "rechazar_borrador_api_v1_documentos_borradores__borrador_id__rechazar_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "borrador_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Borrador Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+      "in": "header",
+      "name": "Idempotency-Key",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "UUID nuevo por operacion; el mismo en cada reintento (24 h).",
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Descarte"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BorradorRespuesta"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Rechazar Borrador",
+    "tags": [
+     "borradores"
+    ]
+   }
+  },
+  "/api/v1/documentos/borradores/{borrador_id}/revisiones": {
+   "get": {
+    "operationId": "revisiones_del_borrador_api_v1_documentos_borradores__borrador_id__revisiones_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "borrador_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Borrador Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/RevisionRespuesta"
+         },
+         "title": "Response Revisiones Del Borrador Api V1 Documentos Borradores  Borrador Id  Revisiones Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Revisiones Del Borrador",
     "tags": [
      "borradores"
     ]
