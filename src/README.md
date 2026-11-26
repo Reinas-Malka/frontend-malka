@@ -13,8 +13,7 @@
 | `documentos/`          | Lógica de la subida de documentos                                           | `subirPorUrlPrefermada.ts`               |
 | `pages/`               | Una pantalla por ruta, **solo composición**                                 | `StatusPage`, `CatalogoPages`            |
 | `hooks/`               | `use*` compartidos                                                          | `useListado`, `useMutacionesDe`          |
-| `tipos/`               | Tipos del dominio (alias del esquema generado donde hay endpoint)           | `dominio.ts`                             |
-| `types/`               | Tipos de documentos y health (se unifica con `tipos/` en el issue #29)      | `documentos.ts`                          |
+| `tipos/`               | Todos los tipos: dominio (alias del esquema generado), documentos y health  | `dominio.ts`, `documentos.ts`            |
 | `datos/`               | Datos simulados y lo que todavía no tiene endpoint                          | `simulados.ts`                           |
 | `lib/`                 | Utilidades puras sin React                                                  | `cuit.ts`, `utils.ts`                    |
 

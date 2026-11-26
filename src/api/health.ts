@@ -1,6 +1,6 @@
 import { request } from '@/api/client'
 import type { components } from '@/api/esquema'
-import type { Health } from '@/types/health'
+import type { Health } from '@/tipos/health'
 
 export type Disponibilidad = components['schemas']['Disponibilidad']
 

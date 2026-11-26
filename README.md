@@ -95,7 +95,7 @@ src/
 ├── components/   # Componentes visuales reutilizables, sin lógica de datos
 ├── documentos/   # Lógica de dominio de documentos (validación, subida a S3)
 ├── pages/        # Pantallas completas: piden los datos y los pasan a los componentes
-├── types/        # Tipos e interfaces que reflejan las respuestas del backend
+├── tipos/        # Tipos e interfaces que reflejan las respuestas del backend
 ├── App.tsx       # Componente raíz
 └── main.tsx      # Punto de entrada de la aplicación
 ```
@@ -105,7 +105,7 @@ src/
 El archivo nunca pasa por la API: se pide una URL prefirmada de S3 y el
 navegador sube directo al bucket, con progreso y un reintento si el enlace
 venció. El contrato del endpoint (`POST /api/v1/documentos/subidas`) está
-propuesto en `src/types/documentos.ts` y se ajusta cuando el backend
+propuesto en `src/tipos/documentos.ts` y se ajusta cuando el backend
 publique el definitivo (#38).
 
 Mientras tanto, la pantalla se puede probar con una prefirmada generada a

@@ -2,7 +2,7 @@ import type { Disponibilidad } from '@/api/health'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardTitulo } from '@/components/ui/card'
 import { formatearFechaHora } from '@/lib/fechas'
-import type { Health } from '@/types/health'
+import type { Health } from '@/tipos/health'
 
 type Props = { health: Health; disponibilidad?: Disponibilidad }
 

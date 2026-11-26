@@ -1,7 +1,7 @@
 import { ApiError, request } from '@/api/client'
 import { usaDatosSimulados } from '@/datos/cliente'
 import type { DescargaPreparada } from '@/tipos/dominio'
-import type { PedidoDeSubida, SubidaPreparada } from '@/types/documentos'
+import type { PedidoDeSubida, SubidaPreparada } from '@/tipos/documentos'
 
 // Subida y descarga por URL prefirmada (backend #102): los bytes van directo
 // entre el navegador y S3, nunca por la API. En desarrollo,
