@@ -16,7 +16,7 @@ import { puede } from '@/auth/identidad'
 import { useSesion } from '@/auth/useSesion'
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
 import { Button } from '@/components/ui/button'
-import { Cargando, ErrorDePantalla } from '@/components/ui/estados'
+import { Cargando, ErrorDePantalla, Vacio } from '@/components/ui/estados'
 import { Modal, ModalContenido } from '@/components/ui/modal'
 import { useListado } from '@/hooks/useRecurso'
 import { formatearFecha } from '@/lib/fechas'
@@ -159,6 +159,15 @@ export default function TandaPage() {
       <section className="space-y-seccion">
         {volver}
         <Cargando columnas={4} filas={3} />
+      </section>
+    )
+  if (esApiError(detalle.error) && detalle.error.status === 404)
+    return (
+      <section className="space-y-seccion">
+        {volver}
+        <Vacio titulo="No encontramos esta tanda">
+          Puede que el enlace esté mal o que sea de otro criadero.
+        </Vacio>
       </section>
     )
   const fallo = todas.find((c) => c.isError)

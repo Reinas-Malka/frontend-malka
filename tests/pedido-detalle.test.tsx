@@ -425,10 +425,11 @@ describe('detalle del pedido', () => {
     expect(router.state.location.search).toBe('?estado=reservado')
   })
 
-  it('un pedido que no existe muestra el error', async () => {
+  it('un pedido que no existe lo dice, sin error para reportar (#28)', async () => {
     montar('/ventas/pedidos/no-existe')
 
-    expect(await screen.findByText('No existe el pedido.')).toBeTruthy()
+    expect(await screen.findByText('No encontramos este pedido')).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('entrega un reservado repartido entre dos bancos', async () => {

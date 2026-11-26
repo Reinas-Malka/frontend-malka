@@ -10,7 +10,7 @@ import { useSesion } from '@/auth/useSesion'
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Cargando, ErrorDePantalla } from '@/components/ui/estados'
+import { Cargando, ErrorDePantalla, Vacio } from '@/components/ui/estados'
 import { Modal, ModalContenido } from '@/components/ui/modal'
 import { DataTable, type Columna } from '@/components/ui/table'
 import {
@@ -289,6 +289,15 @@ export default function PedidoPage() {
       <section className="space-y-seccion">
         {volver}
         <Cargando columnas={5} filas={3} />
+      </section>
+    )
+  if (esApiError(pedido.error) && pedido.error.status === 404)
+    return (
+      <section className="space-y-seccion">
+        {volver}
+        <Vacio titulo="No encontramos este pedido">
+          Puede que el enlace esté mal o que sea de otro criadero.
+        </Vacio>
       </section>
     )
   const fallo = todas.find((c) => c.isError)

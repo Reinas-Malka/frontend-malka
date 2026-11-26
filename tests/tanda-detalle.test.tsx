@@ -161,14 +161,13 @@ describe('detalle de la tanda', () => {
     ).toBeTruthy()
   })
 
-  it('si la tanda no existe, lo dice y ofrece reintentar', async () => {
+  it('si la tanda no existe, lo dice sin ofrecer reintentar (#28)', async () => {
     montar('/produccion/tandas/no-existe')
 
-    const alerta = await screen.findByRole('alert')
-    expect(alerta.textContent).toMatch(/No existe la tanda/)
-    expect(
-      within(alerta).getByRole('button', { name: 'Reintentar' }),
-    ).toBeTruthy()
+    expect(await screen.findByText('No encontramos esta tanda')).toBeTruthy()
+    // Un 404 no se arregla reintentando: es el vacío del detalle, no un error.
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Reintentar' })).toBeNull()
   })
 
   it('lectura y ventas ven la tanda pero no las operaciones', async () => {

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Ban, Download, Pencil, Upload } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { describirError } from '@/api/client'
+import { describirError, esApiError } from '@/api/client'
 import { pedirDescarga } from '@/api/documentos'
 import { embarques } from '@/api/embarques'
 import { puede } from '@/auth/identidad'
@@ -12,7 +12,7 @@ import { FormularioRecurso } from '@/components/catalogo/FormularioRecurso'
 import { EncabezadoDePagina } from '@/components/pagina/EncabezadoDePagina'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Cargando, ErrorDePantalla } from '@/components/ui/estados'
+import { Cargando, ErrorDePantalla, Vacio } from '@/components/ui/estados'
 import { Modal, ModalContenido } from '@/components/ui/modal'
 import { nombreDePais } from '@/lib/paises'
 import { CargaDeDocumento } from '@/modulos/exportacion/CargaDeDocumento'
@@ -142,6 +142,15 @@ export default function EmbarquePage() {
       <section className="space-y-seccion">
         {volver}
         <Cargando columnas={3} filas={6} />
+      </section>
+    )
+  if (esApiError(embarque.error) && embarque.error.status === 404)
+    return (
+      <section className="space-y-seccion">
+        {volver}
+        <Vacio titulo="No encontramos este embarque">
+          Puede que el enlace esté mal o que sea de otro criadero.
+        </Vacio>
       </section>
     )
   const error = embarque.error ?? documentos.error ?? completitud.error
